@@ -74,10 +74,10 @@ a scenario, not a method name — describe the observable behavior under test.
   commits (`test: ...` then `feat: ...`) on the branch, or `[red]` and `[green]`
   markers in a single commit message paired with a *Red/green record* note here.
   `make check-tdd` enforces this ordering.
-- Immediately after test bodies are first authored — before any production code,
-  regardless of whether the tests fail — run the
+- Immediately after test bodies are authored — before any production code —
+  run the
   [Local Test Quality check](../docs/checks/local-test-quality.md), which
-  validates the new tests against
+  validates new tests against
   [DP-001](../docs/design-principles/dp-001-test-behavior-not-implementation.md)
   and [DP-002](../docs/design-principles/dp-002-economical-test-code.md) and
   fixes violations. Waivers are recorded in *Footnotes*.
@@ -91,11 +91,14 @@ a scenario, not a method name — describe the observable behavior under test.
 Numbered checklist of the order in which files are produced. TDD order
 (test-first, red, green) is part of this sequence.
 
-0. [Spec review](../docs/checks/spec-review.md) delivered and findings resolved
-   by the author before any test or implementation work.
+0. [Spec review](../docs/checks/spec-review.md) (optional, at user's discretion)
+   — if run, findings are resolved by the author before any test or
+   implementation work.
 1. _{Add `tests/test_X.py` first; observe failing locally.}_
-2. _{Add `src/X.py` to satisfy tests.}_
-3. _{Lint + typecheck clean-up.}_
+2. **Run Local Test Quality check** — validates new test code against DP-001
+   and DP-002 before any production code is written.
+3. _{Add `src/X.py` to satisfy tests.}_
+4. _{Lint + typecheck clean-up.}_
 
 ## Changes Required
 
@@ -136,26 +139,36 @@ Numbered checklist of the order in which files are produced. TDD order
 
 - ...
 
-## Definition of Done
+## Definition of Done — Hard Gates
 
 All of these must be true for this spec to be marked completed:
 
 - [ ] All tests pass (`make test` or equivalent).
-- [ ] Coverage target met (see **Coverage target** in the front-matter).
-- [ ] `make check` (lint + typecheck) passes with no new errors.
-- [ ] `make check-tdd` passes (TDD gate, see `docs/development.md`).
-- [ ] Manual smoke test: {specific manual verification steps, if any}.
-- [ ] No new lint warnings or type errors in changed files.
+- [ ] Coverage target met.
+- [ ] `make check` passes.
+- [ ] `make check-tdd` passes.
+- [ ] Manual smoke test passes (if applicable).
 - [ ] Every *Acceptance Example* has a corresponding passing test.
 - [ ] Every linked INV-{NNN} has a passing enforcement test.
-- [ ] [Dead-code check](../docs/checks/dead-code.md) run at green; report
-      presented for review, and approved deletions completed.
-- [ ] [Local doc-drift check](../docs/checks/local-doc-drift.md) run at green;
-      description drift fixed, contract mismatches reconciled with the spec.
-- [ ] [Workflow-conformance check](../docs/checks/workflow-conformance.md) run;
-      metadata gaps fixed, judgment gaps resolved by the author.
-- [ ] [Code-review check](../docs/checks/code-review.md) run last; fix prompt
-      delivered, and blocker/should-fix findings resolved or explicitly waived.
+
+## Advisory Reports
+
+The following checks are available at the user's discretion. If run, the agent
+writes findings to `reports/{check-name}-{NNN}.md` and stops — no blocking
+loop. The user reviews the reports and decides what is actionable.
+
+- [Spec Review](../docs/checks/spec-review.md) — adversarial review of the
+  drafted spec before implementation starts.
+- [Dead Code](../docs/checks/dead-code.md) — detects unused code artifacts;
+  run at green.
+- [Local Doc Drift](../docs/checks/local-doc-drift.md) — fixes stale
+  documentation; run at green.
+- [Workflow Conformance](../docs/checks/workflow-conformance.md) — verifies
+  metadata and index entries; run before closure.
+- [Code Review](../docs/checks/code-review.md) — reviews the branch diff for
+  correctness and spec conformance; run before closure.
+- [Global Doc Drift](../docs/checks/global-doc-drift.md) — periodic repo-wide
+  doc audit; run periodically at the user's discretion.
 
 ## Constraints
 

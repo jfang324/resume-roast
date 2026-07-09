@@ -1,5 +1,5 @@
 .env
-todo/
+reports/
 __pycache__/
 .venv/
 .ruff_cache/
