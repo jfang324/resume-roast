@@ -20,7 +20,11 @@ build-backend = "poetry.core.masonry.api"
 [dependency-groups]
 dev = [
     "ruff (>=0.15.20,<0.16.0)",
-    "pyright (>=1.1.411,<2.0.0)"
+    "pyright (>=1.1.411,<2.0.0)",
+    "pytest (>=9.1.1,<10.0.0)",
+    "coverage (>=7.15.0,<8.0.0)",
+    "pytest-cov (>=7.1.0,<8.0.0)",
+    "pytest-asyncio (>=1.4.0,<2.0.0)"
 ]
 
 [tool.ruff]
@@ -92,3 +96,25 @@ reportUnknownMemberType = true
 reportUnknownArgumentType = true
 reportUnknownVariableType = true
 reportUnknownParameterType = true
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+adopts = [
+    "--strict-markers",
+    "--strict-config",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["resume_roast"]
+omit = [
+    "**/__main__.py"
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 85
