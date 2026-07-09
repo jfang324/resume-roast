@@ -5,6 +5,7 @@
 **Created**: YYYY-MM-DD
 **TDD**: required | optional
 **Why optional** (conditional): _{Cite one of: pure refactor, rename, deps bump, doc-only change. If "required", omit this line.}_
+**Coverage target**: _{repo default (`fail_under` in `pyproject.toml`) | {N}% on changed files | n/a + reason}_
 **Commit(s)**: <!-- Populated on completion. One `- hash (description)` per commit. -->
 
 ## Summary
@@ -12,12 +13,21 @@
 One-paragraph description of what this spec achieves and why it exists. Should be
 understandable without reading any other file.
 
+### Existing Code
+
+Files the agent must read before starting, and existing utilities to reuse
+instead of reimplementing. Omit only if the spec touches a green-field area.
+
+- _{`path/to/existing.py` — why it's relevant / what to reuse.}_
+
 ## Module Decomposition
 
-Hard list of what this spec introduces, moves, or renames. The agent must not
-add files outside this list without amending this section first.
+Hard list of what this spec introduces, moves, renames, or modifies. The agent
+must not add or modify files outside this list without amending this section
+first.
 
 - **New files**: _{`path/to/new_module.py` — purpose.}_
+- **Modified files**: _{`path/to/existing.py` — what changes and why.}_
 - **Renames / moves**: _{`old.py` → `new.py` — reason.}_
 - **Explicit non-goals** (required): _{What this spec will NOT do. Critical for
   preventing agent over-implementation.}_
@@ -27,11 +37,11 @@ add files outside this list without amending this section first.
 Each principle is listed with its core rule and a brief note on how it applies to
 this spec. The agent should read the linked doc if the application is unclear.
 
-- [DP-{NNN}: {Title}](docs/design-principles/dp-{nnn}-title.md) — _{How/why this principle applies here.}_
+- [DP-{NNN}: {Title}](../docs/design-principles/dp-{nnn}-title.md) — _{How/why this principle applies here.}_
 
 ## Invariants Referenced
 
-- [INV-{NNN}: {Title}](docs/invariants/inv-{nnn}-title.md) — _{How/why this invariant must hold. Tie the invariant to a test scenario in the Test Plan below.}_
+- [INV-{NNN}: {Title}](../docs/invariants/inv-{nnn}-title.md) — _{How/why this invariant must hold. Tie the invariant to a test scenario in the Test Plan below.}_
 
 ## Pre-implementation Self-Check
 
@@ -62,8 +72,19 @@ a scenario, not a method name — describe the observable behavior under test.
   enforcing it. Invariants without a test are treated as not enforced.
 - A reviewer must be able to find red-then-green evidence: either separate
   commits (`test: ...` then `feat: ...`) on the branch, or `[red]` and `[green]`
-  markers in a single commit message paired with a *Red/green record* note in
-  this spec.
+  markers in a single commit message paired with a *Red/green record* note here.
+  `make check-tdd` enforces this ordering.
+- Immediately after test bodies are first authored — before any production code,
+  regardless of whether the tests fail — run the
+  [Local Test Quality check](../docs/checks/local-test-quality.md), which
+  validates the new tests against
+  [DP-001](../docs/design-principles/dp-001-test-behavior-not-implementation.md)
+  and [DP-002](../docs/design-principles/dp-002-economical-test-code.md) and
+  fixes violations. Waivers are recorded in *Footnotes*.
+
+**Red/green record** (only when using single-commit `[red]/[green]` markers):
+
+- _{commit hash — which scenarios were observed failing, and where they turned green.}_
 
 ## Execution Order
 
@@ -105,12 +126,9 @@ Numbered checklist of the order in which files are produced. TDD order
 - **Strategy**: Implementation approach — libraries to use, patterns to follow,
   things to explicitly avoid. e.g., "Use PBKDF2HMAC with 600k iterations,
   not a custom hash."
-- **Red/green record**: How the reviewer locates the failing-then-passing
-  evidence for this module (commit hashes or `[red]/[green]` markers + spec
-  note).
-- **Tests required**: Cross-reference to the scenarios in *Test Plan*; this
-  section exists to keep the linkage visible at the module level. Coverage
-  target if applicable.
+- **Tests**: One-line pointer to the covering scenarios in *Test Plan* (e.g.,
+  "covered by the `test_{module}_*` scenarios"). The Test Plan is the single
+  authoritative list — do not restate scenarios or red/green evidence here.
 
 ### `{path/to/module2.py}`
 
@@ -121,7 +139,7 @@ Numbered checklist of the order in which files are produced. TDD order
 All of these must be true for this spec to be marked completed:
 
 - [ ] All tests pass (`make test` or equivalent).
-- [ ] Coverage threshold met (see above).
+- [ ] Coverage target met (see **Coverage target** in the front-matter).
 - [ ] `make check` (lint + typecheck) passes with no new errors.
 - [ ] `make check-tdd` passes (TDD gate, see `docs/development.md`).
 - [ ] Manual smoke test: {specific manual verification steps, if any}.

@@ -6,3 +6,6 @@
      When writing a spec, reference the relevant DP docs so the agent can look
      them up if the brief explanation in the spec is insufficient.
 -->
+
+- [dp-001-test-behavior-not-implementation.md](dp-001-test-behavior-not-implementation.md) — Tests assert observable behavior at the module boundary, never the implementation that produces it.
+- [dp-002-economical-test-code.md](dp-002-economical-test-code.md) — Parameterize repeated cases and reuse fitting fixtures so each behavior and setup is stated once.

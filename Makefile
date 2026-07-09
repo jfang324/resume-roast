@@ -1,4 +1,4 @@
-.PHONY: test report fix format format-check lint typecheck check
+.PHONY: test report fix format format-check lint typecheck check check-tdd
 
 test:
 	poetry run coverage run -m pytest
@@ -22,3 +22,6 @@ typecheck:
 	poetry run pyright
 
 check: format-check lint typecheck test
+
+check-tdd:
+	poetry run python scripts/check_tdd.py
