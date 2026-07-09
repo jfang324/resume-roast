@@ -91,6 +91,8 @@ a scenario, not a method name — describe the observable behavior under test.
 Numbered checklist of the order in which files are produced. TDD order
 (test-first, red, green) is part of this sequence.
 
+0. [Spec review](../docs/checks/spec-review.md) delivered and findings resolved
+   by the author before any test or implementation work.
 1. _{Add `tests/test_X.py` first; observe failing locally.}_
 2. _{Add `src/X.py` to satisfy tests.}_
 3. _{Lint + typecheck clean-up.}_

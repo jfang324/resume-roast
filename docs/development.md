@@ -82,6 +82,13 @@ declare `TDD: optional` (pure refactor, rename, deps bump, doc-only change).
 To opt a whole spec out (e.g., a pure rename), set `TDD: optional` on the spec
 front-matter with a one-line reason.
 
+Before implementation starts, run the report-only
+[Spec Review check](checks/spec-review.md) on the drafted spec — every later
+check enforces conformance to the spec, so spec defects must be caught here or
+not at all. Checks are best executed by a fresh sub-agent given only the check
+doc and the repo, not the implementing context — the reasoning that produced a
+defect tends to also produce the review that misses it.
+
 Ordering alone doesn't prove the tests are any good. Immediately after test
 bodies are first authored — regardless of whether they fail — run the
 [Local Test Quality check](checks/local-test-quality.md) (`docs/checks/` holds
