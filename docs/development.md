@@ -87,5 +87,19 @@ bodies are first authored — regardless of whether they fail — run the
 [Local Test Quality check](checks/local-test-quality.md) (`docs/checks/` holds
 these executable check prompts), which validates the branch's new test code
 against the testing design principles (DP-001, DP-002) and fixes violations.
+Once the implementation is green, run the report-only
+[Dead Code check](checks/dead-code.md) to surface artifacts of abandoned design
+iterations for review, and the [Local Doc Drift check](checks/local-doc-drift.md)
+to fix documentation the branch's changes made stale, before the spec's
+Definition of Done. Then run the
+[Workflow Conformance check](checks/workflow-conformance.md), which verifies the
+branch's specs, docs, and indexes carry all the metadata the workflow expects,
+fixing mechanical gaps in place. Last, run the report-only
+[Code Review check](checks/code-review.md), which reviews the branch diff for
+correctness, quality, and spec conformance and delivers an
+adversarially-hardened fix prompt to `todo/` (gitignored) for the user to apply
+or discard. Periodically — after several specs, or before a milestone —
+run the report-only [Global Doc Drift check](checks/global-doc-drift.md), which
+audits every docstring and prose doc in the repo against the implementation.
 
 See `specs/TEMPLATE.md` for the full spec structure.
