@@ -57,11 +57,35 @@ make check
 
 ### Spec-driven TDD
 
-Every `SPEC-{NNN}` should include a *Test Plan* written before the corresponding
-implementation. Tests are specified as scenarios (not code) in the spec document;
-the agent implements the test bodies and the implementation together.
+Every `SPEC-{NNN}` includes a *Test Plan* written before any implementation.
+Tests are specified as scenarios (not code) in the spec document; the agent then
+authors the test bodies **first**, observes them fail (red), and only then writes
+the production code that makes them pass (green).
 
-To opt out (e.g., a pure rename), set `TDD: optional` on the spec front-matter
-with a one-line reason.
+Red-then-green evidence must be visible on the branch in one of two forms:
+
+- separate commits: a `test: ...` commit that lands before the corresponding
+  `feat: ...` commit, or
+- a single commit whose message carries `[red]` and `[green]` markers, paired
+  with a *Red/green record* note in the spec.
+
+The TDD gate verifies this ordering over the commits on the current branch:
+
+```bash
+make check-tdd
+```
+
+(implemented in `scripts/check_tdd.py`). Commits typed `docs:`, `chore:`, `ci:`,
+`build:`, `refactor:`, or `style:` are exempt, matching the reasons a spec may
+declare `TDD: optional` (pure refactor, rename, deps bump, doc-only change).
+
+To opt a whole spec out (e.g., a pure rename), set `TDD: optional` on the spec
+front-matter with a one-line reason.
+
+Ordering alone doesn't prove the tests are any good. Immediately after test
+bodies are first authored — regardless of whether they fail — run the
+[Local Test Quality check](checks/local-test-quality.md) (`docs/checks/` holds
+these executable check prompts), which validates the branch's new test code
+against the testing design principles (DP-001, DP-002) and fixes violations.
 
 See `specs/TEMPLATE.md` for the full spec structure.
