@@ -71,7 +71,7 @@ record a one-line pointer, and stay on semantics.
    yourself. **Rounds 2–3**: continue the same reviewer with the revision;
    stop early on an all-CONFIRMED round with nothing added.
 
-4. **Deliver.** Write the findings to `todo/spec-review-SPEC-{NNN}.md` (the
+4. **Deliver.** Write the findings to `reports/spec-review-{NNN}.md` (the
    gitignored working-docs drawer; delete once acted on) and present them in
    full with a provenance note (findings count by severity, rounds run,
    dropped/added counts, CONTESTED items with both positions — the user is

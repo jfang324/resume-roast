@@ -104,7 +104,7 @@ symptom, record a one-line pointer to run that check, and move on.
    pushback was actually addressed) with the revised prompt. Stop early when a
    round comes back all-CONFIRMED with nothing added.
 
-5. **Deliver.** Write the final prompt to `todo/code-review-<branch>.md` —
+5. **Deliver.** Write the final prompt to `reports/code-review-<branch>.md` —
    the repo's gitignored working-docs drawer (delete the file once acted on).
    Present it in full with a provenance note:
 
@@ -128,7 +128,7 @@ symptom, record a one-line pointer to run that check, and move on.
 
 ## Output
 
-The fix prompt at `todo/code-review-<branch>.md`, presented in full with its
+The fix prompt at `reports/code-review-<branch>.md`, presented in full with its
 provenance note. End with: "No changes were made. Awaiting review."
 
 ## Termination
