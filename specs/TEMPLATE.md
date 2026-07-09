@@ -146,6 +146,14 @@ All of these must be true for this spec to be marked completed:
 - [ ] No new lint warnings or type errors in changed files.
 - [ ] Every *Acceptance Example* has a corresponding passing test.
 - [ ] Every linked INV-{NNN} has a passing enforcement test.
+- [ ] [Dead-code check](../docs/checks/dead-code.md) run at green; report
+      presented for review, and approved deletions completed.
+- [ ] [Local doc-drift check](../docs/checks/local-doc-drift.md) run at green;
+      description drift fixed, contract mismatches reconciled with the spec.
+- [ ] [Workflow-conformance check](../docs/checks/workflow-conformance.md) run;
+      metadata gaps fixed, judgment gaps resolved by the author.
+- [ ] [Code-review check](../docs/checks/code-review.md) run last; fix prompt
+      delivered, and blocker/should-fix findings resolved or explicitly waived.
 
 ## Constraints
 
