@@ -19,7 +19,8 @@ build-backend = "poetry.core.masonry.api"
 
 [dependency-groups]
 dev = [
-    "ruff (>=0.15.20,<0.16.0)"
+    "ruff (>=0.15.20,<0.16.0)",
+    "pyright (>=1.1.411,<2.0.0)"
 ]
 
 [tool.ruff]
@@ -60,3 +61,34 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
+
+[tool.pyright]
+include = ["src", "tests"]
+exclude = [
+    "**/__pycache__",
+    "**/.ruff_cache",
+    "**/.pytest_cache",
+    "**/.venv",
+    "**/dist"
+]
+
+venvPath = "."
+venv = ".venv"
+
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+
+reportMissingImports = true
+reportMissingTypeStubs = false
+
+reportUnusedImport = true
+reportUnusedVariable = true
+reportDuplicateImport = true
+
+reportUnnecessaryTypeIgnoreComment = true
+reportUnnecessaryCast = true
+
+reportUnknownMemberType = true
+reportUnknownArgumentType = true
+reportUnknownVariableType = true
+reportUnknownParameterType = true
