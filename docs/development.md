@@ -54,3 +54,14 @@ Run linting, type checking, formatting:
 ```bash
 make check
 ```
+
+### Spec-driven TDD
+
+Every `SPEC-{NNN}` should include a *Test Plan* written before the corresponding
+implementation. Tests are specified as scenarios (not code) in the spec document;
+the agent implements the test bodies and the implementation together.
+
+To opt out (e.g., a pure rename), set `TDD: optional` on the spec front-matter
+with a one-line reason.
+
+See `specs/TEMPLATE.md` for the full spec structure.

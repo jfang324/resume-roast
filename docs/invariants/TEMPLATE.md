@@ -31,9 +31,13 @@ to recognize when they are about to break it.
 
 ## Testing This Invariant
 
-- **Automated check**: How to verify programmatically. e.g.,
-  `assert decrypt(encrypt(x)) == x`.
-- **Gating**: When is this check run? (pre-commit, CI, nightly)
+What tests to write and when they run. This complements *Enforcement
+Mechanism*: enforcement is how code prevents violation; testing is how
+the developer proves it works.
+
+- **Key assertions**: Specific assert-level checks that must appear in tests.
+  e.g., `assert decrypt(encrypt(x)) == x`.
+- **Gating**: When are these tests run? (pre-commit, CI, nightly)
 
 ## Exceptions
 

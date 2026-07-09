@@ -10,8 +10,10 @@ patterns it prevents.
 Concrete, grep-able or review-detectable patterns that indicate the principle
 is being broken.
 
-- _{Pattern 1}: {What it looks like in code.}_
-- _{Pattern 2}: {What it looks like in code.}_
+- _{Pattern 1}: {What it looks like in code.}
+  - **How to fix**: _{Steps to resolve the violation.}_
+- _{Pattern 2}: {What it looks like in code.}
+  - **How to fix**: _{Steps to resolve the violation.}_
 
 ## Examples
 
