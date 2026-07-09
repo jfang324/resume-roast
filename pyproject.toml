@@ -103,7 +103,7 @@ minversion = "9.0"
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
-adopts = [
+addopts = [
     "--strict-markers",
     "--strict-config",
 ]
