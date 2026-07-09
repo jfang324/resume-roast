@@ -9,6 +9,7 @@
      the agent knows when to run it.
 -->
 
+- [spec-review.md](spec-review.md) — Adversarially reviews a drafted spec before implementation starts; report-only, findings go to the user as spec author.
 - [local-test-quality.md](local-test-quality.md) — Validates test code new to the current branch against DP-001/DP-002 and fixes violations in place.
 - [dead-code.md](dead-code.md) — Detects code left dead by the branch's design iterations; report-only, findings go to the user for review.
 - [local-doc-drift.md](local-doc-drift.md) — Verifies docs affected by the branch match its implementation; fixes description drift in place, contracts are never rewritten.
