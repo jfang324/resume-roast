@@ -541,3 +541,16 @@ signal for future specs.
   Future specs that rename a `[project.scripts]` target should add
   `poetry install` as an explicit Execution Order step before the manual
   smoke test, not assume the console script self-updates.
+- **Test layout didn't mirror the new `cli/` package structure**: this
+  spec's Constraints kept `tests/test_cli.py` flat and unedited (correct for
+  proving the refactor was behavior-preserving), but that left it
+  inconsistent with the `tests/persistence/` mirroring precedent
+  (`persistence/<subpackage>/` → `tests/persistence/test_<subpackage>.py`)
+  once `cli/` itself became a multi-module package with the same shape.
+  Corrected as an immediate follow-up, commit `059d344`: split into
+  `tests/cli/test_config.py` (8 scenarios) and `tests/cli/test_show.py` (3
+  scenarios), with the shared `resume_roast_home` autouse fixture moved to
+  `tests/cli/conftest.py` — mirroring `src/resume_roast/cli/` the same way
+  `tests/persistence/` mirrors `src/resume_roast/persistence/`. Pure test
+  file movement: every test body, assertion, and input string carried over
+  unchanged; no new scenarios, no production code touched.
