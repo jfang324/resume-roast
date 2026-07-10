@@ -52,6 +52,14 @@ def credentials() -> None:
     typer.echo(f"Saved {spec.label} {mask_secret(value)} to {store.path}")
 
 
+class _WizardStoppedError(Exception):
+    """Internal signal to stop the settings walk early, keeping picks made so far."""
+
+    def __init__(self, exit_code: int) -> None:
+        super().__init__()
+        self.exit_code = exit_code
+
+
 def _current_display(spec: SettingSpec, current: Config) -> str:
     value = getattr(current, spec.key)
     if value is None:
@@ -61,35 +69,10 @@ def _current_display(spec: SettingSpec, current: Config) -> str:
     return value
 
 
-def _exit_without_saving() -> typer.Exit:
-    typer.echo("Cancelled.")
-    return typer.Exit(0)
-
-
 def _select_single(spec: SettingSpec) -> str | None:
     """Prompt a single-select menu; return the chosen value, or None to keep current."""
     raw = typer.prompt(
-        "Enter a number (blank keeps current, 0 exits)", default="", show_default=False
-    )
-    stripped = raw.strip()
-    if stripped == "":
-        return None
-    if stripped == "0":
-        raise _exit_without_saving()
-    if not stripped.isdigit():
-        typer.echo("Error: invalid selection", err=True)
-        raise typer.Exit(1)
-    choice = int(stripped)
-    if choice < 1 or choice > len(spec.choices):
-        typer.echo("Error: invalid selection", err=True)
-        raise typer.Exit(1)
-    return spec.choices[choice - 1]
-
-
-def _select_multi(spec: SettingSpec) -> tuple[str, ...] | None:
-    """Prompt the ensemble menu; return the chosen tuple, or None to keep current."""
-    raw = typer.prompt(
-        "Enter numbers separated by commas (blank keeps current, 0 exits)",
+        "Enter a number (blank keeps current, 0 stops and saves picks so far)",
         default="",
         show_default=False,
     )
@@ -97,17 +80,41 @@ def _select_multi(spec: SettingSpec) -> tuple[str, ...] | None:
     if stripped == "":
         return None
     if stripped == "0":
-        raise _exit_without_saving()
+        typer.echo("Stopped.")
+        raise _WizardStoppedError(exit_code=0)
+    if not stripped.isdigit():
+        typer.echo("Error: invalid selection", err=True)
+        raise _WizardStoppedError(exit_code=1)
+    choice = int(stripped)
+    if choice < 1 or choice > len(spec.choices):
+        typer.echo("Error: invalid selection", err=True)
+        raise _WizardStoppedError(exit_code=1)
+    return spec.choices[choice - 1]
+
+
+def _select_multi(spec: SettingSpec) -> tuple[str, ...] | None:
+    """Prompt the ensemble menu; return the chosen tuple, or None to keep current."""
+    raw = typer.prompt(
+        "Enter numbers separated by commas (blank keeps current, 0 stops and saves picks so far)",
+        default="",
+        show_default=False,
+    )
+    stripped = raw.strip()
+    if stripped == "":
+        return None
+    if stripped == "0":
+        typer.echo("Stopped.")
+        raise _WizardStoppedError(exit_code=0)
 
     selected: list[str] = []
     for token in (t.strip() for t in stripped.split(",")):
         if not token.lstrip("-").isdigit():
             typer.echo("Error: invalid selection", err=True)
-            raise typer.Exit(1)
+            raise _WizardStoppedError(exit_code=1)
         number = int(token)
         if number < 1 or number > len(spec.choices):
             typer.echo("Error: invalid selection", err=True)
-            raise typer.Exit(1)
+            raise _WizardStoppedError(exit_code=1)
         value = spec.choices[number - 1]
         if value not in selected:
             selected.append(value)
@@ -121,20 +128,25 @@ def settings() -> None:
     current = store.load()
 
     updates = Config()
-    for spec in SETTING_SPECS:
-        typer.echo(f"{spec.label} [current: {_current_display(spec, current)}]:")
-        for index, choice in enumerate(spec.choices, start=1):
-            typer.echo(f"  {index}. {choice}")
-        typer.echo("  0. Exit without saving")
+    exit_code = 0
+    try:
+        for spec in SETTING_SPECS:
+            typer.echo(f"{spec.label} [current: {_current_display(spec, current)}]:")
+            for index, choice in enumerate(spec.choices, start=1):
+                typer.echo(f"  {index}. {choice}")
+            typer.echo("  0. Stop and save picks so far")
 
-        value = _select_multi(spec) if spec.multi else _select_single(spec)
-        if value is None:
-            continue
-        updates = replace(updates, **{spec.key: value})
+            value = _select_multi(spec) if spec.multi else _select_single(spec)
+            if value is None:
+                continue
+            updates = replace(updates, **{spec.key: value})
+    except _WizardStoppedError as stop:
+        exit_code = stop.exit_code
 
     if updates == Config():
-        typer.echo("No changes.")
-        return
+        if exit_code == 0:
+            typer.echo("No changes.")
+        raise typer.Exit(exit_code)
 
     try:
         store.save(updates)
@@ -143,3 +155,4 @@ def settings() -> None:
         raise typer.Exit(1) from exc
 
     typer.echo(f"Saved settings to {store.path}")
+    raise typer.Exit(exit_code)
