@@ -25,3 +25,12 @@
 - spec-003-show-credentials.md — added `show credentials` (lists every
   registered credential masked, or `(not set)`), built as the `show` group
   on top of SPEC-002's `cli/` package structure.
+
+## Feature: Settings management
+
+- spec-001-config-and-credential-storage.md — stubbed the `config_store/`
+  domain (empty `Config`, pass-through parser, no-op save) this feature
+  fills in.
+- spec-005-settings-persistence.md — added `config settings` (numbered-menu
+  wizard for model/persona/level/feedback-model/ensemble) and `show
+  settings` (lists every setting or `(not set)`), backed by `settings.json`.
