@@ -513,15 +513,15 @@ words "API key").
 
 All of these must be true for this spec to be marked completed:
 
-- [ ] All tests pass (`make test` or equivalent).
-- [ ] Coverage target met (see **Coverage target** in the front-matter).
-- [ ] `make check` passes.
-- [ ] `make check-tdd` passes.
+- [x] All tests pass (`make test` or equivalent). — 28 passed, 1 skipped.
+- [x] Coverage target met (see **Coverage target** in the front-matter). — 98%.
+- [x] `make check` passes.
+- [x] `make check-tdd` passes. — 11 commits checked, OK.
 - [x] Manual smoke test: `poetry run resume-roast config credentials` on the
       dev machine — enter a dummy key, verify masked confirmation and file
       contents, re-run to verify overwrite. — confirmed by user.
-- [ ] Every *Acceptance Example* has a corresponding passing test.
-- [ ] Every linked INV-{NNN} has a passing enforcement test.
+- [x] Every *Acceptance Example* has a corresponding passing test.
+- [x] Every linked INV-{NNN} has a passing enforcement test.
 
 ## Advisory Reports
 
