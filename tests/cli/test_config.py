@@ -183,52 +183,52 @@ def test_config_settings_saves_prior_picks_when_zero_entered_at_multi_select(
     }
 
 
-def test_config_settings_rejects_out_of_range_selection(resume_roast_home: Path) -> None:
-    result = runner.invoke(cli, ["config", "settings"], input="99\n")
-
-    assert result.exit_code == 1
-    assert result.stderr.strip() != ""
-    assert "Traceback" not in result.stdout
-    assert not (resume_roast_home / "settings.json").exists()
-
-
-def test_config_settings_rejects_non_numeric_selection(resume_roast_home: Path) -> None:
-    result = runner.invoke(cli, ["config", "settings"], input="abc\n")
-
-    assert result.exit_code == 1
-    assert result.stderr.strip() != ""
-    assert "Traceback" not in result.stdout
-    assert not (resume_roast_home / "settings.json").exists()
-
-
-def test_config_settings_saves_prior_picks_when_selection_invalid(
-    resume_roast_home: Path,
+@pytest.mark.parametrize("bad_selection", ["99", "abc"], ids=["out_of_range", "non_numeric"])
+def test_config_settings_aborts_when_input_exhausted_after_invalid_selection(
+    resume_roast_home: Path, bad_selection: str
 ) -> None:
-    result = runner.invoke(cli, ["config", "settings"], input="1\n1\n99\n")
+    result = runner.invoke(cli, ["config", "settings"], input=f"{bad_selection}\n")
 
     assert result.exit_code == 1
-    assert result.stderr.strip() != ""
+    assert "Error: invalid selection" in result.stderr
+    assert "Traceback" not in result.stdout
+    assert not (resume_roast_home / "settings.json").exists()
+
+
+@pytest.mark.parametrize("bad_selection", ["99", "abc"], ids=["out_of_range", "non_numeric"])
+def test_config_settings_reprompts_after_invalid_single_select(
+    resume_roast_home: Path, bad_selection: str
+) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input=f"{bad_selection}\n1\n0\n")
+
+    assert result.exit_code == 0
+    assert "Error: invalid selection" in result.stderr
+    assert "Stopped." in result.stdout
     settings_path = resume_roast_home / "settings.json"
     assert json.loads(settings_path.read_text(encoding="utf-8")) == {
         "model": "nvidia/nemotron-3-super-120b-a12b",
-        "persona": "recruiter",
     }
 
 
 @pytest.mark.parametrize("bad_ensemble", ["1,foo", "1,9", "1,-1"])
-def test_config_settings_rejects_malformed_ensemble_input(
+def test_config_settings_reprompts_after_malformed_ensemble_input(
     resume_roast_home: Path, bad_ensemble: str
 ) -> None:
-    result = runner.invoke(cli, ["config", "settings"], input=f"1\n1\n2\n7\n{bad_ensemble}\n")
+    result = runner.invoke(cli, ["config", "settings"], input=f"1\n1\n2\n7\n{bad_ensemble}\n1,3\n")
 
-    assert result.exit_code == 1
-    assert result.stderr.strip() != ""
+    assert result.exit_code == 0
+    assert "Error: invalid selection" in result.stderr
+    assert "Saved settings to" in result.stdout
     settings_path = resume_roast_home / "settings.json"
     assert json.loads(settings_path.read_text(encoding="utf-8")) == {
         "model": "nvidia/nemotron-3-super-120b-a12b",
         "persona": "recruiter",
         "level": "entry",
         "feedback_model": "meta/llama-3.1-8b-instruct",
+        "ensemble_models": [
+            "nvidia/nemotron-3-super-120b-a12b",
+            "meta/llama-4-maverick-17b-128e-instruct",
+        ],
     }
 
 
