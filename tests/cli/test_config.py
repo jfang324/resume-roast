@@ -143,19 +143,44 @@ def test_config_settings_reports_no_changes_when_all_skipped(resume_roast_home: 
     assert not (resume_roast_home / "settings.json").exists()
 
 
-@pytest.mark.parametrize(
-    "stdin",
-    ["1\n0\n", "1\n1\n2\n7\n0\n"],
-    ids=["at_single_select", "at_multi_select"],
-)
-def test_config_settings_exits_without_saving_when_zero_entered(
-    resume_roast_home: Path, stdin: str
+def test_config_settings_reports_no_changes_when_zero_entered_first(
+    resume_roast_home: Path,
 ) -> None:
-    result = runner.invoke(cli, ["config", "settings"], input=stdin)
+    result = runner.invoke(cli, ["config", "settings"], input="0\n")
 
     assert result.exit_code == 0
-    assert "Cancelled." in result.stdout
+    assert "Stopped." in result.stdout
+    assert "No changes." in result.stdout
     assert not (resume_roast_home / "settings.json").exists()
+
+
+def test_config_settings_saves_prior_pick_when_zero_entered_at_single_select(
+    resume_roast_home: Path,
+) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input="1\n0\n")
+
+    assert result.exit_code == 0
+    assert "Stopped." in result.stdout
+    settings_path = resume_roast_home / "settings.json"
+    assert json.loads(settings_path.read_text(encoding="utf-8")) == {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+    }
+
+
+def test_config_settings_saves_prior_picks_when_zero_entered_at_multi_select(
+    resume_roast_home: Path,
+) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input="1\n1\n2\n7\n0\n")
+
+    assert result.exit_code == 0
+    assert "Stopped." in result.stdout
+    settings_path = resume_roast_home / "settings.json"
+    assert json.loads(settings_path.read_text(encoding="utf-8")) == {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "persona": "recruiter",
+        "level": "entry",
+        "feedback_model": "meta/llama-3.1-8b-instruct",
+    }
 
 
 def test_config_settings_rejects_out_of_range_selection(resume_roast_home: Path) -> None:
@@ -176,6 +201,20 @@ def test_config_settings_rejects_non_numeric_selection(resume_roast_home: Path) 
     assert not (resume_roast_home / "settings.json").exists()
 
 
+def test_config_settings_saves_prior_picks_when_selection_invalid(
+    resume_roast_home: Path,
+) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input="1\n1\n99\n")
+
+    assert result.exit_code == 1
+    assert result.stderr.strip() != ""
+    settings_path = resume_roast_home / "settings.json"
+    assert json.loads(settings_path.read_text(encoding="utf-8")) == {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "persona": "recruiter",
+    }
+
+
 @pytest.mark.parametrize("bad_ensemble", ["1,foo", "1,9", "1,-1"])
 def test_config_settings_rejects_malformed_ensemble_input(
     resume_roast_home: Path, bad_ensemble: str
@@ -184,7 +223,13 @@ def test_config_settings_rejects_malformed_ensemble_input(
 
     assert result.exit_code == 1
     assert result.stderr.strip() != ""
-    assert not (resume_roast_home / "settings.json").exists()
+    settings_path = resume_roast_home / "settings.json"
+    assert json.loads(settings_path.read_text(encoding="utf-8")) == {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "persona": "recruiter",
+        "level": "entry",
+        "feedback_model": "meta/llama-3.1-8b-instruct",
+    }
 
 
 def test_config_group_shows_help_without_subcommand() -> None:
