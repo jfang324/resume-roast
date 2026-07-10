@@ -9,4 +9,4 @@
 
 - [dp-001-test-behavior-not-implementation.md](dp-001-test-behavior-not-implementation.md) — Tests assert observable behavior at the module boundary, never the implementation that produces it.
 - [dp-002-economical-test-code.md](dp-002-economical-test-code.md) — Parameterize repeated cases and reuse fitting fixtures so each behavior and setup is stated once.
-- [dp-003-thin-cli-handlers.md](dp-003-thin-cli-handlers.md) — CLI handler methods parse, validate, and format only; they delegate all real work to the persistence/service layer beneath them.
+- [dp-003-thin-cli-handlers.md](dp-003-thin-cli-handlers.md) — CLI command functions parse, validate, and format only; they delegate all real work to the persistence/service layer beneath them.
