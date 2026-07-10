@@ -1,5 +1,5 @@
 """CLI entry point for resume-roast."""
 
-from resume_roast.cli.app import app
+from resume_roast.cli.runner import cli
 
-__all__ = ["app"]
+__all__ = ["cli"]

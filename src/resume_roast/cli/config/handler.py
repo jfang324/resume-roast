@@ -1,6 +1,4 @@
-"""ConfigHandler: commands under `resume-roast config`."""
-
-from __future__ import annotations
+"""Commands under `resume-roast config`."""
 
 import typer
 
@@ -13,35 +11,37 @@ from resume_roast.persistence.credentials_store import (
 from resume_roast.persistence.errors import PersistenceError
 from resume_roast.persistence.paths import storage_dir
 
+config_cli = typer.Typer(no_args_is_help=True)
 
-class ConfigHandler:
-    def credentials(self) -> None:
-        """Select and save one of the supported API keys."""
-        typer.echo("Select a credential to set:")
-        for index, spec in enumerate(CREDENTIAL_SPECS, start=1):
-            typer.echo(f"  {index}. {spec.label}")
-        typer.echo("  0. Cancel")
 
-        choice: int = typer.prompt("Enter a number", type=int)
-        if choice == 0:
-            typer.echo("Cancelled.")
-            return
-        if choice < 1 or choice > len(CREDENTIAL_SPECS):
-            typer.echo("Error: invalid selection", err=True)
-            raise typer.Exit(1)
-        spec = CREDENTIAL_SPECS[choice - 1]
+@config_cli.command("credentials")
+def credentials() -> None:
+    """Select and save one of the supported API keys."""
+    typer.echo("Select a credential to set:")
+    for index, spec in enumerate(CREDENTIAL_SPECS, start=1):
+        typer.echo(f"  {index}. {spec.label}")
+    typer.echo("  0. Cancel")
 
-        raw_value = typer.prompt(spec.label, hide_input=True, confirmation_prompt=True)
-        value = raw_value.strip()
-        if not value:
-            typer.echo("Error: API key cannot be empty", err=True)
-            raise typer.Exit(1)
+    choice: int = typer.prompt("Enter a number", type=int)
+    if choice == 0:
+        typer.echo("Cancelled.")
+        return
+    if choice < 1 or choice > len(CREDENTIAL_SPECS):
+        typer.echo("Error: invalid selection", err=True)
+        raise typer.Exit(1)
+    spec = CREDENTIAL_SPECS[choice - 1]
 
-        store = CredentialsStore(storage_dir())
-        try:
-            store.save(Credentials(**{spec.key: value}))
-        except PersistenceError as exc:
-            typer.echo(f"Error: {exc}", err=True)
-            raise typer.Exit(1) from exc
+    raw_value = typer.prompt(spec.label, hide_input=True, confirmation_prompt=True)
+    value = raw_value.strip()
+    if not value:
+        typer.echo("Error: API key cannot be empty", err=True)
+        raise typer.Exit(1)
 
-        typer.echo(f"Saved {spec.label} {mask_secret(value)} to {store.path}")
+    store = CredentialsStore(storage_dir())
+    try:
+        store.save(Credentials(**{spec.key: value}))
+    except PersistenceError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo(f"Saved {spec.label} {mask_secret(value)} to {store.path}")

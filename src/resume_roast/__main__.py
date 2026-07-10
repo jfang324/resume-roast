@@ -1,6 +1,6 @@
 """Support for python -m resume_roast."""
 
-from resume_roast.cli import app
+from resume_roast.cli import cli
 
 if __name__ == "__main__":
-    app()
+    cli()
