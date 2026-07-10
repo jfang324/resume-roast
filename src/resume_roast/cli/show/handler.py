@@ -34,7 +34,7 @@ def settings() -> None:
         if value is None:
             shown = _NOT_SET
         elif spec.multi:
-            shown = ", ".join(value)
+            shown = f"[{', '.join(value)}]"
         else:
             shown = value
         typer.echo(f"{spec.label}: {shown}")

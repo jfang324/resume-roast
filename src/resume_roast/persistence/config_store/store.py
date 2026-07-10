@@ -12,7 +12,7 @@ from resume_roast.persistence.json_file import read_json_object, write_json_obje
 
 
 class ConfigStore:
-    FILENAME = "config.json"
+    FILENAME = "settings.json"
 
     def __init__(self, base_dir: Path) -> None:
         self._base_dir = base_dir
