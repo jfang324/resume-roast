@@ -7,8 +7,10 @@ its last 4 characters.
 
 **Scope**: Every module that touches credentials: the persistence layer
 (`src/resume_roast/persistence/`, in particular `credentials_store/` and the
-shared `errors.py`/`json_file.py`) and the CLI (`src/resume_roast/cli.py`),
-plus any future module that reads the API key to call an API.
+shared `errors.py`/`json_file.py`) and the CLI
+(`src/resume_roast/cli/config/handler.py`, where the prompt/masking behavior
+lives, and `src/resume_roast/cli/app.py`, which only wires it), plus any
+future module that reads the API key to call an API.
 
 ## Rationale
 
