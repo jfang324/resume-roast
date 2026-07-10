@@ -55,8 +55,8 @@ def test_show_settings_displays_saved_values(resume_roast_home: Path) -> None:
         "Persona: recruiter\n"
         "Level: entry\n"
         "Feedback model: meta/llama-3.1-8b-instruct\n"
-        "Ensemble models: nvidia/nemotron-3-super-120b-a12b, "
-        "meta/llama-4-maverick-17b-128e-instruct\n"
+        "Ensemble models: [nvidia/nemotron-3-super-120b-a12b, "
+        "meta/llama-4-maverick-17b-128e-instruct]\n"
     )
 
 

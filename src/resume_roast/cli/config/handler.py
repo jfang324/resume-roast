@@ -61,11 +61,25 @@ def _current_display(spec: SettingSpec, current: Config) -> str:
     return value
 
 
+def _exit_without_saving() -> typer.Exit:
+    typer.echo("Cancelled.")
+    return typer.Exit(0)
+
+
 def _select_single(spec: SettingSpec) -> str | None:
     """Prompt a single-select menu; return the chosen value, or None to keep current."""
-    choice: int = typer.prompt("Enter a number", type=int)
-    if choice == 0:
+    raw = typer.prompt(
+        "Enter a number (blank keeps current, 0 exits)", default="", show_default=False
+    )
+    stripped = raw.strip()
+    if stripped == "":
         return None
+    if stripped == "0":
+        raise _exit_without_saving()
+    if not stripped.isdigit():
+        typer.echo("Error: invalid selection", err=True)
+        raise typer.Exit(1)
+    choice = int(stripped)
     if choice < 1 or choice > len(spec.choices):
         typer.echo("Error: invalid selection", err=True)
         raise typer.Exit(1)
@@ -74,12 +88,19 @@ def _select_single(spec: SettingSpec) -> str | None:
 
 def _select_multi(spec: SettingSpec) -> tuple[str, ...] | None:
     """Prompt the ensemble menu; return the chosen tuple, or None to keep current."""
-    raw = typer.prompt("Enter numbers separated by commas (0 to keep current)")
-    if raw.strip() == "0":
+    raw = typer.prompt(
+        "Enter numbers separated by commas (blank keeps current, 0 exits)",
+        default="",
+        show_default=False,
+    )
+    stripped = raw.strip()
+    if stripped == "":
         return None
+    if stripped == "0":
+        raise _exit_without_saving()
 
     selected: list[str] = []
-    for token in (t.strip() for t in raw.split(",")):
+    for token in (t.strip() for t in stripped.split(",")):
         if not token.lstrip("-").isdigit():
             typer.echo("Error: invalid selection", err=True)
             raise typer.Exit(1)
@@ -104,7 +125,7 @@ def settings() -> None:
         typer.echo(f"{spec.label} [current: {_current_display(spec, current)}]:")
         for index, choice in enumerate(spec.choices, start=1):
             typer.echo(f"  {index}. {choice}")
-        typer.echo("  0. Keep current")
+        typer.echo("  0. Exit without saving")
 
         value = _select_multi(spec) if spec.multi else _select_single(spec)
         if value is None:

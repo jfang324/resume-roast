@@ -107,8 +107,8 @@ def test_config_settings_saves_selected_values(resume_roast_home: Path) -> None:
 
     assert result.exit_code == 0
     assert "Saved settings to" in result.stdout
-    config_path = resume_roast_home / "config.json"
-    assert json.loads(config_path.read_text(encoding="utf-8")) == {
+    settings_path = resume_roast_home / "settings.json"
+    assert json.loads(settings_path.read_text(encoding="utf-8")) == {
         "model": "nvidia/nemotron-3-super-120b-a12b",
         "persona": "recruiter",
         "level": "entry",
@@ -123,12 +123,12 @@ def test_config_settings_saves_selected_values(resume_roast_home: Path) -> None:
 def test_config_settings_keeps_current_values_when_skipped(resume_roast_home: Path) -> None:
     ConfigStore(resume_roast_home).save(Config(model="deepseek-ai/deepseek-v4-flash"))
 
-    result = runner.invoke(cli, ["config", "settings"], input="0\n1\n2\n0\n0\n")
+    result = runner.invoke(cli, ["config", "settings"], input="\n1\n2\n\n\n")
 
     assert "Model [current: deepseek-ai/deepseek-v4-flash]:" in result.stdout
     assert result.exit_code == 0
-    config_path = resume_roast_home / "config.json"
-    assert json.loads(config_path.read_text(encoding="utf-8")) == {
+    settings_path = resume_roast_home / "settings.json"
+    assert json.loads(settings_path.read_text(encoding="utf-8")) == {
         "model": "deepseek-ai/deepseek-v4-flash",
         "persona": "recruiter",
         "level": "entry",
@@ -136,11 +136,26 @@ def test_config_settings_keeps_current_values_when_skipped(resume_roast_home: Pa
 
 
 def test_config_settings_reports_no_changes_when_all_skipped(resume_roast_home: Path) -> None:
-    result = runner.invoke(cli, ["config", "settings"], input="0\n0\n0\n0\n0\n")
+    result = runner.invoke(cli, ["config", "settings"], input="\n\n\n\n\n")
 
     assert result.exit_code == 0
     assert "No changes." in result.stdout
-    assert not (resume_roast_home / "config.json").exists()
+    assert not (resume_roast_home / "settings.json").exists()
+
+
+@pytest.mark.parametrize(
+    "stdin",
+    ["1\n0\n", "1\n1\n2\n7\n0\n"],
+    ids=["at_single_select", "at_multi_select"],
+)
+def test_config_settings_exits_without_saving_when_zero_entered(
+    resume_roast_home: Path, stdin: str
+) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input=stdin)
+
+    assert result.exit_code == 0
+    assert "Cancelled." in result.stdout
+    assert not (resume_roast_home / "settings.json").exists()
 
 
 def test_config_settings_rejects_out_of_range_selection(resume_roast_home: Path) -> None:
@@ -149,7 +164,16 @@ def test_config_settings_rejects_out_of_range_selection(resume_roast_home: Path)
     assert result.exit_code == 1
     assert result.stderr.strip() != ""
     assert "Traceback" not in result.stdout
-    assert not (resume_roast_home / "config.json").exists()
+    assert not (resume_roast_home / "settings.json").exists()
+
+
+def test_config_settings_rejects_non_numeric_selection(resume_roast_home: Path) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input="abc\n")
+
+    assert result.exit_code == 1
+    assert result.stderr.strip() != ""
+    assert "Traceback" not in result.stdout
+    assert not (resume_roast_home / "settings.json").exists()
 
 
 @pytest.mark.parametrize("bad_ensemble", ["1,foo", "1,9", "1,-1"])
@@ -160,7 +184,7 @@ def test_config_settings_rejects_malformed_ensemble_input(
 
     assert result.exit_code == 1
     assert result.stderr.strip() != ""
-    assert not (resume_roast_home / "config.json").exists()
+    assert not (resume_roast_home / "settings.json").exists()
 
 
 def test_config_group_shows_help_without_subcommand() -> None:
