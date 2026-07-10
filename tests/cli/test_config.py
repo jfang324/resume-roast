@@ -9,6 +9,7 @@ import pytest
 from typer.testing import CliRunner
 
 from resume_roast.cli import cli
+from resume_roast.persistence.config_store import Config, ConfigStore
 from resume_roast.persistence.credentials_store import Credentials, CredentialsStore
 
 TEST_KEY = "nvapi-test-9876"
@@ -101,7 +102,69 @@ def test_config_credentials_reports_storage_failure(
     assert len(error_lines) == 1
 
 
+def test_config_settings_saves_selected_values(resume_roast_home: Path) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input="1\n1\n2\n7\n3,1,3\n")
+
+    assert result.exit_code == 0
+    assert "Saved settings to" in result.stdout
+    config_path = resume_roast_home / "config.json"
+    assert json.loads(config_path.read_text(encoding="utf-8")) == {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "persona": "recruiter",
+        "level": "entry",
+        "feedback_model": "meta/llama-3.1-8b-instruct",
+        "ensemble_models": [
+            "meta/llama-4-maverick-17b-128e-instruct",
+            "nvidia/nemotron-3-super-120b-a12b",
+        ],
+    }
+
+
+def test_config_settings_keeps_current_values_when_skipped(resume_roast_home: Path) -> None:
+    ConfigStore(resume_roast_home).save(Config(model="deepseek-ai/deepseek-v4-flash"))
+
+    result = runner.invoke(cli, ["config", "settings"], input="0\n1\n2\n0\n0\n")
+
+    assert "Model [current: deepseek-ai/deepseek-v4-flash]:" in result.stdout
+    assert result.exit_code == 0
+    config_path = resume_roast_home / "config.json"
+    assert json.loads(config_path.read_text(encoding="utf-8")) == {
+        "model": "deepseek-ai/deepseek-v4-flash",
+        "persona": "recruiter",
+        "level": "entry",
+    }
+
+
+def test_config_settings_reports_no_changes_when_all_skipped(resume_roast_home: Path) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input="0\n0\n0\n0\n0\n")
+
+    assert result.exit_code == 0
+    assert "No changes." in result.stdout
+    assert not (resume_roast_home / "config.json").exists()
+
+
+def test_config_settings_rejects_out_of_range_selection(resume_roast_home: Path) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input="99\n")
+
+    assert result.exit_code == 1
+    assert result.stderr.strip() != ""
+    assert "Traceback" not in result.stdout
+    assert not (resume_roast_home / "config.json").exists()
+
+
+@pytest.mark.parametrize("bad_ensemble", ["1,foo", "1,9", "1,-1"])
+def test_config_settings_rejects_malformed_ensemble_input(
+    resume_roast_home: Path, bad_ensemble: str
+) -> None:
+    result = runner.invoke(cli, ["config", "settings"], input=f"1\n1\n2\n7\n{bad_ensemble}\n")
+
+    assert result.exit_code == 1
+    assert result.stderr.strip() != ""
+    assert not (resume_roast_home / "config.json").exists()
+
+
 def test_config_group_shows_help_without_subcommand() -> None:
     result = runner.invoke(cli, ["config"])
 
     assert "credentials" in result.stdout
+    assert "Walk through" in result.stdout
