@@ -14,15 +14,15 @@ from resume_roast.persistence.credentials_store import (
 )
 from resume_roast.persistence.errors import InvalidJsonError, InvalidSchemaError
 
-TEST_KEY = "sk-ant-key-9876"  # pragma: allowlist secret
+TEST_KEY = "nvapi-test-9876"  # pragma: allowlist secret
 
 
 def test_save_then_load_roundtrips_key(store_dir: Path) -> None:
     store = CredentialsStore(store_dir)
 
-    store.save(Credentials(anthropic_api_key=TEST_KEY))
+    store.save(Credentials(nvidia_api_key=TEST_KEY))
 
-    assert store.load() == Credentials(anthropic_api_key=TEST_KEY)
+    assert store.load() == Credentials(nvidia_api_key=TEST_KEY)
 
 
 def test_load_returns_none_when_file_missing(store_dir: Path) -> None:
@@ -31,11 +31,19 @@ def test_load_returns_none_when_file_missing(store_dir: Path) -> None:
     assert store.load() is None
 
 
+def test_load_tolerates_missing_credential_fields(store_dir: Path) -> None:
+    store = CredentialsStore(store_dir)
+    store_dir.mkdir(parents=True)
+    store.path.write_text("{}", encoding="utf-8")
+
+    assert store.load() == Credentials()
+
+
 def test_save_creates_store_dir(store_dir: Path) -> None:
     store = CredentialsStore(store_dir)
     assert not store_dir.exists()
 
-    store.save(Credentials(anthropic_api_key=TEST_KEY))
+    store.save(Credentials(nvidia_api_key=TEST_KEY))
 
     assert store_dir.is_dir()
 
@@ -44,7 +52,7 @@ def test_save_creates_store_dir(store_dir: Path) -> None:
 def test_credentials_file_is_owner_only_on_posix(store_dir: Path) -> None:
     store = CredentialsStore(store_dir)
 
-    store.save(Credentials(anthropic_api_key=TEST_KEY))
+    store.save(Credentials(nvidia_api_key=TEST_KEY))
 
     mode = store.path.stat().st_mode & 0o777
     assert mode == 0o600
@@ -65,8 +73,7 @@ def test_load_raises_invalid_json_error_on_corrupt_file(store_dir: Path) -> None
 @pytest.mark.parametrize(
     "raw_contents",
     [
-        pytest.param('{"other_key": "value"}', id="missing_key"),
-        pytest.param('{"anthropic_api_key": "   "}', id="blank_key"),
+        pytest.param('{"nvidia_api_key": "   "}', id="blank_key"),
         pytest.param("[1, 2, 3]", id="non_object_top_level"),
     ],
 )
@@ -88,7 +95,7 @@ def test_saving_credentials_never_touches_config_file(store_dir: Path) -> None:
     config_path.write_text('{"marker": true}', encoding="utf-8")
     original_bytes = config_path.read_bytes()
 
-    CredentialsStore(store_dir).save(Credentials(anthropic_api_key=TEST_KEY))
+    CredentialsStore(store_dir).save(Credentials(nvidia_api_key=TEST_KEY))
 
     assert config_path.read_bytes() == original_bytes
 
@@ -96,15 +103,24 @@ def test_saving_credentials_never_touches_config_file(store_dir: Path) -> None:
 def test_save_leaves_no_temp_artifacts(store_dir: Path) -> None:
     store = CredentialsStore(store_dir)
 
-    store.save(Credentials(anthropic_api_key=TEST_KEY))
+    store.save(Credentials(nvidia_api_key=TEST_KEY))
 
     assert {p.name for p in store_dir.iterdir()} == {"credentials.json"}
+
+
+def test_save_preserves_fields_not_included_in_update(store_dir: Path) -> None:
+    store = CredentialsStore(store_dir)
+    store.save(Credentials(nvidia_api_key=TEST_KEY))
+
+    store.save(Credentials())
+
+    assert store.load() == Credentials(nvidia_api_key=TEST_KEY)
 
 
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        pytest.param("sk-ant-key-9876", "****9876", id="long_key"),
+        pytest.param("nvapi-test-9876", "****9876", id="long_key"),
         pytest.param("abc", "****", id="short_key"),
     ],
 )

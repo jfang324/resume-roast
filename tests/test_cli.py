@@ -11,7 +11,8 @@ from typer.testing import CliRunner
 from resume_roast.cli import app
 from resume_roast.persistence.credentials_store import Credentials, CredentialsStore
 
-TEST_KEY = "sk-ant-test-9876"
+TEST_KEY = "nvapi-test-9876"
+NVIDIA_CHOICE = "1"
 
 runner = CliRunner()
 
@@ -24,17 +25,24 @@ def resume_roast_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 
 def test_config_credentials_saves_prompted_key(resume_roast_home: Path) -> None:
-    result = runner.invoke(app, ["config", "credentials"], input=f"{TEST_KEY}\n{TEST_KEY}\n")
+    result = runner.invoke(
+        app,
+        ["config", "credentials"],
+        input=f"{NVIDIA_CHOICE}\n{TEST_KEY}\n{TEST_KEY}\n",
+    )
 
     assert result.exit_code == 0
+    assert "1. NVIDIA API key" in result.stdout
     credentials_path = resume_roast_home / "credentials.json"
-    assert json.loads(credentials_path.read_text(encoding="utf-8")) == {
-        "anthropic_api_key": TEST_KEY
-    }
+    assert json.loads(credentials_path.read_text(encoding="utf-8")) == {"nvidia_api_key": TEST_KEY}
 
 
 def test_config_credentials_masks_key_in_output() -> None:
-    result = runner.invoke(app, ["config", "credentials"], input=f"{TEST_KEY}\n{TEST_KEY}\n")
+    result = runner.invoke(
+        app,
+        ["config", "credentials"],
+        input=f"{NVIDIA_CHOICE}\n{TEST_KEY}\n{TEST_KEY}\n",
+    )
 
     combined = result.stdout + result.stderr
     assert "****9876" in combined
@@ -42,7 +50,15 @@ def test_config_credentials_masks_key_in_output() -> None:
 
 
 def test_config_credentials_rejects_blank_key(resume_roast_home: Path) -> None:
-    result = runner.invoke(app, ["config", "credentials"], input="   \n   \n")
+    result = runner.invoke(app, ["config", "credentials"], input=f"{NVIDIA_CHOICE}\n   \n   \n")
+
+    assert result.exit_code == 1
+    assert result.stderr.strip() != ""
+    assert not (resume_roast_home / "credentials.json").exists()
+
+
+def test_config_credentials_rejects_out_of_range_selection(resume_roast_home: Path) -> None:
+    result = runner.invoke(app, ["config", "credentials"], input="9\n")
 
     assert result.exit_code == 1
     assert result.stderr.strip() != ""
@@ -51,14 +67,16 @@ def test_config_credentials_rejects_blank_key(resume_roast_home: Path) -> None:
 
 def test_config_credentials_overwrites_existing_key(resume_roast_home: Path) -> None:
     CredentialsStore(resume_roast_home).save(
-        Credentials(anthropic_api_key="sk-ant-old-0000")  # pragma: allowlist secret
+        Credentials(nvidia_api_key="nvapi-old-0000")  # pragma: allowlist secret
     )
-    new_key = "sk-ant-new-1111"
+    new_key = "nvapi-new-1111"
 
-    result = runner.invoke(app, ["config", "credentials"], input=f"{new_key}\n{new_key}\n")
+    result = runner.invoke(
+        app, ["config", "credentials"], input=f"{NVIDIA_CHOICE}\n{new_key}\n{new_key}\n"
+    )
 
     assert result.exit_code == 0
-    assert CredentialsStore(resume_roast_home).load() == Credentials(anthropic_api_key=new_key)
+    assert CredentialsStore(resume_roast_home).load() == Credentials(nvidia_api_key=new_key)
 
 
 def test_config_credentials_reports_storage_failure(
@@ -68,7 +86,11 @@ def test_config_credentials_reports_storage_failure(
     blocked_path.write_text("blocked", encoding="utf-8")
     monkeypatch.setenv("RESUME_ROAST_HOME", str(blocked_path))
 
-    result = runner.invoke(app, ["config", "credentials"], input=f"{TEST_KEY}\n{TEST_KEY}\n")
+    result = runner.invoke(
+        app,
+        ["config", "credentials"],
+        input=f"{NVIDIA_CHOICE}\n{TEST_KEY}\n{TEST_KEY}\n",
+    )
 
     assert result.exit_code == 1
     assert "Traceback" not in result.stdout
