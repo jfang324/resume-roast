@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from pathlib import Path
 
 from resume_roast.persistence.credentials_store.models import Credentials
@@ -30,8 +31,6 @@ class CredentialsStore:
             raise InvalidSchemaError(f"{self.path}: {exc}") from exc
 
     def save(self, credentials: Credentials) -> None:
-        write_json_object(
-            self.path,
-            {"anthropic_api_key": credentials.anthropic_api_key},
-            secure=True,
-        )
+        existing = read_json_object(self.path) if self.path.exists() else {}
+        updates = {key: value for key, value in asdict(credentials).items() if value is not None}
+        write_json_object(self.path, {**existing, **updates}, secure=True)
