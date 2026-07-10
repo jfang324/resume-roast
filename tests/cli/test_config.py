@@ -1,4 +1,4 @@
-"""Tests for the CLI entry point."""
+"""Tests for the `config` command group."""
 
 from __future__ import annotations
 
@@ -15,13 +15,6 @@ TEST_KEY = "nvapi-test-9876"
 NVIDIA_CHOICE = "1"
 
 runner = CliRunner()
-
-
-@pytest.fixture(autouse=True)
-def resume_roast_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    home = tmp_path / "home"
-    monkeypatch.setenv("RESUME_ROAST_HOME", str(home))
-    return home
 
 
 def test_config_credentials_saves_prompted_key(resume_roast_home: Path) -> None:
@@ -110,29 +103,5 @@ def test_config_credentials_reports_storage_failure(
 
 def test_config_group_shows_help_without_subcommand() -> None:
     result = runner.invoke(cli, ["config"])
-
-    assert "credentials" in result.stdout
-
-
-def test_show_credentials_displays_masked_value_not_full_key(resume_roast_home: Path) -> None:
-    CredentialsStore(resume_roast_home).save(Credentials(nvidia_api_key=TEST_KEY))
-
-    result = runner.invoke(cli, ["show", "credentials"])
-
-    assert result.exit_code == 0
-    combined = result.stdout + result.stderr
-    assert "****9876" in combined
-    assert TEST_KEY not in combined
-
-
-def test_show_credentials_reports_not_set_when_missing() -> None:
-    result = runner.invoke(cli, ["show", "credentials"])
-
-    assert result.exit_code == 0
-    assert "NVIDIA API key: (not set)" in result.stdout
-
-
-def test_show_group_shows_help_without_subcommand() -> None:
-    result = runner.invoke(cli, ["show"])
 
     assert "credentials" in result.stdout
