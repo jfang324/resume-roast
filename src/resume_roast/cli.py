@@ -24,8 +24,12 @@ def credentials() -> None:
     typer.echo("Select a credential to set:")
     for index, spec in enumerate(CREDENTIAL_SPECS, start=1):
         typer.echo(f"  {index}. {spec.label}")
+    typer.echo("  0. Cancel")
 
     choice: int = typer.prompt("Enter a number", type=int)
+    if choice == 0:
+        typer.echo("Cancelled.")
+        return
     if choice < 1 or choice > len(CREDENTIAL_SPECS):
         typer.echo("Error: invalid selection", err=True)
         raise typer.Exit(1)
