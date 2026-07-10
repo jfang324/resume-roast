@@ -1,7 +1,7 @@
 # SPEC-001: Configuration and Credential Storage
 
 ---
-**Status**: pending
+**Status**: completed
 **Created**: 2026-07-09
 **TDD**: required
 **Coverage target**: repo default (`fail_under = 85` in `pyproject.toml`)

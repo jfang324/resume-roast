@@ -12,8 +12,11 @@ evaluations and a TUI for interactive, agentic tailoring.
 The user and an AI discuss a feature, architecture tradeoffs, design principles,
 and invariants. The AI produces a spec document following
 [specs/TEMPLATE.md](../specs/TEMPLATE.md). The user reviews and approves the
-spec. After approval, the spec is immutable except for commit refs and
-footnotes, which are populated during Phases 3 and 4.
+spec. After approval, the spec is immutable except for commit refs, footnotes,
+and status, which are populated/updated during Phases 3 and 4 — status in
+particular **must** be set to `completed` as part of Phase 4 closure (step 6
+below); a spec left at `pending` after closure is a workflow-conformance bug,
+not a stylistic choice.
 
 ### Phase 2 — Spec Review (optional)
 
