@@ -1,14 +1,15 @@
 # SPEC-002: Restructure CLI into a Package
 
 ---
-**Status**: pending
+**Status**: completed
 **Created**: 2026-07-09
 **TDD**: optional
 **Why optional**: pure refactor — no behavior change, no new commands. Every
 existing `tests/test_cli.py` scenario passes unmodified; that unmodified pass
 is the proof of behavior preservation, not new red/green test evidence.
 **Coverage target**: repo default (`fail_under = 85` in `pyproject.toml`)
-**Commit(s)**: <!-- Populated on completion. One `- hash (description)` per commit. -->
+**Commit(s)**:
+- 9e8789f (refactor: restructure cli.py into a cli/ package)
 
 ## Summary
 
@@ -357,23 +358,30 @@ exempt from the `make check-tdd` gate (see Constraints above).
 
 All of these must be true for this spec to be marked completed:
 
-- [ ] All tests pass (`make test`), including `tests/test_cli.py`'s
-      scenarios **unmodified**.
-- [ ] `git diff` on `tests/test_cli.py` is empty — the behavior-preservation
-      proof for this pure refactor.
-- [ ] Coverage target met (repo default, `fail_under = 85`).
-- [ ] `make check` passes (ruff format/check, pyright strict).
-- [ ] `make check-tdd` passes — via the `refactor:` commit-type exemption,
-      not via test-first evidence.
-- [ ] Manual smoke test: `poetry run resume-roast config credentials` and
+- [x] All tests pass (`make test`), including `tests/test_cli.py`'s
+      scenarios **unmodified**. — 28 passed, 1 skipped.
+- [x] `git diff` on `tests/test_cli.py` is empty — the behavior-preservation
+      proof for this pure refactor. — confirmed, zero-line diff.
+- [x] Coverage target met (repo default, `fail_under = 85`). — 98%.
+- [x] `make check` passes (ruff format/check, pyright strict). — clean.
+- [x] `make check-tdd` passes — via the `refactor:` commit-type exemption,
+      not via test-first evidence. — OK.
+- [x] Manual smoke test: `poetry run resume-roast config credentials` and
       `python -m resume_roast config credentials` both behave identically
       to pre-refactor (masked confirmation, file contents, overwrite,
-      cancel).
-- [ ] `poetry run resume-roast` (bare, via `[project.scripts]`) still
-      resolves and shows help.
-- [ ] INV-001 has a passing enforcement test
+      cancel). — partial: the cancel path was verified live through both
+      entry points (real subprocess, exit 0, correct output); the
+      hidden-input save/masked-output/overwrite path could only be
+      exercised through the unmodified `CliRunner` test suite, since Click's
+      `hide_input=True` prompts read from the Windows console API directly
+      and cannot be driven by piped stdin in a real subprocess on this
+      platform (pre-existing limitation, unrelated to this refactor). User
+      may want to run the save path live themselves for full confirmation.
+- [x] `poetry run resume-roast` (bare, via `[project.scripts]`) still
+      resolves and shows help. — confirmed.
+- [x] INV-001 has a passing enforcement test
       (`test_config_credentials_masks_key_in_output`, unmodified) and its
-      Scope doc reference is updated.
+      Scope doc reference is updated. — confirmed.
 
 ## Advisory Reports
 
@@ -423,4 +431,22 @@ Populated after agent completes implementation. Each entry documents something t
 agent got wrong and how it was manually corrected. This serves as training signal
 for future specs.
 
-- `{commit ref}` — _{What was wrong and how it was fixed.}_
+- **Unused `from __future__ import annotations` in `cli/app.py`**: the agent
+  copied this import into `app.py` out of habit from the original `cli.py`
+  and the rest of the codebase's convention, but `app.py` has no type
+  annotations for it to defer — it did nothing there. Caught by the user
+  asking "why the `__future__` in main?" during review, corrected by
+  removing it and folding the fix into commit `9e8789f` via amend (rather
+  than a separate follow-up commit). Future specs should check whether a
+  boilerplate import actually does anything in the specific file it's being
+  copied into, not just match surrounding convention.
+- **Agent added AI co-authorship trailers to commits**: the agent's default
+  git-commit instructions append a `Co-Authored-By: Claude ...` trailer,
+  and it did so on both commits made while implementing this spec, contrary
+  to the user's standing preference. Corrected by amending the commit
+  history to strip the trailer and squash to a single commit (`9e8789f`).
+  The user then had the agent write a global instruction
+  (`~/.claude/CLAUDE.md`) so this does not recur in any future session or
+  project, plus a local feedback memory in this project as a redundant
+  reminder. Future specs/sessions in this repo should never include a
+  co-authorship trailer in any commit or PR.
