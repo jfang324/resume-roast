@@ -9,6 +9,7 @@
 - 70856c3 (test: add failing tests for settings persistence)
 - 47e40ca (feat: add settings persistence with config and show support)
 - a01cd48 (fix: rework settings wizard exit semantics and rename to settings.json)
+- 5e152a1 (fix: apply prior wizard picks when settings walk stops early)
 
 ## Summary
 
@@ -734,15 +735,29 @@ as training signal for future specs.
      `Ensemble models: a, b`, so it reads visibly as a list.
   3. **`config settings` wizard exit/keep-current semantics**: the
      original spec had `0` mean "keep current value" per field. The user
-     asked for `0` to instead exit the whole wizard immediately without
-     saving (echoing `Cancelled.`, exit 0, mirroring `config credentials`'s
-     cancel), and for a blank (Enter-only) response to mean "keep current"
+     asked for `0` to instead stop the walk early (echoing `Stopped.`,
+     exit 0), and for a blank (Enter-only) response to mean "keep current"
      for that field instead. This also dropped `typer.prompt(type=int)`'s
      native re-prompt-on-non-integer behavior for the single-select
      prompts (needed to accept a blank string), so a non-numeric
      single-select entry now fails fast with `Error: invalid selection`
      (exit 1) rather than re-prompting — covered by
-     `test_config_settings_rejects_non_numeric_selection`. New coverage:
-     `test_config_settings_exits_without_saving_when_zero_entered`
-     (parametrized over exiting at a single-select vs. the ensemble
-     prompt).
+     `test_config_settings_rejects_non_numeric_selection`.
+  4. **Partial-save on early stop** (commit 5e152a1, a follow-up
+     amendment to item 3): the user then asked that fields already picked
+     before an early stop — via `0`, an out-of-range/non-numeric
+     selection, or a malformed ensemble token — are still saved, rather
+     than the whole walk being discarded. Implemented as a diff `Config`
+     accumulated across the loop and applied via `ConfigStore.save`
+     regardless of why the loop stopped (an internal
+     `_WizardStoppedError` carries the exit code out of the per-field
+     prompt helpers to the command function, which saves before
+     re-raising `typer.Exit` with that code); `No changes.` is now only
+     echoed on a clean stop (exit 0) with nothing accumulated, not on an
+     error exit. Covered by
+     `test_config_settings_saves_prior_pick_when_zero_entered_at_single_select`,
+     `test_config_settings_saves_prior_picks_when_zero_entered_at_multi_select`,
+     `test_config_settings_saves_prior_picks_when_selection_invalid`, and
+     the updated `test_config_settings_rejects_malformed_ensemble_input`
+     (now asserts the partial save instead of asserting nothing was
+     written).
