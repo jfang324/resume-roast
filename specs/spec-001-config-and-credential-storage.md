@@ -517,9 +517,9 @@ All of these must be true for this spec to be marked completed:
 - [ ] Coverage target met (see **Coverage target** in the front-matter).
 - [ ] `make check` passes.
 - [ ] `make check-tdd` passes.
-- [ ] Manual smoke test: `poetry run resume-roast config credentials` on the
+- [x] Manual smoke test: `poetry run resume-roast config credentials` on the
       dev machine — enter a dummy key, verify masked confirmation and file
-      contents, re-run to verify overwrite.
+      contents, re-run to verify overwrite. — confirmed by user.
 - [ ] Every *Acceptance Example* has a corresponding passing test.
 - [ ] Every linked INV-{NNN} has a passing enforcement test.
 
@@ -585,3 +585,10 @@ for future specs.
   (credentials, providers, etc.) should default to a small registry +
   optional-fields dataclass from the start rather than a single required
   field.
+- **No way to back out of the credentials menu**: the numbered selection
+  prompt only accepted a valid choice or an out-of-range number (error);
+  there was no way to abort without picking a credential (short of Ctrl+C).
+  Corrected post hoc (commits `4195a5e`, `a864cfe`) by adding a `0. Cancel`
+  entry to the menu that exits 0 without prompting for a key or touching
+  the credentials file. Future menu-style prompts should include an
+  explicit cancel/exit option from the start.
