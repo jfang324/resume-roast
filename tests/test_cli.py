@@ -112,3 +112,27 @@ def test_config_group_shows_help_without_subcommand() -> None:
     result = runner.invoke(app, ["config"])
 
     assert "credentials" in result.stdout
+
+
+def test_show_credentials_displays_masked_value_not_full_key(resume_roast_home: Path) -> None:
+    CredentialsStore(resume_roast_home).save(Credentials(nvidia_api_key=TEST_KEY))
+
+    result = runner.invoke(app, ["show", "credentials"])
+
+    assert result.exit_code == 0
+    combined = result.stdout + result.stderr
+    assert "****9876" in combined
+    assert TEST_KEY not in combined
+
+
+def test_show_credentials_reports_not_set_when_missing() -> None:
+    result = runner.invoke(app, ["show", "credentials"])
+
+    assert result.exit_code == 0
+    assert "NVIDIA API key: (not set)" in result.stdout
+
+
+def test_show_group_shows_help_without_subcommand() -> None:
+    result = runner.invoke(app, ["show"])
+
+    assert "credentials" in result.stdout
