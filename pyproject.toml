@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-resume-roast = "resume_roast.cli:app"
+resume-roast = "resume_roast.cli:cli"
 
 [tool.poetry]
 packages = [{include = "resume_roast", from = "src"}]
