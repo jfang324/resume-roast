@@ -1,4 +1,4 @@
-"""Dataclasses and secret masking for the credentials domain."""
+"""Dataclasses, the credential registry, and secret masking."""
 
 from __future__ import annotations
 
@@ -9,8 +9,21 @@ _VISIBLE_SUFFIX_LENGTH = 4
 
 
 @dataclass(frozen=True)
+class CredentialSpec:
+    """Describes one selectable credential: its storage key and menu label."""
+
+    key: str
+    label: str
+
+
+CREDENTIAL_SPECS: tuple[CredentialSpec, ...] = (
+    CredentialSpec(key="nvidia_api_key", label="NVIDIA API key"),
+)
+
+
+@dataclass(frozen=True)
 class Credentials:
-    anthropic_api_key: str
+    nvidia_api_key: str | None = None
 
 
 def mask_secret(value: str) -> str:
