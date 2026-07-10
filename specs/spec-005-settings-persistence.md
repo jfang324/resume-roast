@@ -1,11 +1,14 @@
 # SPEC-005: Settings Persistence (`config settings` / `show settings`)
 
 ---
-**Status**: pending
+**Status**: completed
 **Created**: 2026-07-10
 **TDD**: required
 **Coverage target**: repo default (`fail_under = 85` in `pyproject.toml`)
-**Commit(s)**: <!-- Populated on completion. One `- hash (description)` per commit. -->
+**Commit(s)**:
+- 70856c3 (test: add failing tests for settings persistence)
+- 47e40ca (feat: add settings persistence with config and show support)
+- a01cd48 (fix: rework settings wizard exit semantics and rename to settings.json)
 
 ## Summary
 
@@ -718,4 +721,28 @@ Populated after agent completes implementation. Each entry documents
 something the agent got wrong and how it was manually corrected. This serves
 as training signal for future specs.
 
-- _{none yet}_
+- Post-implementation, the user requested three behavior changes to the
+  spec as originally written, applied in commit a01cd48:
+  1. **Storage filename**: `ConfigStore.FILENAME` changed from
+     `config.json` to `settings.json`. Every reference to `config.json`
+     throughout this spec's Behavior/Acceptance-Example prose (e.g. the
+     `config settings` and `store.save` examples) is stale relative to the
+     shipped code — the domain name (`config_store`/`Config`) is unchanged
+     per the spec's own non-goal, only the on-disk filename moved.
+  2. **`show settings` ensemble display**: the comma-joined ensemble line
+     is now bracketed, e.g. `Ensemble models: [a, b]` instead of
+     `Ensemble models: a, b`, so it reads visibly as a list.
+  3. **`config settings` wizard exit/keep-current semantics**: the
+     original spec had `0` mean "keep current value" per field. The user
+     asked for `0` to instead exit the whole wizard immediately without
+     saving (echoing `Cancelled.`, exit 0, mirroring `config credentials`'s
+     cancel), and for a blank (Enter-only) response to mean "keep current"
+     for that field instead. This also dropped `typer.prompt(type=int)`'s
+     native re-prompt-on-non-integer behavior for the single-select
+     prompts (needed to accept a blank string), so a non-numeric
+     single-select entry now fails fast with `Error: invalid selection`
+     (exit 1) rather than re-prompting — covered by
+     `test_config_settings_rejects_non_numeric_selection`. New coverage:
+     `test_config_settings_exits_without_saving_when_zero_entered`
+     (parametrized over exiting at a single-select vs. the ensemble
+     prompt).
