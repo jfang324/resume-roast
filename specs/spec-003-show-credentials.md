@@ -346,4 +346,11 @@ Populated after agent completes implementation. Each entry documents something t
 agent got wrong and how it was manually corrected. This serves as training signal
 for future specs.
 
-- `{commit ref}` — _{What was wrong and how it was fixed.}_
+- **Superseded by SPEC-004**: the `ShowHandler` class + bound-method
+  registration wiring this spec built (and the `cli/app.py` dispatcher it
+  registered against) was replaced by
+  [SPEC-004](spec-004-rewire-cli-runner-and-typer-groups.md), which re-wires
+  `show credentials` as a `@show_cli.command("credentials")`-decorated
+  function in `cli/show/handler.py`, mounted from `cli/runner.py`. Not a
+  correction to this spec's implementation — DP-003's structural mechanism
+  changed after this spec closed; this spec's body is left as-authored.
