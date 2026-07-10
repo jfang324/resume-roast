@@ -65,6 +65,15 @@ def test_config_credentials_rejects_out_of_range_selection(resume_roast_home: Pa
     assert not (resume_roast_home / "credentials.json").exists()
 
 
+def test_config_credentials_cancels_without_saving(resume_roast_home: Path) -> None:
+    result = runner.invoke(app, ["config", "credentials"], input="0\n")
+
+    assert result.exit_code == 0
+    assert "0. Cancel" in result.stdout
+    assert "Traceback" not in result.stdout
+    assert not (resume_roast_home / "credentials.json").exists()
+
+
 def test_config_credentials_overwrites_existing_key(resume_roast_home: Path) -> None:
     CredentialsStore(resume_roast_home).save(
         Credentials(nvidia_api_key="nvapi-old-0000")  # pragma: allowlist secret
