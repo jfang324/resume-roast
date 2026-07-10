@@ -565,3 +565,23 @@ not block closure:
 Populated after agent completes implementation. Each entry documents something the
 agent got wrong and how it was manually corrected. This serves as training signal
 for future specs.
+
+- **Wrong credential (Anthropic vs. NVIDIA)**: the spec's `Credentials` interface,
+  CLI prompt text, and every test literal used `anthropic_api_key`, but the
+  project only calls an NVIDIA API. Corrected post hoc (commits `cad77ea`,
+  `1f087de`) by renaming the field to `nvidia_api_key` throughout models,
+  parser, store, CLI, and tests. Future specs should confirm the actual
+  provider before hardcoding a credential name.
+- **Single hardcoded credential vs. modular design**: the original
+  `credentials` command hardcoded one prompt and overwrote the whole
+  `credentials.json` on every save, with no way to add a second credential
+  without touching the CLI's prompt logic and risking clobbering the first
+  key. Corrected post hoc (same commits) by introducing a
+  `CREDENTIAL_SPECS` registry (`credentials_store/models.py`) that drives a
+  numbered selection menu in the CLI and changing `CredentialsStore.save` to
+  load-merge-save instead of overwrite. Adding a future credential is now a
+  one-line registry entry plus one optional dataclass field, with no CLI
+  changes. Future specs anticipating more than one instance of a "thing"
+  (credentials, providers, etc.) should default to a small registry +
+  optional-fields dataclass from the start rather than a single required
+  field.
