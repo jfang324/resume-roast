@@ -450,3 +450,12 @@ for future specs.
   project, plus a local feedback memory in this project as a redundant
   reminder. Future specs/sessions in this repo should never include a
   co-authorship trailer in any commit or PR.
+- **Superseded by SPEC-004**: the `cli/app.py` dispatcher and the
+  handler-class + bound-method registration pattern this spec established
+  (and which DP-003 prescribed at the time) were replaced by
+  [SPEC-004](spec-004-rewire-cli-runner-and-typer-groups.md), which renames
+  `cli/app.py` → `cli/runner.py` and moves each group's `typer.Typer()` and
+  `@<group>_cli.command(...)` registration into that group's own
+  `cli/<group>/handler.py`. Not a correction to this spec's implementation —
+  DP-003's structural mechanism changed after this spec closed; this spec's
+  body is left as-authored.
