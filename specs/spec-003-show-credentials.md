@@ -2,11 +2,13 @@
 
 ---
 
-**Status**: pending
+**Status**: completed
 **Created**: 2026-07-09
 **TDD**: required
 **Coverage target**: repo default (`fail_under = 85` in `pyproject.toml`)
-**Commit(s)**: <!-- Populated on completion. One `- hash (description)` per commit. -->
+**Commit(s)**:
+- 83315b1 (test: add failing tests for show credentials command)
+- ac5ac5d (feat: add show credentials command)
 
 ## Summary
 
@@ -281,16 +283,25 @@ Reuses the distinctive test key `nvapi-test-9876` <!-- pragma: allowlist secret 
 
 All of these must be true for this spec to be marked completed:
 
-- [ ] All tests pass (`make test` or equivalent).
-- [ ] Coverage target met (see **Coverage target** in the front-matter).
-- [ ] `make check` passes.
-- [ ] `make check-tdd` passes.
-- [ ] Manual smoke test: `poetry run resume-roast show credentials` with no
+- [x] All tests pass (`make test` or equivalent). — 31 passed, 1 skipped.
+- [x] Coverage target met (see **Coverage target** in the front-matter). — 99%.
+- [x] `make check` passes. — clean.
+- [x] `make check-tdd` passes. — OK.
+- [x] Manual smoke test: `poetry run resume-roast show credentials` with no
       credentials saved (expect `NVIDIA API key: (not set)`), then after
       `poetry run resume-roast config credentials` saves a dummy key (expect
-      the masked form to match the save-confirmation's mask).
-- [ ] Every _Acceptance Example_ has a corresponding passing test.
-- [ ] Every linked INV-{NNN} has a passing enforcement test.
+      the masked form to match the save-confirmation's mask). — confirmed
+      live through both `resume-roast` and `python -m resume_roast` entry
+      points, isolated via `RESUME_ROAST_HOME`: `(not set)` with nothing
+      saved, `****5678` after saving `nvapi-smoketest-5678`. The save step
+      itself was seeded directly through `CredentialsStore` rather than the
+      interactive prompt, since Click's `hide_input=True` cannot be driven
+      by piped stdin on Windows (same pre-existing platform limitation noted
+      in SPEC-002); the prompt-driven save path is covered by the
+      `CliRunner` test suite instead.
+- [x] Every _Acceptance Example_ has a corresponding passing test. — confirmed.
+- [x] Every linked INV-{NNN} has a passing enforcement test. — confirmed
+      (`test_show_credentials_displays_masked_value_not_full_key`).
 
 ## Advisory Reports
 
