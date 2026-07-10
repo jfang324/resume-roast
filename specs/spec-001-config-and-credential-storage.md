@@ -5,7 +5,10 @@
 **Created**: 2026-07-09
 **TDD**: required
 **Coverage target**: repo default (`fail_under = 85` in `pyproject.toml`)
-**Commit(s)**: <!-- Populated on completion. One `- hash (description)` per commit. -->
+**Commit(s)**:
+- 0bd92bf (chore: add typer dependency and resume-roast entry point)
+- af235a7 (test: add failing tests for config/credentials persistence and CLI)
+- 87f4281 (feat: add config/credentials persistence and resume-roast CLI)
 
 ## Summary
 
