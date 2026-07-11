@@ -1029,3 +1029,70 @@ as training signal for future specs.
      `test_build_tree_starts_new_entry_instead_of_splitting_paragraph_on_large_gap`
      to match the new behavior (a large gap now always means "new record",
      not "new paragraph in the same record").
+
+### Parsing Methodology (Reference Summary)
+
+A consolidated reference for how `treeify.py` actually classifies and
+groups lines, for whoever next touches this code or designs against it
+(e.g. a future LLM-structuring spec). Scattered across the amended
+Interface/Behavior above; collected here in one place.
+
+- **Two independent signals, not one.** Sections are detected by **style**
+  (font size only — bold is never checked); entries are detected by
+  **whitespace** (the vertical gap before a line — style is never checked).
+  These signals do not interact or fall back on each other. This split
+  exists because the two real-world observations that motivated it point
+  in different directions: section headings were reliably *larger* than
+  body text (even unbolded) in the one real resume tested, while entry
+  (job/project) titles were frequently *identical in style* to body text —
+  no size difference, no bold — with only surrounding whitespace marking
+  them as a new record.
+- **Style clustering (sections).** The *body style* is the
+  `(size, bold)` pair with the most total characters across all lines —
+  computed once per document, not hardcoded. A line is a section heading
+  if its size bin is ≥ `SECTION_SIZE_DELTA` (1.0pt) above the body size
+  bin. This has held up well: it correctly identified sections in the one
+  real resume tested, including unbolded ones. Unaffected by this spec's
+  entry-detection amendment.
+- **Whitespace clustering (entries).** The *median body-line height* is
+  the unit; `BREAK_GAP_FACTOR` (0.5) × that height is the one threshold
+  that decides both (a) whether a body line merges into the previous
+  paragraph/bullet (gap below threshold) and (b) whether a line starts a
+  new `Entry` instead (gap at or above threshold, and not already a
+  section or bullet). One threshold serving both jobs is deliberate — see
+  Strategy — but it means the paragraph-continuation gap and the
+  entry-boundary gap cannot be tuned independently; widening one narrows
+  the other.
+- **Bullets are a third, independent signal** — marker-glyph matching
+  (`BULLET_MARKERS`, a flat literal-glyph list, not a regex/numbered-list
+  scheme), checked before section/entry classification, so a bulleted
+  line is never promoted to a heading regardless of its own gap or size.
+  `pdf.py`'s `normalize_text()` (NFKC + stripping Unicode format/Cf
+  characters, e.g. zero-width spaces) runs at the ingestion seam so real
+  documents' invisible-character noise around markers and at line ends
+  never reaches this layer.
+- **Known v1 limitations, accepted, not yet fixed:**
+  - A section's *first* record is usually left untitled, since the gap
+    right after a section heading is ordinarily just ordinary line
+    spacing, not a deliberate break — only the second-and-later records
+    reliably get their own titled `Entry`.
+  - A section with multiple gap-separated paragraphs and no bullets
+    between them over-segments into one titled entry per paragraph
+    (heading = that paragraph's full text) — nothing but the gap
+    distinguishes "new paragraph" from "new record" once style is out of
+    the picture.
+  - Multi-line section/entry headings still become sibling
+    sections/entries (pre-existing v1 limitation, unaffected by this
+    amendment).
+- **What was deliberately not built for v1** (discussed and set aside,
+  not merely unconsidered): three-way gap clustering (continuation vs.
+  entry-break vs. section-break as three distinct magnitudes) was
+  considered and rejected in favor of the simpler two-signal design above
+  once real data showed section detection didn't need fixing — only
+  entry detection did. A fully LLM-driven structuring stage (handing the
+  model either raw positioned lines or this module's pre-grouped
+  hierarchy) was discussed and deliberately deferred to a later, separate
+  spec/stage — this module stays fully deterministic, offline, and free,
+  and `evaluate` keeps returning a fast structural preview; see SPEC-006's
+  original Non-goals ("No AI") and Summary ("a later spec extends
+  `evaluate` with the AI evaluation results").
