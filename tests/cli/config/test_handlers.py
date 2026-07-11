@@ -7,9 +7,15 @@ from typer.testing import CliRunner
 
 from resume_roast.cli.registry import build_subcommand_registry
 from resume_roast.persistence.credentials.store import CredentialsStore
+from resume_roast.persistence.settings.store import SettingsStore
+from resume_roast.persistence.settings.types import MODELS, PERSONAS, Settings
 
 app = build_subcommand_registry()
 runner = CliRunner()
+
+# One line per setting prompt, in SETTING_SPECS order:
+# model, persona, level, feedback_model, ensemble_models.
+_KEEP_ALL_SETTINGS = "\n\n\n\n\n"
 
 _TEST_KEY = "sk-ant-test-9876"
 _TEST_KEY_2 = "sk-ant-test-1234"
@@ -87,6 +93,57 @@ def test_credentials_reports_storage_failure(
     assert "Traceback" not in result.output
 
 
+def test_settings_blank_entries_keep_defaults(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "settings"], input=_KEEP_ALL_SETTINGS)
+
+    assert result.exit_code == 0
+    store = SettingsStore(tmp_path)
+    assert store.load() == Settings()
+
+
+def test_settings_selection_overwrites_value(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "settings"], input="2\n\n\n\n\n")
+
+    assert result.exit_code == 0
+    store = SettingsStore(tmp_path)
+    assert store.load().model == MODELS[1]
+
+
+def test_settings_second_run_keeps_previous_selection(tmp_path: Path) -> None:
+    runner.invoke(app, ["config", "settings"], input="\n2\n\n\n\n")
+
+    result = runner.invoke(app, ["config", "settings"], input=_KEEP_ALL_SETTINGS)
+
+    assert result.exit_code == 0
+    store = SettingsStore(tmp_path)
+    assert store.load().persona == PERSONAS[1]
+
+
+def test_settings_comma_separated_selection_for_multi_valued_setting(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "settings"], input="\n\n\n\n1,2\n")
+
+    assert result.exit_code == 0
+    store = SettingsStore(tmp_path)
+    assert store.load().ensemble_models == (MODELS[0], MODELS[1])
+
+
+def test_settings_reprompts_on_invalid_selection(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "settings"], input="99\n2\n\n\n\n\n")
+
+    assert result.exit_code == 0
+    assert "Invalid selection" in result.output
+    store = SettingsStore(tmp_path)
+    assert store.load().model == MODELS[1]
+
+
+def test_settings_lists_choices_and_confirms_saved_values() -> None:
+    result = runner.invoke(app, ["config", "settings"], input=_KEEP_ALL_SETTINGS)
+
+    for model in MODELS:
+        assert model in result.output
+    assert "Saved to" in result.output
+
+
 def test_config_group_shows_help_without_subcommand() -> None:
     result = runner.invoke(app, ["config"])
 
@@ -94,3 +151,4 @@ def test_config_group_shows_help_without_subcommand() -> None:
     # not 0 — this isn't the same code path as an explicit `--help`.
     assert result.exit_code == 2
     assert "credentials" in result.output
+    assert "settings" in result.output
