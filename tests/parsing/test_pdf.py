@@ -75,7 +75,7 @@ def test_extract_merges_same_row_title_and_date(make_pdf: PdfFactory) -> None:
 
 
 def test_extract_normalizes_ligatures(make_pdf: PdfFactory) -> None:
-    path = make_pdf(html_placements=[("eﬁcient", 72, 100, 500, 140, 0)])
+    path = make_pdf(html_placements=[("efﬁcient", 72, 100, 500, 140, 0)])
 
     extraction = PyMuPdfExtractor().extract(path)
 

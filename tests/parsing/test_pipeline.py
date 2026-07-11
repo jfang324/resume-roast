@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from resume_roast.parsing import BBox, Extraction, Line, Style
+from resume_roast.parsing import BBox, Bullet, Extraction, Line, Style
 from resume_roast.parsing.errors import UnsupportedFormatError
 from resume_roast.parsing.pipeline import parse_resume
 
@@ -24,8 +24,10 @@ def test_parse_resume_returns_document_for_single_column_pdf(
     assert [s.heading for s in doc.sections] == ["Jordan Diaz", "EXPERIENCE"]
     entry = doc.sections[1].entries[0]
     assert entry.heading == "Software Engineer - Acme Corp"
-    assert [b.marker for b in entry.blocks] == ["-", "-"]
-    assert [b.text for b in entry.blocks] == [
+    bullets = [b for b in entry.blocks if isinstance(b, Bullet)]
+    assert len(bullets) == len(entry.blocks)
+    assert [b.marker for b in bullets] == ["-", "-"]
+    assert [b.text for b in bullets] == [
         "Shipped the roasting pipeline",
         "Cut parse latency by 40%",
     ]

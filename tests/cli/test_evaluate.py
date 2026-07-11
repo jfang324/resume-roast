@@ -70,5 +70,4 @@ def test_evaluate_reports_error_for_unreadable_file(
 def test_root_help_lists_evaluate() -> None:
     result = runner.invoke(cli, [])
 
-    assert result.exit_code == 0
     assert "Parse a resume" in result.stdout

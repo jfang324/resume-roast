@@ -45,22 +45,26 @@ def make_pdf(tmp_path: Path) -> PdfFactory:
         for placement in placements:
             text, x, y, size, fontname, *rest = placement
             page_index = rest[0] if rest else 0
-            doc[page_index].insert_text((x, y), text, fontsize=size, fontname=fontname)
+            doc[page_index].insert_text(  # pyright: ignore[reportUnknownMemberType]
+                (x, y), text, fontsize=size, fontname=fontname
+            )
 
         for text, x0, y0, x1, y1, page_index in html_placements:
             rect = pymupdf.Rect(x0, y0, x1, y1)
-            doc[page_index].insert_htmlbox(rect, f"<p>{text}</p>")
+            doc[page_index].insert_htmlbox(  # pyright: ignore[reportUnknownMemberType]
+                rect, f"<p>{text}</p>"
+            )
 
         path = tmp_path / filename
         if user_pw is not None:
-            doc.save(
+            doc.save(  # pyright: ignore[reportUnknownMemberType]
                 path,
-                encryption=pymupdf.PDF_ENCRYPT_AES_256,
+                encryption=pymupdf.PDF_ENCRYPT_AES_256,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
                 user_pw=user_pw,
                 owner_pw=user_pw,
             )
         else:
-            doc.save(path)
+            doc.save(path)  # pyright: ignore[reportUnknownMemberType]
         doc.close()
         return path
 
