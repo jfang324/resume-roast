@@ -92,6 +92,19 @@ def test_build_tree_strips_bullet_markers(make_line: LineFactory, marker: str) -
     assert block.text == "Did a thing"
 
 
+def test_build_tree_treats_zero_width_space_after_marker_as_bullet(
+    make_line: LineFactory,
+) -> None:
+    lines = [make_line("●​ Led frontend development")]
+
+    doc = build_tree(lines, source=SOURCE, page_count=1)
+
+    block = doc.sections[0].entries[0].blocks[0]
+    assert isinstance(block, Bullet)
+    assert block.marker == "●"
+    assert block.text == "Led frontend development"
+
+
 def test_build_tree_merges_indented_bullet_continuation_lines(make_line: LineFactory) -> None:
     lines = [
         make_line("- Shipped the parser", x0=72.0, x1=250.0, y0=100.0, y1=112.0),

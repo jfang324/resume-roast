@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from resume_roast.parsing.errors import InvalidPdfError, NoTextLayerError, UnsupportedLayoutError
-from resume_roast.parsing.pdf import PyMuPdfExtractor
+from resume_roast.parsing.pdf import PyMuPdfExtractor, normalize_text
 
 PdfFactory = Callable[..., Path]
 
@@ -80,6 +80,19 @@ def test_extract_normalizes_ligatures(make_pdf: PdfFactory) -> None:
     extraction = PyMuPdfExtractor().extract(path)
 
     assert extraction.lines[0].text == "efficient"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Remote​", "Remote"),
+        ("Remote​Zone", "RemoteZone"),
+        ("Plain text", "Plain text"),
+    ],
+    ids=["trailing-zwsp", "embedded-zwsp", "unaffected-plain-text"],
+)
+def test_normalize_text_strips_invisible_format_characters(raw: str, expected: str) -> None:
+    assert normalize_text(raw) == expected
 
 
 def test_extract_rejects_two_column_layout(two_column_pdf: Path) -> None:

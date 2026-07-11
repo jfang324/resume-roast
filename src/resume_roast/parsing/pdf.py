@@ -22,6 +22,17 @@ _BOLD_FLAG = 1 << 4
 _ITALIC_FLAG = 1 << 1
 
 
+def normalize_text(text: str) -> str:
+    """NFKC-normalize text and strip invisible Unicode format characters.
+
+    Real-world exports (e.g. Google Docs) embed zero-width spaces and other
+    format characters (Unicode category Cf) around bullet markers and at line
+    ends; left in place they are meaningless noise in a resume's text.
+    """
+    normalized = unicodedata.normalize("NFKC", text)
+    return "".join(char for char in normalized if unicodedata.category(char) != "Cf")
+
+
 class PyMuPdfExtractor:
     """Extractor implementation backed by PyMuPDF."""
 
@@ -65,9 +76,7 @@ def _page_lines(raw: dict[str, Any], page: int) -> list[Line]:
             spans = cast(list[dict[str, Any]], line.get("spans", []))
             if not spans:
                 continue
-            text = unicodedata.normalize(
-                "NFKC", "".join(str(span.get("text", "")) for span in spans)
-            )
+            text = normalize_text("".join(str(span.get("text", "")) for span in spans))
             if not text.strip():
                 continue
             dominant = max(spans, key=lambda span: len(str(span.get("text", ""))))

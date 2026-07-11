@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import statistics
+import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -22,7 +23,7 @@ STYLE_SIZE_BIN = 0.5
 SECTION_SIZE_DELTA = 1.0
 PARAGRAPH_GAP_FACTOR = 0.75
 BULLET_X_TOLERANCE = 2.0
-BULLET_MARKERS = ("•", "◦", "▪", "‣", "·", "-", "–", "*")  # noqa: RUF001
+BULLET_MARKERS = ("•", "◦", "▪", "‣", "·", "●", "-", "–", "*")  # noqa: RUF001
 
 _StyleKey = tuple[float, bool]
 
@@ -62,10 +63,21 @@ def _style_key(style: Style) -> _StyleKey:
     return (round(style.size / STYLE_SIZE_BIN) * STYLE_SIZE_BIN, style.bold)
 
 
+def _is_invisible_boundary(char: str) -> bool:
+    return char.isspace() or unicodedata.category(char) == "Cf"
+
+
 def _split_bullet(text: str) -> tuple[str, str] | None:
     for marker in BULLET_MARKERS:
-        if text.startswith(marker) and len(text) > 1 and text[1].isspace():
-            return marker, text[1:].lstrip()
+        if not text.startswith(marker):
+            continue
+        rest = text[len(marker) :]
+        if not rest or not _is_invisible_boundary(rest[0]):
+            continue
+        index = 0
+        while index < len(rest) and _is_invisible_boundary(rest[index]):
+            index += 1
+        return marker, rest[index:]
     return None
 
 
