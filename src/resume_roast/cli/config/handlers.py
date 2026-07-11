@@ -4,7 +4,12 @@ from pathlib import Path
 
 import typer
 
-from resume_roast.cli.config.logic import apply_entries
+from resume_roast.cli.config.logic import (
+    InvalidSelectionError,
+    apply_entries,
+    apply_selections,
+    parse_selection,
+)
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.credentials.types import (
     CREDENTIAL_SPECS,
@@ -12,6 +17,8 @@ from resume_roast.persistence.credentials.types import (
     mask_secret,
 )
 from resume_roast.persistence.paths import storage_dir
+from resume_roast.persistence.settings.store import SettingsStore
+from resume_roast.persistence.settings.types import SETTING_SPECS, Settings
 
 
 def credentials() -> None:
@@ -46,3 +53,49 @@ def _confirm_saved(saved: Credentials, path: Path) -> None:
             typer.echo(f"{spec.label}: not set")
         else:
             typer.echo(f"{spec.label}: saved ({mask_secret(value)}) to {path}")
+
+
+def settings() -> None:
+    """Choose each setting from its allowed values and save them.
+
+    A blank entry keeps the current value.
+    """
+    store = SettingsStore(storage_dir())
+    existing = store.load()
+    updated = apply_selections(existing, _prompt_for_selections(existing))
+    store.save(updated)
+    _confirm_settings(updated, store.path)
+
+
+def _prompt_for_selections(existing: Settings) -> dict[str, str | tuple[str, ...]]:
+    """Show each setting's numbered choices and collect valid selections."""
+    selections: dict[str, str | tuple[str, ...]] = {}
+    for spec in SETTING_SPECS:
+        typer.echo(f"{spec.label} (currently: {_display(getattr(existing, spec.field))})")
+        for number, choice in enumerate(spec.choices, start=1):
+            typer.echo(f"  {number}. {choice}")
+        hint = "Selection(s), comma-separated" if spec.many else "Selection"
+        while True:
+            entry = typer.prompt(
+                f"{hint} (blank keeps current)", default="", show_default=False
+            ).strip()
+            if not entry:
+                break
+            try:
+                selections[spec.field] = parse_selection(spec, entry)
+                break
+            except InvalidSelectionError as exc:
+                typer.echo(f"Invalid selection: {exc}")
+    return selections
+
+
+def _display(value: str | tuple[str, ...]) -> str:
+    """Render a setting value for prompts and confirmations."""
+    return ", ".join(value) if isinstance(value, tuple) else value
+
+
+def _confirm_settings(saved: Settings, path: Path) -> None:
+    """Echo each setting's saved value."""
+    for spec in SETTING_SPECS:
+        typer.echo(f"{spec.label}: {_display(getattr(saved, spec.field))}")
+    typer.echo(f"Saved to {path}")

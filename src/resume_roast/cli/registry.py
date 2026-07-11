@@ -2,7 +2,7 @@
 
 import typer
 
-from resume_roast.cli.config.handlers import credentials
+from resume_roast.cli.config.handlers import credentials, settings
 from resume_roast.cli.guards import guarded
 from resume_roast.cli.types import Group
 
@@ -10,7 +10,7 @@ SUBCOMMAND_GROUPS: tuple[Group, ...] = (
     Group(
         name="config",
         help="Manage settings and credentials.",
-        handlers=(credentials,),
+        handlers=(credentials, settings),
     ),
 )
 
