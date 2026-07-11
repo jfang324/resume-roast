@@ -1,4 +1,4 @@
-"""Tests for resume_roast.parsing.pipeline.parse_resume."""
+"""Tests for resume_roast.parsing.pipeline.parse_resume/extract_resume."""
 
 from __future__ import annotations
 
@@ -9,7 +9,8 @@ import pytest
 
 from resume_roast.parsing import BBox, Bullet, Extraction, Line, Style
 from resume_roast.parsing.errors import UnsupportedFormatError
-from resume_roast.parsing.pipeline import parse_resume
+from resume_roast.parsing.pdf import PyMuPdfExtractor
+from resume_roast.parsing.pipeline import extract_resume, parse_resume
 
 PdfFactory = Callable[..., Path]
 
@@ -74,3 +75,27 @@ def test_parse_resume_uses_injected_extractor(tmp_path: Path) -> None:
 
     assert doc.sections[0].heading == "Stub Heading"
     assert doc.sections[0].entries[0].blocks[0].text == "Stub body line here."
+
+
+def test_extract_resume_returns_raw_extraction_for_pdf(canonical_resume_pdf: Path) -> None:
+    extraction = extract_resume(canonical_resume_pdf)
+
+    assert extraction == PyMuPdfExtractor().extract(canonical_resume_pdf)
+
+
+@pytest.mark.parametrize("name", ["resume.docx", "resume"], ids=["docx", "no-suffix"])
+def test_extract_resume_rejects_unregistered_extension(tmp_path: Path, name: str) -> None:
+    path = tmp_path / name
+    path.write_bytes(b"whatever")
+
+    with pytest.raises(UnsupportedFormatError):
+        extract_resume(path)
+
+
+def test_extract_resume_uses_injected_extractor(tmp_path: Path) -> None:
+    path = tmp_path / "resume.pdf"
+    path.write_bytes(b"irrelevant -- extractor is stubbed")
+
+    extraction = extract_resume(path, extractor=_StubExtractor())
+
+    assert extraction == _StubExtractor().extract(path)

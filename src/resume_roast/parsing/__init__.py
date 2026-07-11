@@ -23,7 +23,8 @@ from resume_roast.parsing.models import (
     Style,
 )
 from resume_roast.parsing.pdf import PyMuPdfExtractor
-from resume_roast.parsing.pipeline import EXTRACTORS, parse_resume
+from resume_roast.parsing.pipeline import EXTRACTORS, extract_resume, parse_resume
+from resume_roast.parsing.render import render_tree
 from resume_roast.parsing.tree import ancestors, find_node, node_path, walk
 
 __all__ = [
@@ -48,8 +49,10 @@ __all__ = [
     "UnsupportedFormatError",
     "UnsupportedLayoutError",
     "ancestors",
+    "extract_resume",
     "find_node",
     "node_path",
     "parse_resume",
+    "render_tree",
     "walk",
 ]
