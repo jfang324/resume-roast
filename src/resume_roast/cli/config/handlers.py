@@ -38,9 +38,9 @@ def _prompt_for_entries(existing: Credentials) -> dict[str, str]:
     entries: dict[str, str] = {}
     for spec in CREDENTIAL_SPECS:
         current = getattr(existing, spec.field)
-        status = f"currently set, {mask_secret(current)}" if current else "not set"
+        shown = mask_secret(current) if current else "not set"
         entries[spec.field] = typer.prompt(
-            f"{spec.label} ({status})", hide_input=True, default="", show_default=False
+            f"{spec.label} [current: {shown}]", hide_input=True, default="", show_default=False
         )
     return entries
 
@@ -71,13 +71,14 @@ def _prompt_for_selections(existing: Settings) -> dict[str, str | tuple[str, ...
     """Show each setting's numbered choices and collect valid selections."""
     selections: dict[str, str | tuple[str, ...]] = {}
     for spec in SETTING_SPECS:
-        typer.echo(f"{spec.label} (currently: {_display(getattr(existing, spec.field))})")
+        typer.echo(spec.label)
         for number, choice in enumerate(spec.choices, start=1):
             typer.echo(f"  {number}. {choice}")
         hint = "Selection(s), comma-separated" if spec.many else "Selection"
+        current = _display(getattr(existing, spec.field))
         while True:
             entry = typer.prompt(
-                f"{hint} (blank keeps current)", default="", show_default=False
+                f"{hint} [current: {current}]", default="", show_default=False
             ).strip()
             if not entry:
                 break
