@@ -87,9 +87,12 @@ the AI evaluation results.
     paragraph assembly, pre-order ID assignment.
   - `src/resume_roast/parsing/tree.py` — addressing helpers over a built
     tree: `walk`, `find_node`, `node_path`, `ancestors`.
-  - `src/resume_roast/parsing/pipeline.py` — `parse_resume(path) ->
-    Document` facade: extractor dispatch by file extension (`EXTRACTORS`
-    registry, `.pdf` only today) then `build_tree`.
+  - `src/resume_roast/parsing/pipeline.py` — two facades sharing one
+    extractor-dispatch-by-file-extension helper (`EXTRACTORS` registry,
+    `.pdf` only today): `parse_resume(path) -> Document` (dispatch then
+    `build_tree` — the deterministic, no-AI path `evaluate` uses) and
+    `extract_resume(path) -> Extraction` (dispatch only, no `build_tree` —
+    nearly-raw output for a future non-heuristic structuring caller).
   - `src/resume_roast/cli/evaluate/__init__.py` /
     `src/resume_roast/cli/evaluate/handler.py` — the root-level `evaluate`
     command.
@@ -308,8 +311,10 @@ the treeify scenarios above.
   canonical fixture resume (see the CLI Acceptance Example below) parsed
   end-to-end: `parse_resume` returns a `Document` with
   `source == "resume.pdf"`, `page_count == 1`, section headings
-  `["Jordan Diaz", "EXPERIENCE"]`, one bold-line entry under "EXPERIENCE"
-  holding two `Bullet`s with markers stripped.
+  `["Jordan Diaz", "EXPERIENCE"]`; under "EXPERIENCE", an untitled first
+  entry (small gap after the section heading) holding a paragraph and two
+  `Bullet`s with markers stripped, then a second, gap-titled entry holding
+  one more `Bullet` — no bold text anywhere in the fixture.
 - `test_parse_resume_rejects_unregistered_extension` — parametrized: a
   `.docx` path and a suffixless path → `UnsupportedFormatError` naming the
   extension (or its absence); no extractor runs.
@@ -318,6 +323,19 @@ the treeify scenarios above.
   passed via the `extractor` keyword; the returned `Document` is built
   from the stub's lines — proves callers depend only on the `Extractor`
   protocol, not on PyMuPDF.
+- `test_extract_resume_returns_raw_extraction_for_pdf` — the canonical
+  fixture resume: `extract_resume` returns an `Extraction` whose
+  `page_count` and line count/order match what `PyMuPdfExtractor().extract`
+  would return directly, and no `Document`/tree is involved — proves the
+  facade exposes the pre-classification stage as a first-class output, not
+  just as an internal step of `parse_resume`.
+- `test_extract_resume_rejects_unregistered_extension` — parametrized,
+  same cases as `test_parse_resume_rejects_unregistered_extension` — the
+  two functions must not disagree on dispatch.
+- `test_extract_resume_uses_injected_extractor` — the same stub extractor
+  as `test_parse_resume_uses_injected_extractor`, passed via the
+  `extractor` keyword; the returned `Extraction` is exactly the stub's
+  canned value.
 
 ### `tests/cli/test_evaluate.py`
 
@@ -783,15 +801,26 @@ the treeify scenarios above.
   ```python
   EXTRACTORS: Mapping[str, Extractor] = {".pdf": PyMuPdfExtractor()}
 
+  def extract_resume(path: Path, *, extractor: Extractor | None = None) -> Extraction: ...
   def parse_resume(path: Path, *, extractor: Extractor | None = None) -> Document: ...
   ```
 
-- **Behavior**: resolves the extractor — the `extractor` argument when
-  given, else `EXTRACTORS[path.suffix.lower()]`, raising
-  `UnsupportedFormatError` naming the extension when no entry exists —
-  runs it, then `build_tree(extraction.lines, source=path.name,
-  page_count=extraction.page_count)`. No other error handling —
-  extraction errors propagate typed.
+- **Behavior**: both functions resolve the extractor identically — the
+  `extractor` argument when given, else `EXTRACTORS[path.suffix.lower()]`,
+  raising `UnsupportedFormatError` naming the extension when no entry
+  exists (shared private `_resolve_extractor` helper, so the two functions
+  cannot disagree on dispatch). `extract_resume` runs the extractor and
+  returns its `Extraction` — styled, positioned `Line`s — directly, with
+  no classification or grouping applied. `parse_resume` does the same,
+  then additionally calls `build_tree(extraction.lines, source=path.name,
+  page_count=extraction.page_count)`. Two entry points exist because they
+  serve two different callers: `parse_resume` is the fully deterministic,
+  offline, free path (today's style/whitespace heuristics — what
+  `evaluate` calls); `extract_resume` is for a future caller — e.g. an
+  LLM-based structuring stage — that wants the nearly-raw material to fit
+  into the `Document` schema itself (given a description of that schema),
+  rather than consuming this module's heuristic judgment calls. No other
+  error handling in either — extraction errors propagate typed.
 - **Acceptance Examples**:
 
   ```text
@@ -805,20 +834,37 @@ the treeify scenarios above.
   Output: raises UnsupportedFormatError naming ".docx"
   ```
 
+  ```text
+  Input:  extract_resume(Path(".../resume.pdf"))   (canonical fixture resume)
+  Output: Extraction(page_count=1, lines=(...))   -- the same Lines
+                   build_tree would have classified into the Document above,
+                   returned before any classification is applied
+  ```
+
 - **Data flow**: the app-facing seam. CLI/TUI/future agent code depends on
-  `parse_resume` and the `Extractor` protocol only — never on PyMuPDF — so
-  migrating extraction libraries later means writing one new `Extractor`
-  and swapping a registry entry, with no caller changes.
+  `parse_resume`/`extract_resume` and the `Extractor` protocol only —
+  never on PyMuPDF — so migrating extraction libraries later means
+  writing one new `Extractor` and swapping a registry entry, with no
+  caller changes.
 - **Edge cases**: extension matching is case-insensitive (`.PDF` parses);
   a path with no suffix raises `UnsupportedFormatError`; the `extractor`
-  keyword bypasses the registry (tests, future per-format options).
+  keyword bypasses the registry (tests, future per-format options) for
+  both functions.
 - **Strategy**: `EXTRACTORS` is a plain module-level mapping — a future
-  format adds one entry, nothing more.
-- **Tests**: the `test_parse_resume_*` scenarios.
+  format adds one entry, nothing more. `extract_resume` and `parse_resume`
+  are not layered on each other (`parse_resume` does not call
+  `extract_resume`) — both call `_resolve_extractor` and `.extract(path)`
+  independently — because the alternative (parse_resume calling
+  extract_resume, then re-deriving `source`/`page_count` from its
+  `Extraction`) would add a layer of indirection for no benefit; sharing
+  only the dispatch logic, not the whole call, is the smaller change.
+- **Tests**: the `test_parse_resume_*` and `test_extract_resume_*`
+  scenarios.
 
 ### `src/resume_roast/parsing/__init__.py`
 
-- **Change**: re-export the public surface (`parse_resume`, `EXTRACTORS`,
+- **Change**: re-export the public surface (`parse_resume`,
+  `extract_resume`, `EXTRACTORS`,
   node types and aliases, `Line`/`Style`/`BBox`/`Extraction`, `Extractor`,
   `PyMuPdfExtractor`, all errors, `walk`, `find_node`, `node_path`,
   `ancestors`). Handlers and future TUI code import only from the package
@@ -956,11 +1002,12 @@ Available at the user's discretion; findings go to
   `cast`/`type: ignore` needed for PyMuPDF's incomplete typing is confined
   to those two files.
 - The extraction library is swappable by design: everything outside
-  `parsing/` reaches the parser through `parse_resume` (via the package
-  root), and everything inside `parsing/` except `pdf.py` depends on the
-  `Extractor` protocol and the typed `Line`/`Extraction` models, never on
-  PyMuPDF types. Migrating libraries later must require only a new
-  `Extractor` implementation and an `EXTRACTORS` entry.
+  `parsing/` reaches the parser through `parse_resume`/`extract_resume`
+  (via the package root), and everything inside `parsing/` except
+  `pdf.py` depends on the `Extractor` protocol and the typed
+  `Line`/`Extraction` models, never on PyMuPDF types. Migrating libraries
+  later must require only a new `Extractor` implementation and an
+  `EXTRACTORS` entry.
 - All heuristic thresholds and the bullet-marker set are module-level named
   constants in `pdf.py`/`treeify.py` — no magic numbers inline.
 - All tree/model types are frozen dataclasses with `tuple` children; the
@@ -1089,10 +1136,21 @@ Interface/Behavior above; collected here in one place.
   entry-break vs. section-break as three distinct magnitudes) was
   considered and rejected in favor of the simpler two-signal design above
   once real data showed section detection didn't need fixing — only
-  entry detection did. A fully LLM-driven structuring stage (handing the
-  model either raw positioned lines or this module's pre-grouped
-  hierarchy) was discussed and deliberately deferred to a later, separate
-  spec/stage — this module stays fully deterministic, offline, and free,
-  and `evaluate` keeps returning a fast structural preview; see SPEC-006's
-  original Non-goals ("No AI") and Summary ("a later spec extends
-  `evaluate` with the AI evaluation results").
+  entry detection did. A fully LLM-driven structuring stage was discussed
+  and deliberately deferred to a later, separate spec/stage — this module
+  stays fully deterministic, offline, and free, and `evaluate` keeps
+  returning a fast structural preview; see SPEC-006's original Non-goals
+  ("No AI") and Summary ("a later spec extends `evaluate` with the AI
+  evaluation results"). **Resolved design question for that future spec**:
+  the LLM stage should be given `extract_resume`'s nearly-raw `Extraction`
+  (styled, positioned `Line`s, no classification applied) plus a
+  description/template of the `Document` schema, and fit the material into
+  that schema itself — **not** this module's heuristic-built `Document`
+  (from `parse_resume`/`build_tree`) as a "draft to correct". Handing the
+  model a pre-classified draft risks anchoring it on this module's
+  judgment calls (including their known mistakes); raw material plus a
+  schema description lets it structure independently. `pipeline.py`
+  exposes both as peer facades for exactly this reason — `extract_resume`
+  (nearly-raw, for the future LLM stage) alongside `parse_resume`
+  (deterministic tree, for `evaluate` and any other no-AI caller) — see
+  the amended `pipeline.py` Interface/Behavior above.
