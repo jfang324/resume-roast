@@ -69,8 +69,7 @@ def test_credentials_prompt_shows_current_status_on_rerun() -> None:
 
     result = runner.invoke(app, ["config", "credentials"], input="\n")
 
-    assert "currently set" in result.output
-    assert "****9876" in result.output
+    assert "[current: ****9876]" in result.output
 
 
 def test_credentials_leaves_unset_provider_reported_as_not_set() -> None:
