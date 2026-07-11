@@ -21,10 +21,14 @@ for editing. The pipeline is two pure stages behind one facade:
 an `Extractor` protocol implementation turns the file into styled `Line`s —
 PyMuPDF's `PyMuPdfExtractor` is the only registered one, keeping the
 extraction library swappable behind the protocol — and `treeify.py`
-builds the tree from those lines using style-clustering heuristics (largest
-style cluster = body text; larger-font lines = section headings; bold
-body-size lines = entry headings; marker-prefixed lines = bullets) — no
-hardcoded section-name dictionaries. Unsupported inputs fail **loudly** with
+builds the tree from those lines using style and whitespace heuristics
+(largest style cluster = body text; larger-font lines = section headings;
+a line preceded by more than a line-break's worth of vertical whitespace =
+an entry heading, regardless of its own style; marker-prefixed lines =
+bullets) — no hardcoded section-name dictionaries. Real resumes routinely
+have no stylistic distinction between a job title and body text, so
+entries are detected from surrounding whitespace rather than boldness.
+Unsupported inputs fail **loudly** with
 typed errors — multi-column layouts, PDFs with no text layer (scans), and
 unopenable/password-protected files are rejected with a clear message, never
 parsed into silently-wrong output. Nothing is persisted: the tree is an
@@ -191,18 +195,30 @@ helper with keyword defaults (body style: 11.0pt, not bold) — no PDFs
 needed; `build_tree` is pure.
 
 - `test_build_tree_promotes_larger_font_lines_to_section_headings` — lines:
-  22pt name, 11pt contact line, 14pt "EXPERIENCE", 11pt body; tree has
-  sections `["Jordan Diaz", "EXPERIENCE"]` (both larger-than-body tiers are
-  section tier), with the contact text under the first section.
+  22pt name, 11pt contact line (small gap), 14pt "EXPERIENCE", 11pt body
+  (small gap); tree has sections `["Jordan Diaz", "EXPERIENCE"]` (both
+  larger-than-body tiers are section tier), with the contact text under
+  the first section.
 - `test_build_tree_puts_leading_body_text_in_untitled_section` — body lines
   before any heading; `sections[0].heading is None` and holds them.
-- `test_build_tree_splits_entries_on_bold_body_size_lines` — within a
-  section: body block, bold 11pt line, bullets; the pre-bold block lands in
-  an `Entry` with `heading is None`, the bold line starts
-  `Entry(heading="...")` holding the bullets.
-- `test_build_tree_keeps_single_untitled_entry_when_body_style_is_bold` —
-  every line bold (all-bold resume): no entry tier exists; each section
-  gets exactly one untitled entry.
+- `test_build_tree_starts_new_entry_on_large_gap_without_bold` — within a
+  section, entirely without bold anywhere: a first job title (small gap
+  after the section heading) with a paragraph and bullets, then a second
+  job title preceded by a gap over threshold; the first job's content
+  lands in an `Entry` with `heading is None`, the second job's line starts
+  `Entry(heading="...")` — proving entries are detected from whitespace,
+  not boldness (this is the spec's Acceptance Example above, pinned as a
+  test).
+- `test_build_tree_keeps_first_entry_in_section_untitled` — a section
+  heading immediately followed by a body line with only a small
+  (continuation-sized) gap; that content lands in `Entry(heading=None)` —
+  pins the documented v1 limitation that a section's first record stays
+  untitled.
+- `test_build_tree_treats_bold_as_irrelevant_to_entry_detection` — the same
+  shape as `test_build_tree_starts_new_entry_on_large_gap_without_bold` but
+  with every line bold: identical output — proves bold no longer
+  influences entry detection in either direction (replaces the old
+  "all-bold disables the entry tier" behavior entirely).
 - `test_build_tree_strips_bullet_markers` — parametrized over every marker
   in `BULLET_MARKERS`; a line `"{marker} Did a thing"` becomes
   `Bullet(marker="{marker}", text="Did a thing")`.
@@ -216,8 +232,13 @@ needed; `build_tree` is pure.
   `"developer"` (syllable hyphen dropped), and (`"uses state-of-the-"`,
   `"art tooling"`) → one `Paragraph` containing `"state-of-the-art"`
   (compound hyphen kept).
-- `test_build_tree_splits_paragraphs_on_vertical_gap` — two body lines with
-  gap over threshold → two `Paragraph` blocks.
+- `test_build_tree_starts_new_entry_instead_of_splitting_paragraph_on_large_gap`
+  — two body lines with gap over threshold, no bullets, no section
+  boundary → the first stands alone in an `Entry(heading=None)`, the
+  second starts its own `Entry(heading=...)` holding no blocks — this
+  supersedes the old "splits into two sibling Paragraphs" behavior, since
+  a large gap now always means "new record", not "new paragraph in the
+  same record".
 - `test_build_tree_assigns_preorder_node_ids` — for a known two-section
   tree, IDs are exactly `n1` (document), `n2`/`n3`/`n4`… in pre-order
   (section, its entries, each entry's blocks, next section…).
@@ -585,46 +606,80 @@ the treeify scenarios above.
   ```
 
   Module constants: `STYLE_SIZE_BIN = 0.5`, `SECTION_SIZE_DELTA = 1.0`,
-  `PARAGRAPH_GAP_FACTOR = 0.75`, `BULLET_X_TOLERANCE = 2.0`,
-  `BULLET_MARKERS = ("•", "◦", "▪", "‣", "·", "-", "–", "*")`.
+  `BREAK_GAP_FACTOR = 0.5`, `BULLET_X_TOLERANCE = 2.0`,
+  `BULLET_MARKERS = ("•", "◦", "▪", "▫", "‣", "·", "∙", "⁃", "●", "○",
+  "■", "□", "◆", "◇", "▶", "➤", "→", "✓", "✔", "-", "–", "—", "*")`.
 
-- **Behavior**: classifies each line, then groups in one reading-order
-  pass. **Classification**: style key = `(round(size / STYLE_SIZE_BIN) *
-  STYLE_SIZE_BIN, bold)`; the *body style* is the key with the most total
-  characters. A line is a **bullet** if its text starts with a
-  `BULLET_MARKERS` glyph followed by whitespace; else a **section heading**
-  if its size bin ≥ body bin + `SECTION_SIZE_DELTA`; else an **entry
-  heading** if it is bold, the body style is not bold, and its size bin ≥
-  the body bin; else **body**. **Grouping**: each section-heading line
-  starts a `Section` (heading = line text); body/bullet/entry content
-  before the first section heading forms `Section(heading=None)`. Within a
-  section, each entry-heading line starts an `Entry`; content before the
-  first forms `Entry(heading=None)`. Sections/entries with no content still
-  appear (empty `entries`/`blocks`). Consecutive body lines merge into one
-  `Paragraph` while on the same page and the vertical gap
-  (`next.bbox.y0 - prev.bbox.y1`) is < `PARAGRAPH_GAP_FACTOR` × the median
-  body-line height; joining de-hyphenates: when the previous fragment ends
-  with `-` and the next starts lowercase, the pieces join without a space —
-  dropping the hyphen when the fragment's final token contains no earlier
-  hyphen (`devel-` + `oper` → `developer`, syllable hyphenation), keeping
-  it when one exists (`state-of-the-` + `art` → `state-of-the-art`, a
-  compound broken at a real hyphen). All other joins use a single space. A bullet line starts a `Bullet` (marker stripped along with
-  following whitespace); subsequent body lines merge into it under the same
-  gap rule while their `x0` ≥ the bullet text's x0 − `BULLET_X_TOLERANCE`.
-  Merged blocks take the union bbox, the dominant fragment's style, and the
-  first fragment's page. **IDs**: assigned pre-order over the finished
-  structure — `n1` is the document, then each section, its entries, and
-  each entry's blocks in document order.
+- **Behavior**: classifies each line in one reading-order pass, using two
+  independent signals — **style** (for sections) and **the vertical gap to
+  the previous line** (for entries) — then groups. **Classification**:
+  style key = `(round(size / STYLE_SIZE_BIN) * STYLE_SIZE_BIN, bold)`; the
+  *body style* is the key with the most total characters, and the median
+  height of body-style lines is the unit the gap signal is measured
+  against. A line is a **bullet** if its text starts with a
+  `BULLET_MARKERS` glyph followed by whitespace or an invisible Unicode
+  format character (e.g. a zero-width space); else a **section heading**
+  if its size bin ≥ body bin + `SECTION_SIZE_DELTA` — bold is irrelevant
+  here, since many real templates size section headings up without
+  bolding them; else an **entry heading** if its lead-in gap
+  (`this.bbox.y0 - previous_line.bbox.y1`, the immediately preceding line
+  in reading order, same page; undefined for the first line of the
+  document counts as "no", i.e. not an entry heading) is ≥
+  `BREAK_GAP_FACTOR` × the median body-line height — bold and size are
+  irrelevant here too, since a real job/project title is frequently
+  identical in style to body text, and only the surrounding whitespace
+  marks it as a new record; else **body**. This replaces the earlier
+  "bold at body size" entry rule entirely: real resumes commonly have no
+  stylistic distinction whatsoever between a job title and its body text,
+  so style cannot be the signal for entries the way it still is for
+  sections. **Grouping**: each section-heading line starts a `Section`
+  (heading = line text); body/bullet/entry content before the first
+  section heading forms `Section(heading=None)`. Within a section, each
+  entry-heading line starts an `Entry` (heading = line text); content
+  before the first forms `Entry(heading=None)` — in particular, a
+  section's first record commonly stays untitled, since the gap right
+  after a section heading is ordinarily the same small size as any other
+  continuation gap (see Edge cases). Sections/entries with no content
+  still appear (empty `entries`/`blocks`). Consecutive body lines (lines
+  that are neither bullets, section headings, nor entry headings — i.e.
+  their lead-in gap is below the entry threshold) merge into one
+  `Paragraph` while on the same page; joining de-hyphenates: when the
+  previous fragment ends with `-` and the next starts lowercase, the
+  pieces join without a space — dropping the hyphen when the fragment's
+  final token contains no earlier hyphen (`devel-` + `oper` →
+  `developer`, syllable hyphenation), keeping it when one exists
+  (`state-of-the-` + `art` → `state-of-the-art`, a compound broken at a
+  real hyphen). All other joins use a single space. A bullet line always
+  starts a new `Bullet` (marker stripped along with following whitespace
+  or invisible format characters), regardless of its lead-in gap;
+  subsequent body lines merge into it under the same gap rule while their
+  `x0` ≥ the bullet text's x0 − `BULLET_X_TOLERANCE`. Merged blocks take
+  the union bbox, the dominant fragment's style, and the first fragment's
+  page. **IDs**: assigned pre-order over the finished structure — `n1` is
+  the document, then each section, its entries, and each entry's blocks
+  in document order.
 - **Acceptance Examples**:
 
   ```text
-  Input:  build_tree([Line("Jordan Diaz", 22pt), Line("jordan@example.com", 11pt),
-                      Line("EXPERIENCE", 14pt bold), Line("Engineer — Acme", 11pt bold),
-                      Line("- Shipped it", 11pt)], source="resume.pdf", page_count=1)
+  Input:  build_tree([Line("Jordan Diaz", 22pt, y0=60,y1=88), Line("jordan@example.com", 11pt, y0=92,y1=104),
+                      Line("EXPERIENCE", 14pt, y0=150,y1=166), Line("Engineer — Acme", 11pt, y0=170,y1=182),
+                      Line("- Shipped it", 11pt, y0=196,y1=208), Line("Engineer — Beta", 11pt, y0=250,y1=262)],
+                      source="resume.pdf", page_count=1)
+          (no line is bold; entry detection relies entirely on the gap signal;
+          body-line height is 12pt throughout, so the entry threshold is 6pt)
   Output: Document(n1, sections=(
             Section(n2, "Jordan Diaz", entries=(Entry(n3, None, blocks=(Paragraph(n4, "jordan@example.com"),)),)),
-            Section(n5, "EXPERIENCE", entries=(Entry(n6, "Engineer — Acme", blocks=(Bullet(n7, "Shipped it", marker="-"),)),))))
+            Section(n5, "EXPERIENCE", entries=(
+              Entry(n6, None, blocks=(Paragraph(n7, "Engineer — Acme"), Bullet(n8, "Shipped it", marker="-"))),
+              Entry(n9, "Engineer — Beta", blocks=()),
+            ))))
   ```
+
+  The first job ("Engineer — Acme") stays untitled — its 4pt gap after
+  "EXPERIENCE" is ordinary continuation spacing, under the 6pt threshold —
+  while the second job ("Engineer — Beta"), preceded by a 42pt gap, clears
+  the threshold and correctly starts its own `Entry`, entirely without any
+  bold text anywhere in the input.
 
   ```text
   Input:  two body lines, gap < threshold, texts "a devel-" / "oper of things"
@@ -638,22 +693,40 @@ the treeify scenarios above.
 
 - **Data flow**: pure function; consumes `Line`s from any extractor,
   produces the `Document` consumed by `tree.py` and the CLI.
-- **Edge cases**: empty `lines` → `Document` with no sections;
-  multi-line section/entry headings become sibling sections/entries (v1
-  limitation, accepted); all-bold documents have a bold body style, which
-  disables the entry tier (rule requires body not bold) — every section
-  gets one untitled entry; a bullet marker with no following whitespace
-  (e.g. "-dash-led word") is body text, not a bullet; the 0.5pt style bin
-  absorbs PyMuPDF's sub-point size jitter (10.96 and 11.03 both bin to
-  11.0), and two readings straddling a bin boundary (10.74 vs 10.76) merely
-  split one cluster — harmless, since classification needs only the
+- **Edge cases**: empty `lines` → `Document` with no sections; multi-line
+  section/entry headings become sibling sections/entries (v1 limitation,
+  accepted); **a section's first record is commonly left untitled** —
+  the gap between a section heading and its first entry is ordinarily the
+  same small "next line" spacing as any continuation gap, not a
+  deliberate break, so it does not clear `BREAK_GAP_FACTOR` (a known v1
+  gap: only the second-and-later records in a section reliably get their
+  own titled `Entry`; a future spec may add a positional signal — e.g.
+  "immediately followed by a bullet run" — to close this); a section with
+  multiple gap-separated paragraphs and no bullets between them (rare in
+  practice) over-segments — each such paragraph becomes its own titled
+  `Entry`, with that paragraph's full text as the heading, rather than
+  staying grouped as sibling paragraphs in one entry, since nothing but
+  the gap distinguishes "new paragraph" from "new record" once style is
+  out of the picture (accepted v1 limitation); a
+  bullet marker with no following whitespace (e.g. "-dash-led word") is
+  body text, not a bullet; the 0.5pt style bin absorbs PyMuPDF's
+  sub-point size jitter (10.96 and 11.03 both bin to 11.0), and two
+  readings straddling a bin boundary (10.74 vs 10.76) merely split one
+  cluster — harmless, since section classification needs only the
   ≥ `SECTION_SIZE_DELTA` separation between body and heading sizes, not
-  exact cluster membership.
+  exact cluster membership; a bold, all-caps, or otherwise
+  distinctively-styled resume works the same as a plain one now, since
+  neither section nor entry classification depends on bold.
 - **Strategy**: classification thresholds are module constants — future
-  tuning specs change one number, not logic. Pre-order IDs are assigned
-  bottom-up-safe: allocate counters while walking the grouped structure in
-  document order before freezing dataclasses (implementation may build
-  mutable intermediates; the public output is frozen).
+  tuning specs change one number, not logic. Entry classification and the
+  paragraph continuation/split decision are the same comparison viewed
+  from two sides (lead-in gap below `BREAK_GAP_FACTOR` × median height
+  means "merge/continue", at or above means "this is a new record") — one
+  threshold, not two independent ones, so they cannot disagree. Pre-order
+  IDs are assigned bottom-up-safe: allocate counters while walking the
+  grouped structure in document order before freezing dataclasses
+  (implementation may build mutable intermediates; the public output is
+  frozen).
 - **Tests**: the `test_build_tree_*` scenarios.
 
 ### `src/resume_roast/parsing/tree.py`
