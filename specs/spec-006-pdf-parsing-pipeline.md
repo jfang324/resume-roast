@@ -991,3 +991,41 @@ Available at the user's discretion; findings go to
 Populated after agent completes implementation. Each entry documents
 something the agent got wrong and how it was manually corrected. This serves
 as training signal for future specs.
+
+1. **Entry detection amendment** (commits e8e09a5, d6655f2): after the
+   initial implementation landed, manual review against a real resume (not
+   a synthetic fixture) found two defects the synthetic test suite had not
+   caught, because it only ever exercised inputs matching the original
+   design's assumptions:
+   - `BULLET_MARKERS` was missing "●" (U+25CF), a very common bullet
+     glyph in real documents, and the marker/text boundary check did not
+     tolerate zero-width spaces (Unicode category Cf) that real exports
+     (e.g. Google Docs) routinely insert after a bullet marker and at line
+     ends — together these meant a real resume's bullets were not
+     recognized at all. Fixed in commit 9ad9f7b (already on branch before
+     this amendment): broadened the marker set and made the boundary check
+     tolerant of invisible format characters; added `normalize_text()`
+     (NFKC + Cf-strip) so such characters never leak into extracted text.
+   - The original "bold at body size" entry-heading rule assumed job/entry
+     titles are stylistically distinct from body text. The real resume's
+     job titles were plain, unbolded 11pt text — identical to body — so no
+     entry was ever detected, and worse: a second job's title and dates
+     silently spliced onto the end of the first job's last bullet as if it
+     were a wrapped continuation line (the continuation-merge rule's gap
+     and indentation checks could not tell "new record" from "wrapped
+     line" once nothing else marked the boundary). The user redirected the
+     design: detect entries from the vertical gap preceding a line instead
+     of its style (see the amended Interface/Behavior above), on the
+     reasoning that whitespace is a more reliable signal across templates
+     than any single style attribute. Verified fixed against the same real
+     resume: previously-corrupted job/project boundaries now split
+     correctly with no cross-record bleed anywhere in the tree. Tests
+     updated: `test_build_tree_splits_entries_on_bold_body_size_lines` and
+     `test_build_tree_keeps_single_untitled_entry_when_body_style_is_bold`
+     were replaced by `test_build_tree_starts_new_entry_on_large_gap_without_bold`,
+     `test_build_tree_keeps_first_entry_in_section_untitled`, and
+     `test_build_tree_treats_bold_as_irrelevant_to_entry_detection`;
+     `test_build_tree_splits_paragraphs_on_vertical_gap` was replaced by
+     `test_build_tree_starts_new_entry_instead_of_splitting_paragraph_on_large_gap`
+     to match the new behavior (a large gap now always means "new record",
+     not "new paragraph in the same record").
