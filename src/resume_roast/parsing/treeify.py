@@ -21,9 +21,33 @@ from resume_roast.parsing.models import (
 
 STYLE_SIZE_BIN = 0.5
 SECTION_SIZE_DELTA = 1.0
-PARAGRAPH_GAP_FACTOR = 0.75
+BREAK_GAP_FACTOR = 0.5
 BULLET_X_TOLERANCE = 2.0
-BULLET_MARKERS = ("•", "◦", "▪", "‣", "·", "●", "-", "–", "*")  # noqa: RUF001
+BULLET_MARKERS = (
+    "•",
+    "◦",
+    "▪",
+    "▫",
+    "‣",
+    "·",
+    "∙",
+    "⁃",  # noqa: RUF001
+    "●",
+    "○",
+    "■",
+    "□",
+    "◆",
+    "◇",
+    "▶",
+    "➤",
+    "→",
+    "✓",
+    "✔",
+    "-",
+    "–",  # noqa: RUF001
+    "—",
+    "*",
+)
 
 _StyleKey = tuple[float, bool]
 
@@ -81,17 +105,14 @@ def _split_bullet(text: str) -> tuple[str, str] | None:
     return None
 
 
-def _classify(line: Line, body_size: float, body_bold: bool) -> tuple[str, tuple[str, str] | None]:
-    split = _split_bullet(line.text)
-    if split is not None:
-        return "bullet", split
+def _is_section_heading(line: Line, body_size: float) -> bool:
+    return _style_key(line.style)[0] >= body_size + SECTION_SIZE_DELTA
 
-    size_bin = _style_key(line.style)[0]
-    if size_bin >= body_size + SECTION_SIZE_DELTA:
-        return "section", None
-    if line.style.bold and not body_bold and size_bin >= body_size:
-        return "entry", None
-    return "body", None
+
+def _is_entry_heading(line: Line, prev_line: Line | None, break_threshold: float) -> bool:
+    if prev_line is None or prev_line.page != line.page:
+        return False
+    return (line.bbox.y0 - prev_line.bbox.y1) >= break_threshold
 
 
 def _join_text(prev: str, nxt: str) -> str:
@@ -114,11 +135,11 @@ def _union_bbox(a: BBox, b: BBox) -> BBox:
     )
 
 
-def _try_merge(block: _MutableBlock, line: Line, median_height: float) -> bool:
+def _try_merge(block: _MutableBlock, line: Line, break_threshold: float) -> bool:
     if block.page != line.page:
         return False
     gap = line.bbox.y0 - block.last_bbox.y1
-    if gap >= PARAGRAPH_GAP_FACTOR * median_height:
+    if gap >= break_threshold:
         return False
     if block.kind == "bullet" and line.bbox.x0 < block.bullet_x0 - BULLET_X_TOLERANCE:
         return False
@@ -204,29 +225,33 @@ def build_tree(lines: Sequence[Line], *, source: str, page_count: int) -> Docume
         if _style_key(line.style) == (body_size, body_bold)
     ]
     median_height = statistics.median(body_heights)
+    break_threshold = BREAK_GAP_FACTOR * median_height
 
     sections: list[_MutableSection] = []
     cur_section: _MutableSection | None = None
     cur_entry: _MutableEntry | None = None
     cur_block: _MutableBlock | None = None
+    prev_line: Line | None = None
 
     for line in lines:
-        kind, split = _classify(line, body_size, body_bold)
+        split = _split_bullet(line.text)
 
-        if kind == "section":
+        if split is None and _is_section_heading(line, body_size):
             cur_section = _MutableSection(line.text, line.style, line.bbox, line.page)
             sections.append(cur_section)
             cur_entry = None
             cur_block = None
+            prev_line = line
             continue
 
-        if kind == "entry":
+        if split is None and _is_entry_heading(line, prev_line, break_threshold):
             if cur_section is None:
                 cur_section = _MutableSection(None, None, None, None)
                 sections.append(cur_section)
             cur_entry = _MutableEntry(line.text, line.style, line.bbox, line.page)
             cur_section.entries.append(cur_entry)
             cur_block = None
+            prev_line = line
             continue
 
         if cur_section is None:
@@ -251,9 +276,11 @@ def build_tree(lines: Sequence[Line], *, source: str, page_count: int) -> Docume
             )
             cur_entry.blocks.append(block)
             cur_block = block
+            prev_line = line
             continue
 
-        if cur_block is not None and _try_merge(cur_block, line, median_height):
+        if cur_block is not None and _try_merge(cur_block, line, break_threshold):
+            prev_line = line
             continue
 
         block = _MutableBlock(
@@ -269,5 +296,6 @@ def build_tree(lines: Sequence[Line], *, source: str, page_count: int) -> Docume
         )
         cur_entry.blocks.append(block)
         cur_block = block
+        prev_line = line
 
     return _freeze(sections, source, page_count)

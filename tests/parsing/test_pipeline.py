@@ -22,15 +22,22 @@ def test_parse_resume_returns_document_for_single_column_pdf(
     assert doc.source == "resume.pdf"
     assert doc.page_count == 1
     assert [s.heading for s in doc.sections] == ["Jordan Diaz", "EXPERIENCE"]
-    entry = doc.sections[1].entries[0]
-    assert entry.heading == "Software Engineer - Acme Corp"
-    bullets = [b for b in entry.blocks if isinstance(b, Bullet)]
-    assert len(bullets) == len(entry.blocks)
+    entries = doc.sections[1].entries
+
+    first_entry = entries[0]
+    assert first_entry.heading is None
+    assert first_entry.blocks[0].text == "Software Engineer - Acme Corp"
+    bullets = [b for b in first_entry.blocks if isinstance(b, Bullet)]
     assert [b.marker for b in bullets] == ["-", "-"]
     assert [b.text for b in bullets] == [
         "Shipped the roasting pipeline",
         "Cut parse latency by 40%",
     ]
+
+    second_entry = entries[1]
+    assert second_entry.heading == "Senior Engineer - Beta Corp"
+    second_bullets = [b for b in second_entry.blocks if isinstance(b, Bullet)]
+    assert [b.text for b in second_bullets] == ["Mentored two junior engineers"]
 
 
 @pytest.mark.parametrize("name", ["resume.docx", "resume"], ids=["docx", "no-suffix"])
@@ -53,7 +60,7 @@ class _StubExtractor:
         body = Line(
             text="Stub body line here.",
             style=Style(font="Helvetica", size=11.0, bold=False, italic=False),
-            bbox=BBox(x0=72.0, y0=128.0, x1=250.0, y1=140.0),
+            bbox=BBox(x0=72.0, y0=120.0, x1=250.0, y1=132.0),
             page=1,
         )
         return Extraction(lines=(heading, body), page_count=1)

@@ -50,8 +50,8 @@ def doc(make_line: LineFactory) -> Document:
     """
     lines = [
         make_line("SECTION A", size=14.0, bold=True, y0=100.0, y1=116.0),
-        make_line("Body under A.", y0=128.0, y1=140.0),
+        make_line("Body under A.", y0=120.0, y1=132.0),
         make_line("SECTION B", size=14.0, bold=True, y0=160.0, y1=176.0),
-        make_line("Body under B.", y0=188.0, y1=200.0),
+        make_line("Body under B.", y0=180.0, y1=192.0),
     ]
     return build_tree(lines, source="resume.pdf", page_count=1)

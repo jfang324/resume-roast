@@ -26,9 +26,12 @@ def test_evaluate_renders_node_tree(canonical_resume_pdf: Path) -> None:
         "    n3 [entry] (untitled)\n"
         "      n4 [paragraph] jordan@example.com | 555-0100 (p1)\n"
         "  n5 [section] EXPERIENCE (p1)\n"
-        "    n6 [entry] Software Engineer - Acme Corp (p1)\n"
-        "      n7 [bullet] Shipped the roasting pipeline (p1)\n"
-        "      n8 [bullet] Cut parse latency by 40% (p1)\n"
+        "    n6 [entry] (untitled)\n"
+        "      n7 [paragraph] Software Engineer - Acme Corp (p1)\n"
+        "      n8 [bullet] Shipped the roasting pipeline (p1)\n"
+        "      n9 [bullet] Cut parse latency by 40% (p1)\n"
+        "    n10 [entry] Senior Engineer - Beta Corp (p1)\n"
+        "      n11 [bullet] Mentored two junior engineers (p1)\n"
     )
 
 

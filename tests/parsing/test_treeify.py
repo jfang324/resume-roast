@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 import pytest
 
-from resume_roast.parsing import BBox, Bullet, Document, Line, Paragraph
+from resume_roast.parsing import BBox, Bullet, Line, Paragraph
 from resume_roast.parsing.treeify import BULLET_MARKERS, build_tree
 
 LineFactory = Callable[..., Line]
@@ -18,9 +18,9 @@ def test_build_tree_promotes_larger_font_lines_to_section_headings(
 ) -> None:
     lines = [
         make_line("Jordan Diaz", size=22.0, y0=60.0, y1=88.0),
-        make_line("jordan@example.com", y0=100.0, y1=112.0),
+        make_line("jordan@example.com", y0=92.0, y1=104.0),
         make_line("EXPERIENCE", size=14.0, bold=True, y0=150.0, y1=166.0),
-        make_line("Built a parser", y0=178.0, y1=190.0),
+        make_line("Built a parser", y0=170.0, y1=182.0),
     ]
 
     doc = build_tree(lines, source=SOURCE, page_count=1)
@@ -35,7 +35,7 @@ def test_build_tree_puts_leading_body_text_in_untitled_section(make_line: LineFa
     lines = [
         make_line("Objective: build great software.", y0=100.0, y1=112.0),
         make_line("EXPERIENCE", size=14.0, bold=True, y0=150.0, y1=166.0),
-        make_line("Built a parser", y0=178.0, y1=190.0),
+        make_line("Built a parser", y0=170.0, y1=182.0),
     ]
 
     doc = build_tree(lines, source=SOURCE, page_count=1)
@@ -44,40 +44,53 @@ def test_build_tree_puts_leading_body_text_in_untitled_section(make_line: LineFa
     assert doc.sections[0].entries[0].blocks[0].text == "Objective: build great software."
 
 
-def test_build_tree_splits_entries_on_bold_body_size_lines(make_line: LineFactory) -> None:
+def test_build_tree_starts_new_entry_on_large_gap_without_bold(make_line: LineFactory) -> None:
     lines = [
-        make_line("EXPERIENCE", size=14.0, bold=True, y0=100.0, y1=116.0),
-        make_line("Worked at a company for years.", y0=128.0, y1=140.0),
-        make_line("Engineer -- Acme Corp", bold=True, y0=152.0, y1=164.0),
-        make_line("- Shipped it", y0=176.0, y1=188.0),
-        make_line("- Cut latency", y0=200.0, y1=212.0),
+        make_line("EXPERIENCE", size=14.0, y0=100.0, y1=116.0),
+        make_line("Engineer -- Acme", y0=120.0, y1=132.0),
+        make_line("- Shipped it", y0=136.0, y1=148.0),
+        make_line("Engineer -- Beta", y0=200.0, y1=212.0),
     ]
 
     doc = build_tree(lines, source=SOURCE, page_count=1)
 
     section = doc.sections[0]
     assert section.entries[0].heading is None
-    assert section.entries[0].blocks[0].text == "Worked at a company for years."
-    assert section.entries[1].heading == "Engineer -- Acme Corp"
-    assert [b.text for b in section.entries[1].blocks] == ["Shipped it", "Cut latency"]
+    assert section.entries[0].blocks[0].text == "Engineer -- Acme"
+    assert section.entries[0].blocks[1].text == "Shipped it"
+    assert section.entries[1].heading == "Engineer -- Beta"
+    assert section.entries[1].blocks == ()
 
 
-def test_build_tree_keeps_single_untitled_entry_when_body_style_is_bold(
-    make_line: LineFactory,
-) -> None:
+def test_build_tree_keeps_first_entry_in_section_untitled(make_line: LineFactory) -> None:
     lines = [
-        make_line("SECTION ONE", size=14.0, bold=True, y0=100.0, y1=116.0),
-        make_line("First body text here.", bold=True, y0=128.0, y1=140.0),
-        make_line("SECTION TWO", size=14.0, bold=True, y0=160.0, y1=176.0),
-        make_line("Second body text here.", bold=True, y0=188.0, y1=200.0),
+        make_line("EXPERIENCE", size=14.0, y0=100.0, y1=116.0),
+        make_line("Some body text right after the heading.", y0=120.0, y1=132.0),
     ]
 
     doc = build_tree(lines, source=SOURCE, page_count=1)
 
-    assert len(doc.sections) == 2
-    for section in doc.sections:
-        assert len(section.entries) == 1
-        assert section.entries[0].heading is None
+    entry = doc.sections[0].entries[0]
+    assert entry.heading is None
+    assert entry.blocks[0].text == "Some body text right after the heading."
+
+
+def test_build_tree_treats_bold_as_irrelevant_to_entry_detection(make_line: LineFactory) -> None:
+    lines = [
+        make_line("EXPERIENCE", size=14.0, bold=True, y0=100.0, y1=116.0),
+        make_line("Engineer -- Acme", bold=True, y0=120.0, y1=132.0),
+        make_line("- Shipped it", bold=True, y0=136.0, y1=148.0),
+        make_line("Engineer -- Beta", bold=True, y0=200.0, y1=212.0),
+    ]
+
+    doc = build_tree(lines, source=SOURCE, page_count=1)
+
+    section = doc.sections[0]
+    assert section.entries[0].heading is None
+    assert section.entries[0].blocks[0].text == "Engineer -- Acme"
+    assert section.entries[0].blocks[1].text == "Shipped it"
+    assert section.entries[1].heading == "Engineer -- Beta"
+    assert section.entries[1].blocks == ()
 
 
 @pytest.mark.parametrize("marker", BULLET_MARKERS)
@@ -142,7 +155,9 @@ def test_build_tree_merges_adjacent_body_lines_and_dehyphenates(
     assert block.text == expected
 
 
-def test_build_tree_splits_paragraphs_on_vertical_gap(make_line: LineFactory) -> None:
+def test_build_tree_starts_new_entry_instead_of_splitting_paragraph_on_large_gap(
+    make_line: LineFactory,
+) -> None:
     lines = [
         make_line("First paragraph line.", y0=100.0, y1=112.0),
         make_line("Second paragraph line.", y0=140.0, y1=152.0),
@@ -150,12 +165,23 @@ def test_build_tree_splits_paragraphs_on_vertical_gap(make_line: LineFactory) ->
 
     doc = build_tree(lines, source=SOURCE, page_count=1)
 
-    blocks = doc.sections[0].entries[0].blocks
-    assert [b.text for b in blocks] == ["First paragraph line.", "Second paragraph line."]
-    assert all(isinstance(b, Paragraph) for b in blocks)
+    entries = doc.sections[0].entries
+    assert entries[0].heading is None
+    assert entries[0].blocks[0].text == "First paragraph line."
+    assert entries[1].heading == "Second paragraph line."
+    assert entries[1].blocks == ()
 
 
-def test_build_tree_assigns_preorder_node_ids(doc: Document) -> None:
+def test_build_tree_assigns_preorder_node_ids(make_line: LineFactory) -> None:
+    lines = [
+        make_line("SECTION A", size=14.0, bold=True, y0=100.0, y1=116.0),
+        make_line("Body under A.", y0=120.0, y1=132.0),
+        make_line("SECTION B", size=14.0, bold=True, y0=160.0, y1=176.0),
+        make_line("Body under B.", y0=180.0, y1=192.0),
+    ]
+
+    doc = build_tree(lines, source=SOURCE, page_count=1)
+
     assert doc.id == "n1"
     assert doc.sections[0].id == "n2"
     assert doc.sections[0].entries[0].id == "n3"
@@ -169,8 +195,8 @@ def test_build_tree_records_style_and_provenance_on_nodes(make_line: LineFactory
     heading = make_line(
         "EXPERIENCE", size=14.0, bold=True, x0=72.0, x1=180.0, y0=100.0, y1=116.0, page=2
     )
-    first = make_line("Shipped the parser", x0=90.0, x1=200.0, y0=128.0, y1=140.0, page=2)
-    second = make_line("with better latency", x0=72.0, x1=250.0, y0=142.0, y1=154.0, page=2)
+    first = make_line("Shipped the parser", x0=90.0, x1=200.0, y0=120.0, y1=132.0, page=2)
+    second = make_line("with better latency", x0=72.0, x1=250.0, y0=134.0, y1=146.0, page=2)
     lines = [heading, first, second]
 
     doc = build_tree(lines, source=SOURCE, page_count=2)
@@ -182,7 +208,7 @@ def test_build_tree_records_style_and_provenance_on_nodes(make_line: LineFactory
 
     block = section.entries[0].blocks[0]
     assert block.style == first.style
-    assert block.bbox == BBox(x0=72.0, y0=128.0, x1=250.0, y1=154.0)
+    assert block.bbox == BBox(x0=72.0, y0=120.0, x1=250.0, y1=146.0)
     assert block.page == 2
 
 

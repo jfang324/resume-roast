@@ -97,17 +97,22 @@ def two_column_pdf(make_pdf: PdfFactory) -> Path:
 def canonical_resume_pdf(make_pdf: PdfFactory) -> Path:
     """Build the canonical fixture resume shared by parsing and CLI tests.
 
-    One page: a 22pt name, an 11pt contact line, a 14pt-bold section heading,
-    an 11pt-bold entry heading, and two ASCII "- " bullets.
+    One page: a 22pt name, an 11pt contact line, a 14pt section heading, and
+    two entries -- the first stays untitled (small gap right after the
+    section heading, per the documented v1 limitation), the second is
+    preceded by a large gap and gets its own titled Entry -- demonstrating
+    gap-based entry detection with no bold text anywhere.
     """
     return make_pdf(
         [
             ("Jordan Diaz", 72, 60, 22, "hebo"),
-            ("jordan@example.com | 555-0100", 72, 100, 11, "helv"),
-            ("EXPERIENCE", 72, 150, 14, "hebo"),
-            ("Software Engineer - Acme Corp", 72, 180, 11, "hebo"),
-            ("- Shipped the roasting pipeline", 72, 205, 11, "helv"),
-            ("- Cut parse latency by 40%", 72, 225, 11, "helv"),
+            ("jordan@example.com | 555-0100", 72, 82, 11, "helv"),
+            ("EXPERIENCE", 72, 130, 14, "hebo"),
+            ("Software Engineer - Acme Corp", 72, 150, 11, "helv"),
+            ("- Shipped the roasting pipeline", 72, 175, 11, "helv"),
+            ("- Cut parse latency by 40%", 72, 195, 11, "helv"),
+            ("Senior Engineer - Beta Corp", 72, 230, 11, "helv"),
+            ("- Mentored two junior engineers", 72, 255, 11, "helv"),
         ],
         filename="resume.pdf",
     )
