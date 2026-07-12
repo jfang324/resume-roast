@@ -1,10 +1,12 @@
 """`evaluate` command: bare handler function, wired by the registry."""
 
+import random
 import time
 from pathlib import Path
 
 import typer
 
+from resume_roast.cli.utils import spinner
 from resume_roast.integrations.nvidia.client import NvidiaClient
 from resume_roast.integrations.nvidia.errors import AuthenticationError
 from resume_roast.integrations.nvidia.pricing import estimate_cost
@@ -16,6 +18,17 @@ from resume_roast.prompts.evaluate import build_evaluate_prompt
 from resume_roast.prompts.types import Prompt
 from resume_roast.utils.extraction.pdf_parser import PdfParser
 
+_SPINNER_MESSAGES = (
+    "Roasting your resume...",
+    "Summoning the resume wizard...",
+    "Counting the buzzwords...",
+    "Judging your font choices...",
+    "Consulting the hiring gods...",
+    "Searching for measurable impact...",
+    "Composing something devastating...",
+)
+"""Rotated through while the model thinks; placeholder fun until real copy lands."""
+
 
 def evaluate(path: Path) -> None:
     """Roast a PDF resume with the configured model, streaming the response."""
@@ -26,8 +39,16 @@ def evaluate(path: Path) -> None:
 
     client = NvidiaClient(api_key=api_key, model=settings.model)
     started = time.perf_counter()
-    stream = client.prompt_stream(_to_messages(prompt))
-    for chunk in stream:
+    # The request plus a thinking model's silent reasoning can run tens of
+    # seconds before anything streams; keep a spinner up until the first chunk.
+    shuffled = random.sample(_SPINNER_MESSAGES, len(_SPINNER_MESSAGES))
+    with spinner(*shuffled):
+        stream = client.prompt_stream(_to_messages(prompt))
+        chunks = iter(stream)
+        first = next(chunks, None)
+    if first is not None:
+        typer.echo(first, nl=False)
+    for chunk in chunks:
         typer.echo(chunk, nl=False)
     typer.echo()
     latency_seconds = time.perf_counter() - started
