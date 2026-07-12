@@ -50,6 +50,16 @@ class Store[T](ABC):
             # Parsers operate on dicts and don't know the file; add it here.
             raise InvalidSchemaError(f"{self.path}: {exc}") from exc
 
+    def load_or_create(self) -> T:
+        """Like `load()`, but first materialize `default()` on disk when the
+        backing file doesn't exist yet.
+        """
+        if self.path.exists():
+            return self.load()
+        value = self.default()
+        self.save(value)
+        return value
+
     def save(self, value: T) -> None:
         """Serialize and atomically write `value` to the backing file."""
         self._write_json(self._parser.serialize(value))
