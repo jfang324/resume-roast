@@ -17,7 +17,7 @@ from resume_roast.integrations.nvidia.utils import map_error, to_openai_messages
 from resume_roast.integrations.types import Completion, Message, Usage
 
 
-class CompletionStream:
+class NvidiaCompletionStream:
     """Iterable of response text chunks.
 
     ``usage`` and ``finish_reason`` hold None until the stream is exhausted,
@@ -107,7 +107,7 @@ class NvidiaClient:
 
     def prompt_stream(
         self, messages: Sequence[Message], *, temperature: float = 0.0
-    ) -> CompletionStream:
+    ) -> NvidiaCompletionStream:
         """Send `messages` and return a stream of response text chunks.
 
         Raises:
@@ -126,4 +126,4 @@ class NvidiaClient:
             )
         except openai.OpenAIError as exc:
             raise map_error(exc) from exc
-        return CompletionStream(stream)
+        return NvidiaCompletionStream(stream)
