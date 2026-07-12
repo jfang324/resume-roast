@@ -52,6 +52,16 @@ def test_system_forbids_fabricated_rewrites(prompt: Prompt) -> None:
     assert "never invent metrics, technologies, or claims" in unwrapped
 
 
+def test_system_calibrates_document_statistics(prompt: Prompt) -> None:
+    unwrapped = " ".join(prompt.system.split())
+    assert "400-700 words" in unwrapped
+
+
+def test_system_covers_chronology(prompt: Prompt) -> None:
+    unwrapped = " ".join(prompt.system.split())
+    assert "employment gaps" in unwrapped
+
+
 def test_resume_goes_delimited_into_user_not_system(prompt: Prompt) -> None:
     assert prompt.user is not None
     assert f"<resume>\n{_MARKDOWN}\n</resume>" in prompt.user
