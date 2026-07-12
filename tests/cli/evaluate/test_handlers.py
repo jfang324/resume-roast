@@ -14,7 +14,13 @@ from resume_roast.cli.registry import build_subcommand_registry
 app = build_subcommand_registry()
 runner = CliRunner()
 
-_LINK_URI = "https://github.com/janedoe"
+
+@pytest.fixture(autouse=True)
+def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Path:
+    monkeypatch.setattr("resume_roast.cli.evaluate.handlers.storage_dir", lambda: tmp_path)
+    return tmp_path
 
 
 @pytest.fixture
@@ -24,27 +30,29 @@ def sample_pdf(tmp_path: Path) -> Path:
         page = doc.new_page()
         page.insert_text((72, 80), "Jane Doe", fontsize=20)
         page.insert_text((72, 120), "Roasted resumes at Acme Corp", fontsize=11)
-        page.insert_link(
-            {
-                "kind": pymupdf.LINK_URI,
-                "from": pymupdf.Rect(72, 200, 200, 215),
-                "uri": _LINK_URI,
-            }
-        )
         doc.save(path)
     return path
 
 
-def test_evaluate_prints_markdown_and_metadata(sample_pdf: Path) -> None:
+def test_evaluate_prints_system_and_user_prompt(sample_pdf: Path) -> None:
     result = runner.invoke(app, ["evaluate", str(sample_pdf)])
 
     assert result.exit_code == 0
-    assert "Jane Doe" in result.output
-    assert "Roasted resumes at Acme Corp" in result.output
-    assert "Pages: 1" in result.output
-    assert f"Links: {_LINK_URI}" in result.output
-    assert "Creator: (not set)" in result.output
-    assert "words" in result.output
+    assert "=== system ===" in result.output
+    assert "=== user ===" in result.output
+    # Default settings select the recruiter persona and intern level.
+    assert "## Persona: Recruiter" in result.output
+    assert "Internship candidate" in result.output
+
+
+def test_evaluate_embeds_resume_and_statistics_in_user_prompt(sample_pdf: Path) -> None:
+    result = runner.invoke(app, ["evaluate", str(sample_pdf)])
+
+    assert result.exit_code == 0
+    user_section = result.output.split("=== user ===")[1]
+    assert "<resume>" in user_section
+    assert "Jane Doe" in user_section
+    assert "- Pages: 1" in user_section
 
 
 def test_evaluate_reports_unreadable_file(tmp_path: Path) -> None:
