@@ -2,15 +2,21 @@
 
 import typer
 
-from resume_roast.cli.config.handlers import credentials, settings
+from resume_roast.cli.config import handlers as config
 from resume_roast.cli.guards import guarded
+from resume_roast.cli.show import handlers as show
 from resume_roast.cli.types import Group
 
 SUBCOMMAND_GROUPS: tuple[Group, ...] = (
     Group(
         name="config",
         help="Manage settings and credentials.",
-        handlers=(credentials, settings),
+        handlers=(config.credentials, config.settings),
+    ),
+    Group(
+        name="show",
+        help="Display saved settings and credentials.",
+        handlers=(show.credentials, show.settings),
     ),
 )
 
