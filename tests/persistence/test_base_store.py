@@ -48,6 +48,19 @@ def test_load_returns_default_when_file_missing(tmp_path: Path) -> None:
     assert store.load() == _Widget()
 
 
+def test_load_or_create_writes_default_when_file_missing(tmp_path: Path) -> None:
+    store = _WidgetStore(tmp_path)
+    assert store.load_or_create() == _Widget()
+    assert store.load() == _Widget()
+    assert store.path.exists()
+
+
+def test_load_or_create_keeps_existing_file(tmp_path: Path) -> None:
+    store = _WidgetStore(tmp_path)
+    store.save(_Widget(name="gadget"))
+    assert store.load_or_create() == _Widget(name="gadget")
+
+
 def test_save_then_load_roundtrips(tmp_path: Path) -> None:
     store = _WidgetStore(tmp_path)
     store.save(_Widget(name="gadget"))
