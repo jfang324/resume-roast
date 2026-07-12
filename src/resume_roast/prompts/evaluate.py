@@ -1,8 +1,10 @@
 """Builds the evaluate feature's roast prompt from a parsed resume."""
 
-from resume_roast.prompts.advice import BULLET_PRINCIPLES, RESUME_STRUCTURE, SCORE_BANDS
+from resume_roast.prompts.bullets import BULLET_PRINCIPLES
 from resume_roast.prompts.levels import LEVEL_CONTEXT
 from resume_roast.prompts.personas import PERSONA_PROMPTS
+from resume_roast.prompts.scoring import SCORE_BANDS
+from resume_roast.prompts.structure import RESUME_STRUCTURE
 from resume_roast.prompts.types import Prompt
 from resume_roast.utils.extraction.stats import average_ink_coverage, average_words_per_page
 from resume_roast.utils.extraction.types import DocumentMetadata, ParsedResume
