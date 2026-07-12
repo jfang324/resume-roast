@@ -13,8 +13,6 @@ Score each category and the overall assessment on a 1-10 scale using these bands
 BULLET_PRINCIPLES = """\
 ## Bullet Writing Principles
 
-Writing principles for resume bullet points:
-
 - Every bullet must describe an accomplishment, not a routine task or job description — the resume is not the job description
 - One sentence per bullet, at most two lines
 - Quantify with specific numbers, percentages, or metrics, placed early in the bullet
