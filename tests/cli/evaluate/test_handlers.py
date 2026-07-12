@@ -107,6 +107,17 @@ def test_evaluate_streams_the_roast(sample_pdf: Path) -> None:
 
 
 @pytest.mark.usefixtures("saved_key")
+def test_evaluate_survives_an_empty_stream(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(_FakeClient, "chunks", [])
+
+    result = runner.invoke(app, ["evaluate", str(sample_pdf)])
+
+    assert result.exit_code == 0
+
+
+@pytest.mark.usefixtures("saved_key")
 def test_evaluate_sends_system_and_user_messages(sample_pdf: Path) -> None:
     runner.invoke(app, ["evaluate", str(sample_pdf)])
 
