@@ -38,7 +38,10 @@ findings grounded in text quoted from the resume.
 ## Suggestions
 The highest-impact improvements, most important first. Each suggestion must
 quote the actual resume text it targets and show a concrete rewrite — no
-generic advice."""
+generic advice. Rewrites may only tighten wording and structure using facts
+already in the resume: never invent metrics, technologies, or claims. Where
+a quantified result is missing, use a placeholder like "[X]%" for the
+candidate to fill in."""
 
 
 def build_evaluate_prompt(parsed: ParsedResume, persona: str, level: str) -> Prompt:

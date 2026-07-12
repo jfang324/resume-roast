@@ -47,6 +47,10 @@ def test_system_contains_rubric_and_format_sections(prompt: Prompt) -> None:
         assert heading in prompt.system
 
 
+def test_system_forbids_fabricated_rewrites(prompt: Prompt) -> None:
+    assert "never invent metrics, technologies, or claims" in prompt.system
+
+
 def test_resume_goes_delimited_into_user_not_system(prompt: Prompt) -> None:
     assert prompt.user is not None
     assert f"<resume>\n{_MARKDOWN}\n</resume>" in prompt.user
