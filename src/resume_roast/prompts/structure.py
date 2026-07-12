@@ -18,7 +18,7 @@ Skills section:
 
 Education:
 - Graduation date only (no date ranges), reverse chronological, no high school
-- GPA only if 3.75+, two decimals; drop it after the first full-time job
+- GPA: include it when it helps — 3.75+ clearly earns its place, the mid-3s are a judgment call, below 3.0 leave it off; two decimals; drop it after the first full-time job
 - Omit coursework unless truly specialized
 
 Chronology:

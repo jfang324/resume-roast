@@ -16,9 +16,6 @@ BULLET_PRINCIPLES = """\
 - No trailing period on bullet points
 
 Example transformations:
-Bad: "Responsible for managing the company blog and social media accounts."
-Good: "Grew organic blog traffic from 12K to 85K monthly visitors in 10 months by implementing a pillar-cluster content strategy"
-
 Bad: "Worked on a team to improve website performance using various tools."
 Good: "Designed and implemented a Redis caching layer, reducing API response times from 450ms to 80ms and cutting server costs by 25%"
 
