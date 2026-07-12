@@ -5,6 +5,7 @@ from pathlib import Path
 import typer
 
 from resume_roast.cli.config.logic import InvalidSelectionError, parse_selection
+from resume_roast.cli.utils import display_value
 from resume_roast.persistence.credentials.types import CREDENTIAL_SPECS, Credentials, mask_secret
 from resume_roast.persistence.settings.types import SETTING_SPECS, Settings
 
@@ -39,7 +40,7 @@ def prompt_for_selections(existing: Settings) -> dict[str, str | tuple[str, ...]
         for number, choice in enumerate(spec.choices, start=1):
             typer.echo(f"  {number}. {choice}")
         hint = "Selection(s), comma-separated" if spec.many else "Selection"
-        current = _display(getattr(existing, spec.field))
+        current = display_value(getattr(existing, spec.field))
         while True:
             entry = typer.prompt(
                 _with_current(hint, current), default="", show_default=False
@@ -57,15 +58,10 @@ def prompt_for_selections(existing: Settings) -> dict[str, str | tuple[str, ...]
 def confirm_settings(saved: Settings, path: Path) -> None:
     """Echo each setting's saved value."""
     for spec in SETTING_SPECS:
-        typer.echo(f"{spec.label}: {_display(getattr(saved, spec.field))}")
+        typer.echo(f"{spec.label}: {display_value(getattr(saved, spec.field))}")
     typer.echo(f"Saved to {path}")
 
 
 def _with_current(prefix: str, current: str) -> str:
     """Format a prompt as ``<prefix> [current: <value>]``."""
     return f"{prefix} [current: {current}]"
-
-
-def _display(value: str | tuple[str, ...]) -> str:
-    """Render a setting value for prompts and confirmations."""
-    return ", ".join(value) if isinstance(value, tuple) else value
