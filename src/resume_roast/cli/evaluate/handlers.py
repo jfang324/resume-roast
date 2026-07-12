@@ -4,34 +4,22 @@ from pathlib import Path
 
 import typer
 
-from resume_roast.cli.utils import NOT_SET
+from resume_roast.persistence.paths import storage_dir
+from resume_roast.persistence.settings.store import SettingsStore
+from resume_roast.prompts.evaluate import build_evaluate_prompt
 from resume_roast.utils.extraction.pdf_parser import PdfParser
-from resume_roast.utils.extraction.types import DocumentMetadata
 
 
 def evaluate(path: Path) -> None:
-    """Print a PDF's extracted Markdown and metadata.
+    """Print the roast prompt built from a PDF resume.
 
-    For now this only shows extraction output; the roast pipeline will
-    take over this command later.
+    Temporary output: shows exactly what the model will receive, until the
+    LLM integration lands and this command sends the prompt instead.
     """
-    result = PdfParser().parse(path)
-    typer.echo(result.markdown)
-    typer.echo("--- metadata ---")
-    _echo_metadata(result.metadata)
-
-
-def _echo_metadata(metadata: DocumentMetadata) -> None:
-    """Render every extracted document- and page-level fact, one per line."""
-    typer.echo(f"Pages: {metadata.page_count}")
-    typer.echo(f"Creator: {metadata.creator or NOT_SET}")
-    typer.echo(f"Producer: {metadata.producer or NOT_SET}")
-    typer.echo(f"Created: {metadata.created or NOT_SET}")
-    typer.echo(f"Modified: {metadata.modified or NOT_SET}")
-    typer.echo(f"Links: {', '.join(metadata.links) if metadata.links else NOT_SET}")
-    for number, page in enumerate(metadata.pages, start=1):
-        typer.echo(
-            f"Page {number}: {page.width:g}x{page.height:g} pt, "
-            f"{page.word_count} words, {len(page.text_blocks)} text blocks, "
-            f"{page.image_count} images"
-        )
+    settings = SettingsStore(storage_dir()).load_or_create()
+    parsed = PdfParser().parse(path)
+    prompt = build_evaluate_prompt(parsed, persona=settings.persona, level=settings.level)
+    typer.echo("=== system ===")
+    typer.echo(prompt.system)
+    typer.echo("=== user ===")
+    typer.echo(prompt.user)
