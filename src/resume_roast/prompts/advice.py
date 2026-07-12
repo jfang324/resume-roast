@@ -56,6 +56,11 @@ Education:
 - GPA only if 3.75+, two decimals; drop it after the first full-time job
 - Omit coursework unless truly specialized
 
+Chronology:
+- Verify the timeline adds up: degree dates against job dates, no unexplained overlaps
+- Note employment gaps as worth an explanation, not as automatic penalties
+- Several stints under a year each is a pattern worth flagging; a single short stint is not
+
 Contact and conventions:
 - Plain-text URLs (github.com/username), not masked links; GitHub/portfolio links only if they have real content
 - No physical address
