@@ -15,7 +15,7 @@ from resume_roast.integrations.types import Message, Usage
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.paths import storage_dir
 from resume_roast.persistence.settings.store import SettingsStore
-from resume_roast.prompts.evaluate import build_evaluate_prompt
+from resume_roast.prompts.evaluate.builder import build_evaluate_prompt
 from resume_roast.prompts.types import Prompt
 from resume_roast.utils.extraction.pdf_parser import PdfParser
 
