@@ -62,6 +62,43 @@ def test_system_covers_chronology(prompt: Prompt) -> None:
     assert "employment gaps" in unwrapped
 
 
+def test_system_puts_competence_above_categories(prompt: Prompt) -> None:
+    unwrapped = " ".join(prompt.system.split())
+    assert "convey competence" in unwrapped
+    assert "never an average of category scores" in unwrapped
+    assert "Categories are not equally weighted" in unwrapped
+
+
+def test_system_frames_guidance_as_judgment_not_checklist(prompt: Prompt) -> None:
+    unwrapped = " ".join(prompt.system.split())
+    assert "not a checklist" in unwrapped
+    assert "rules of thumb" in unwrapped
+
+
+def test_system_locks_output_to_markdown(prompt: Prompt) -> None:
+    unwrapped = " ".join(prompt.system.split())
+    assert "never JSON" in unwrapped
+    assert "a 100-point scale is never used" in unwrapped
+    for heading in (
+        "## Formatting — <n>/10",
+        "## Content — <n>/10",
+        "## Skills — <n>/10",
+        "## Experience — <n>/10",
+        "## Education — <n>/10",
+        "## Suggestions",
+    ):
+        assert heading in prompt.system
+
+
+def test_user_message_closes_with_the_output_contract(prompt: Prompt) -> None:
+    assert prompt.user is not None
+    unwrapped = " ".join(prompt.user.split())
+    assert unwrapped.endswith("Every score is an integer out of 10 — never out of 100.")
+    assert "the first line of your response is `## Overall Assessment`" in unwrapped
+    # The task restatement comes after the resume and statistics, not before.
+    assert prompt.user.index("<resume>") < prompt.user.index("Follow the Output Format skeleton")
+
+
 def test_resume_goes_delimited_into_user_not_system(prompt: Prompt) -> None:
     assert prompt.user is not None
     assert f"<resume>\n{_MARKDOWN}\n</resume>" in prompt.user
