@@ -161,17 +161,9 @@ class TestPrompt:
         assert kwargs["temperature"] == 0.0
         assert kwargs["max_tokens"] == 8192
         assert kwargs["stream"] is False
-        assert kwargs["extra_body"] == {"chat_template_kwargs": {"thinking": False}}
-
-    def test_thinking_opt_in(self, client: NvidiaClient, stub_sdk: _StubOpenAI) -> None:
-        stub_sdk.chat.completions.result = _FakeResponse(
-            choices=[_FakeChoice(message=_FakeMessage(content="ok"))]
-        )
-
-        client.prompt(_MESSAGES, thinking=True)
-
-        kwargs = stub_sdk.chat.completions.kwargs
-        assert kwargs["extra_body"] == {"chat_template_kwargs": {"thinking": True}}
+        # No extra_body: chat_template_kwargs are model-specific (Mistral
+        # rejects them with a 400), and this client stays model-agnostic.
+        assert "extra_body" not in kwargs
 
     def test_missing_usage_maps_to_none(self, client: NvidiaClient, stub_sdk: _StubOpenAI) -> None:
         stub_sdk.chat.completions.result = _FakeResponse(
@@ -269,7 +261,7 @@ class TestPromptStream:
         assert kwargs["stream"] is True
         assert kwargs["stream_options"] == {"include_usage": True}
         assert kwargs["max_tokens"] == 8192
-        assert kwargs["extra_body"] == {"chat_template_kwargs": {"thinking": False}}
+        assert "extra_body" not in kwargs
 
     def test_truncation_is_reported_not_raised(
         self, client: NvidiaClient, stub_sdk: _StubOpenAI
