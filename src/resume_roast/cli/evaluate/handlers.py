@@ -8,6 +8,7 @@ import typer
 
 from resume_roast.cli.utils import spinner
 from resume_roast.integrations.errors import AuthenticationError
+from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.nvidia.client import NvidiaClient
 from resume_roast.integrations.nvidia.pricing import estimate_cost
 from resume_roast.integrations.types import Message, Usage
@@ -37,7 +38,7 @@ def evaluate(path: Path) -> None:
     parsed = PdfParser().parse(path)
     prompt = build_evaluate_prompt(parsed, persona=settings.persona, level=settings.level)
 
-    client = NvidiaClient(api_key=api_key, model=settings.model)
+    client: LlmClient = NvidiaClient(api_key=api_key, model=settings.model)
     started = time.perf_counter()
     # The request plus a thinking model's silent reasoning can run tens of
     # seconds before anything streams; keep a spinner up until the first chunk.
