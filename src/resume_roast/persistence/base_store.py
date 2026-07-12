@@ -7,8 +7,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, cast
 
-from resume_roast.persistence.base_parser import Parser
 from resume_roast.persistence.errors import InvalidJsonError, InvalidSchemaError, PersistenceError
+from resume_roast.persistence.json_parser import JsonParser
 
 _OWNER_ONLY_FILE_MODE = 0o600
 _OWNER_ONLY_DIR_MODE = 0o700
@@ -17,7 +17,7 @@ _OWNER_ONLY_DIR_MODE = 0o700
 class Store[T](ABC):
     """Base class for JSON-backed stores.
 
-    Subclasses supply a filename, an injected `Parser[T]`, and a `default()`
+    Subclasses supply a filename, an injected `JsonParser[T]`, and a `default()`
     value returned by `load()` when the backing file doesn't exist yet. All
     file mechanics (reading, JSON decoding, atomic writes, permissions) live
     here exactly once; subclasses never touch `json` or the filesystem.
@@ -25,7 +25,7 @@ class Store[T](ABC):
     Every store file is written owner-only (0600, best-effort on Windows).
     """
 
-    def __init__(self, base_dir: Path, filename: str, parser: Parser[T]) -> None:
+    def __init__(self, base_dir: Path, filename: str, parser: JsonParser[T]) -> None:
         self._base_dir = base_dir
         self._filename = filename
         self._parser = parser

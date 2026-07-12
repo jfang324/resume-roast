@@ -24,7 +24,7 @@ def _validated_value(spec: CredentialSpec, value: Any) -> str:
 
 
 class CredentialsParser:
-    """Implements `Parser[Credentials]`."""
+    """Implements `JsonParser[Credentials]`."""
 
     def parse(self, data: dict[str, Any]) -> Credentials:
         """Convert a loaded JSON object into `Credentials`.
