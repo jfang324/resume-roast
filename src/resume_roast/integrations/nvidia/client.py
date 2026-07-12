@@ -4,67 +4,17 @@ from collections.abc import Iterator, Sequence
 
 import openai
 from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
-from openai.types.completion_usage import CompletionUsage
+from openai.types.chat import ChatCompletionChunk
 
-from resume_roast.integrations.errors import (
-    ApiError,
-    AuthenticationError,
-    EmptyResponseError,
-    TransientError,
-    TruncatedResponseError,
+from resume_roast.integrations.errors import EmptyResponseError, TruncatedResponseError
+from resume_roast.integrations.nvidia.constants import (
+    BASE_URL,
+    MAX_TOKENS,
+    MAX_TRANSPORT_RETRIES,
+    TIMEOUT_SECONDS,
 )
+from resume_roast.integrations.nvidia.utils import map_error, to_openai_messages, to_usage
 from resume_roast.integrations.types import Completion, Message, Usage
-
-_BASE_URL = "https://integrate.api.nvidia.com/v1"
-
-# Reasoning models routinely spend 2500-4000 completion tokens on a
-# full-resume evaluation; at 4096 responses truncated in practice.
-_MAX_TOKENS = 8192
-
-# Full-resume evaluations on nemotron-3-super regularly take 45-60+ seconds;
-# a 60s limit produced timeouts on otherwise healthy calls.
-_TIMEOUT_SECONDS = 180.0
-
-# The SDK retries only retryable failures (connection errors, 429s, 5xx),
-# honoring Retry-After; a bad API key fails immediately.
-_MAX_TRANSPORT_RETRIES = 2
-
-
-def _map_error(exc: openai.OpenAIError) -> ApiError:
-    """Translate an SDK error into ours, split by what the user can do."""
-    if isinstance(exc, openai.AuthenticationError | openai.PermissionDeniedError):
-        return AuthenticationError(
-            f"NVIDIA API rejected the key ({exc}). Run: resume-roast config credentials"
-        )
-    if isinstance(
-        exc,
-        openai.RateLimitError | openai.APIConnectionError | openai.InternalServerError,
-    ):
-        return TransientError(f"NVIDIA API is unavailable ({exc}). Try again in a moment.")
-    return ApiError(str(exc))
-
-
-def _to_openai_messages(messages: Sequence[Message]) -> list[ChatCompletionMessageParam]:
-    """Convert our messages into the SDK's per-role param dicts."""
-    converted: list[ChatCompletionMessageParam] = []
-    for message in messages:
-        if message.role == "system":
-            converted.append({"role": "system", "content": message.content})
-        elif message.role == "user":
-            converted.append({"role": "user", "content": message.content})
-        else:
-            converted.append({"role": "assistant", "content": message.content})
-    return converted
-
-
-def _to_usage(usage: CompletionUsage) -> Usage:
-    """Convert the SDK's usage object into ours."""
-    return Usage(
-        prompt_tokens=usage.prompt_tokens,
-        completion_tokens=usage.completion_tokens,
-        total_tokens=usage.total_tokens,
-    )
 
 
 class CompletionStream:
@@ -86,7 +36,7 @@ class CompletionStream:
         try:
             for chunk in self._stream:
                 if chunk.usage is not None:
-                    self.usage = _to_usage(chunk.usage)
+                    self.usage = to_usage(chunk.usage)
                 if not chunk.choices:
                     continue
                 choice = chunk.choices[0]
@@ -95,7 +45,7 @@ class CompletionStream:
                 if choice.delta.content:
                     yield choice.delta.content
         except openai.OpenAIError as exc:
-            raise _map_error(exc) from exc
+            raise map_error(exc) from exc
 
 
 class NvidiaClient:
@@ -108,10 +58,10 @@ class NvidiaClient:
 
     def __init__(self, api_key: str, model: str) -> None:
         self._client = OpenAI(
-            base_url=_BASE_URL,
+            base_url=BASE_URL,
             api_key=api_key,
-            timeout=_TIMEOUT_SECONDS,
-            max_retries=_MAX_TRANSPORT_RETRIES,
+            timeout=TIMEOUT_SECONDS,
+            max_retries=MAX_TRANSPORT_RETRIES,
         )
         self.model = model
 
@@ -129,26 +79,26 @@ class NvidiaClient:
         try:
             response = self._client.chat.completions.create(
                 model=self.model,
-                messages=_to_openai_messages(messages),
+                messages=to_openai_messages(messages),
                 temperature=temperature,
-                max_tokens=_MAX_TOKENS,
+                max_tokens=MAX_TOKENS,
                 stream=False,
             )
         except openai.OpenAIError as exc:
-            raise _map_error(exc) from exc
+            raise map_error(exc) from exc
 
         if not response.choices:
             raise EmptyResponseError("NVIDIA API returned no choices.")
         choice = response.choices[0]
         if choice.finish_reason == "length":
             raise TruncatedResponseError(
-                f"Response hit the {_MAX_TOKENS}-token completion limit before finishing."
+                f"Response hit the {MAX_TOKENS}-token completion limit before finishing."
             )
         if not choice.message.content:
             raise EmptyResponseError(
                 f"NVIDIA API returned no content (finish_reason: {choice.finish_reason})."
             )
-        usage = _to_usage(response.usage) if response.usage is not None else None
+        usage = to_usage(response.usage) if response.usage is not None else None
         return Completion(
             text=choice.message.content,
             usage=usage,
@@ -168,12 +118,12 @@ class NvidiaClient:
         try:
             stream = self._client.chat.completions.create(
                 model=self.model,
-                messages=_to_openai_messages(messages),
+                messages=to_openai_messages(messages),
                 temperature=temperature,
-                max_tokens=_MAX_TOKENS,
+                max_tokens=MAX_TOKENS,
                 stream=True,
                 stream_options={"include_usage": True},
             )
         except openai.OpenAIError as exc:
-            raise _map_error(exc) from exc
+            raise map_error(exc) from exc
         return CompletionStream(stream)
