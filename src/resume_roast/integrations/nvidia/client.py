@@ -7,10 +7,10 @@ from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 from openai.types.completion_usage import CompletionUsage
 
-from resume_roast.integrations.nvidia.errors import (
+from resume_roast.integrations.errors import (
+    ApiError,
     AuthenticationError,
     EmptyResponseError,
-    NvidiaError,
     TransientError,
     TruncatedResponseError,
 )
@@ -31,7 +31,7 @@ _TIMEOUT_SECONDS = 180.0
 _MAX_TRANSPORT_RETRIES = 2
 
 
-def _map_error(exc: openai.OpenAIError) -> NvidiaError:
+def _map_error(exc: openai.OpenAIError) -> ApiError:
     """Translate an SDK error into ours, split by what the user can do."""
     if isinstance(exc, openai.AuthenticationError | openai.PermissionDeniedError):
         return AuthenticationError(
@@ -42,7 +42,7 @@ def _map_error(exc: openai.OpenAIError) -> NvidiaError:
         openai.RateLimitError | openai.APIConnectionError | openai.InternalServerError,
     ):
         return TransientError(f"NVIDIA API is unavailable ({exc}). Try again in a moment.")
-    return NvidiaError(str(exc))
+    return ApiError(str(exc))
 
 
 def _to_openai_messages(messages: Sequence[Message]) -> list[ChatCompletionMessageParam]:
@@ -119,7 +119,7 @@ class NvidiaClient:
         """Send `messages` and return the complete response.
 
         Raises:
-            NvidiaError: `AuthenticationError` for a rejected key,
+            ApiError: `AuthenticationError` for a rejected key,
                 `TransientError` when retrying may help, `EmptyResponseError`
                 for a contentless reply, and `TruncatedResponseError` when the
                 model hit the completion-token limit — callers of this method
@@ -161,7 +161,7 @@ class NvidiaClient:
         """Send `messages` and return a stream of response text chunks.
 
         Raises:
-            NvidiaError: `AuthenticationError` or `TransientError` when the
+            ApiError: `AuthenticationError` or `TransientError` when the
                 request cannot be started; errors mid-stream surface from the
                 returned iterator.
         """

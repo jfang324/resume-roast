@@ -6,7 +6,7 @@ from typing import Any
 import typer
 
 from resume_roast.cli.types import Handler
-from resume_roast.integrations.nvidia.errors import NvidiaError
+from resume_roast.integrations.errors import ApiError
 from resume_roast.persistence.errors import PersistenceError
 from resume_roast.utils.extraction.errors import ExtractionError
 
@@ -24,7 +24,7 @@ def guarded(handler: Handler) -> Handler:
     def wrapper(*args: Any, **kwargs: Any) -> None:
         try:
             handler(*args, **kwargs)
-        except (PersistenceError, ExtractionError, NvidiaError) as exc:
+        except (PersistenceError, ExtractionError, ApiError) as exc:
             typer.echo(f"Error: {exc}", err=True)
             raise typer.Exit(code=1) from exc
 

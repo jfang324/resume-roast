@@ -8,14 +8,14 @@ import httpx
 import openai
 import pytest
 
-from resume_roast.integrations.nvidia.client import NvidiaClient
-from resume_roast.integrations.nvidia.errors import (
+from resume_roast.integrations.errors import (
+    ApiError,
     AuthenticationError,
     EmptyResponseError,
-    NvidiaError,
     TransientError,
     TruncatedResponseError,
 )
+from resume_roast.integrations.nvidia.client import NvidiaClient
 from resume_roast.integrations.nvidia.types import Message
 
 # --- Stand-ins for the SDK's response objects (attribute-compatible) ---
@@ -209,7 +209,7 @@ class TestPrompt:
                 ),
                 TransientError,
             ),
-            (openai.OpenAIError("unrecognized"), NvidiaError),
+            (openai.OpenAIError("unrecognized"), ApiError),
         ],
     )
     def test_sdk_error_mapping(
@@ -217,7 +217,7 @@ class TestPrompt:
         client: NvidiaClient,
         stub_sdk: _StubOpenAI,
         sdk_error: openai.OpenAIError,
-        expected: type[NvidiaError],
+        expected: type[ApiError],
     ) -> None:
         stub_sdk.chat.completions.result = sdk_error
 
@@ -309,5 +309,5 @@ class TestPromptStream:
         stream = client.prompt_stream(_MESSAGES)
         iterator = iter(stream)
         assert next(iterator) == "Hel"
-        with pytest.raises(NvidiaError):
+        with pytest.raises(ApiError):
             next(iterator)
