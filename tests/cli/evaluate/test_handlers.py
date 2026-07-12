@@ -13,7 +13,7 @@ import pytest
 from typer.testing import CliRunner
 
 from resume_roast.cli.registry import build_subcommand_registry
-from resume_roast.integrations.nvidia.errors import TransientError
+from resume_roast.integrations.errors import TransientError
 from resume_roast.integrations.nvidia.types import Message, Usage
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.credentials.types import Credentials

@@ -7,8 +7,8 @@ from pathlib import Path
 import typer
 
 from resume_roast.cli.utils import spinner
+from resume_roast.integrations.errors import AuthenticationError
 from resume_roast.integrations.nvidia.client import NvidiaClient
-from resume_roast.integrations.nvidia.errors import AuthenticationError
 from resume_roast.integrations.nvidia.pricing import estimate_cost
 from resume_roast.integrations.nvidia.types import Message, Usage
 from resume_roast.persistence.credentials.store import CredentialsStore
