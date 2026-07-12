@@ -57,6 +57,12 @@ def test_system_calibrates_document_statistics(prompt: Prompt) -> None:
     assert "400-700 words" in unwrapped
 
 
+def test_system_warns_about_extraction_artifacts(prompt: Prompt) -> None:
+    unwrapped = " ".join(prompt.system.split())
+    assert "Extraction is imperfect" in unwrapped
+    assert "never report a section as missing" in unwrapped
+
+
 def test_system_covers_chronology(prompt: Prompt) -> None:
     unwrapped = " ".join(prompt.system.split())
     assert "employment gaps" in unwrapped
