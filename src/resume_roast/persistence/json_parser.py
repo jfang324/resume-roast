@@ -1,9 +1,9 @@
-"""Generic parser interface every domain parser implements."""
+"""Generic parser interface every JSON domain parser implements."""
 
 from typing import Any, Protocol
 
 
-class Parser[T](Protocol):
+class JsonParser[T](Protocol):
     """Converts between an untyped JSON object and a domain dataclass."""
 
     def parse(self, data: dict[str, Any]) -> T:

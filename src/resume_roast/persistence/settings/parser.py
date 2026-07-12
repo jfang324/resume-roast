@@ -27,7 +27,7 @@ def _validated_choice_list(spec: SettingSpec, value: Any) -> tuple[str, ...]:
 
 
 class SettingsParser:
-    """Implements `Parser[Settings]`."""
+    """Implements `JsonParser[Settings]`."""
 
     def parse(self, data: dict[str, Any]) -> Settings:
         """Convert a loaded JSON object into `Settings`.

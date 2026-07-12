@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from resume_roast.persistence.base_parser import Parser
 from resume_roast.persistence.base_store import Store
 from resume_roast.persistence.credentials.parser import CredentialsParser
 from resume_roast.persistence.credentials.types import Credentials
+from resume_roast.persistence.json_parser import JsonParser
 
 
 class CredentialsStore(Store[Credentials]):
@@ -13,7 +13,7 @@ class CredentialsStore(Store[Credentials]):
 
     FILENAME = "credentials.json"
 
-    def __init__(self, base_dir: Path, parser: Parser[Credentials] | None = None) -> None:
+    def __init__(self, base_dir: Path, parser: JsonParser[Credentials] | None = None) -> None:
         super().__init__(base_dir, self.FILENAME, parser or CredentialsParser())
 
     def default(self) -> Credentials:
