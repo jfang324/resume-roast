@@ -10,7 +10,8 @@ requires-python = ">=3.12"
 dependencies = [
     "typer (>=0.16,<1.0)",
     "pymupdf4llm (>=1.28.0,<2.0.0)",
-    "openai (>=2.45.0,<3.0.0)"
+    "openai (>=2.45.0,<3.0.0)",
+    "rich (>=15.0.0,<16.0.0)"
 ]
 
 [project.scripts]
