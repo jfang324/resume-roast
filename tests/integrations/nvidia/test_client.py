@@ -16,7 +16,7 @@ from resume_roast.integrations.errors import (
     TruncatedResponseError,
 )
 from resume_roast.integrations.nvidia.client import NvidiaClient
-from resume_roast.integrations.nvidia.types import Message
+from resume_roast.integrations.types import Message
 
 # --- Stand-ins for the SDK's response objects (attribute-compatible) ---
 

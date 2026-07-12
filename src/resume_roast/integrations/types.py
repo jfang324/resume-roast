@@ -1,4 +1,4 @@
-"""Dataclasses crossing the NVIDIA client boundary."""
+"""Dataclasses crossing every API client boundary."""
 
 from dataclasses import dataclass
 from typing import Literal

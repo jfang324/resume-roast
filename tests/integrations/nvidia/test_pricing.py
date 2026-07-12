@@ -1,7 +1,7 @@
 """MODEL_PRICING catalog sync and cost estimation."""
 
 from resume_roast.integrations.nvidia.pricing import MODEL_PRICING, estimate_cost
-from resume_roast.integrations.nvidia.types import Usage
+from resume_roast.integrations.types import Usage
 from resume_roast.persistence.settings.types import MODELS
 
 
