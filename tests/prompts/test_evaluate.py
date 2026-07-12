@@ -48,7 +48,8 @@ def test_system_contains_rubric_and_format_sections(prompt: Prompt) -> None:
 
 
 def test_system_forbids_fabricated_rewrites(prompt: Prompt) -> None:
-    assert "never invent metrics, technologies, or claims" in prompt.system
+    unwrapped = " ".join(prompt.system.split())
+    assert "never invent metrics, technologies, or claims" in unwrapped
 
 
 def test_resume_goes_delimited_into_user_not_system(prompt: Prompt) -> None:

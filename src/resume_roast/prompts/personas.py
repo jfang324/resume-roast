@@ -17,10 +17,8 @@ PERSONA_PROMPTS: dict[str, Persona] = {
             "would search for? Flag missing context: years of experience unclear, job "
             "titles that don't match the work, or bullet points too generic to "
             "distinguish the candidate.\n\n"
-            "Flag anything that hurts scanability: walls of text, inconsistent date "
-            "formats, buried contact information, or sections that run together. You "
-            "need a resume you can pitch to a hiring manager in one sentence — if you "
-            "can't, explain why."
+            "You need a resume you can pitch to a hiring manager in one sentence — if "
+            "you can't, explain why."
         ),
     ),
     "hiring_manager": Persona(
