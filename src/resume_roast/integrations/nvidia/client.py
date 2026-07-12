@@ -31,17 +31,6 @@ _TIMEOUT_SECONDS = 180.0
 _MAX_TRANSPORT_RETRIES = 2
 
 
-def _thinking_body(thinking: bool) -> dict[str, dict[str, bool]]:
-    """Build the NIM chat-template toggle for the model's hidden reasoning pass.
-
-    Nemotron reasons by default, burning thousands of hidden tokens whose
-    server-side nondeterminism compounds into wildly different outputs at any
-    temperature — and greedy decoding with reasoning on can leak the trace or
-    degenerate. Callers therefore opt in rather than out.
-    """
-    return {"chat_template_kwargs": {"thinking": thinking}}
-
-
 def _map_error(exc: openai.OpenAIError) -> NvidiaError:
     """Translate an SDK error into ours, split by what the user can do."""
     if isinstance(exc, openai.AuthenticationError | openai.PermissionDeniedError):
@@ -126,13 +115,7 @@ class NvidiaClient:
         )
         self.model = model
 
-    def prompt(
-        self,
-        messages: Sequence[Message],
-        *,
-        temperature: float = 0.0,
-        thinking: bool = False,
-    ) -> Completion:
+    def prompt(self, messages: Sequence[Message], *, temperature: float = 0.0) -> Completion:
         """Send `messages` and return the complete response.
 
         Raises:
@@ -150,7 +133,6 @@ class NvidiaClient:
                 temperature=temperature,
                 max_tokens=_MAX_TOKENS,
                 stream=False,
-                extra_body=_thinking_body(thinking),
             )
         except openai.OpenAIError as exc:
             raise _map_error(exc) from exc
@@ -174,11 +156,7 @@ class NvidiaClient:
         )
 
     def prompt_stream(
-        self,
-        messages: Sequence[Message],
-        *,
-        temperature: float = 0.0,
-        thinking: bool = False,
+        self, messages: Sequence[Message], *, temperature: float = 0.0
     ) -> CompletionStream:
         """Send `messages` and return a stream of response text chunks.
 
@@ -195,7 +173,6 @@ class NvidiaClient:
                 max_tokens=_MAX_TOKENS,
                 stream=True,
                 stream_options={"include_usage": True},
-                extra_body=_thinking_body(thinking),
             )
         except openai.OpenAIError as exc:
             raise _map_error(exc) from exc
