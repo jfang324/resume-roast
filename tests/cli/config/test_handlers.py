@@ -75,7 +75,7 @@ def test_credentials_prompt_shows_current_status_on_rerun() -> None:
 def test_credentials_leaves_unset_provider_reported_as_not_set() -> None:
     result = runner.invoke(app, ["config", "credentials"], input="\n")
 
-    assert "not set" in result.output
+    assert "(not set)" in result.output
 
 
 def test_credentials_reports_storage_failure(
