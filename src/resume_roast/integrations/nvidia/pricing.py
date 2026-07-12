@@ -1,6 +1,6 @@
 """Per-model NIM pricing and cost estimation."""
 
-from resume_roast.integrations.nvidia.types import Usage
+from resume_roast.integrations.types import Usage
 
 MODEL_PRICING: dict[str, tuple[float, float]] = {
     "nvidia/nemotron-3-super-120b-a12b": (0.09, 0.45),

@@ -14,7 +14,7 @@ from resume_roast.integrations.errors import (
     TransientError,
     TruncatedResponseError,
 )
-from resume_roast.integrations.nvidia.types import Completion, Message, Usage
+from resume_roast.integrations.types import Completion, Message, Usage
 
 _BASE_URL = "https://integrate.api.nvidia.com/v1"
 
