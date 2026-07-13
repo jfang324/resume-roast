@@ -1,11 +1,9 @@
 """`refine` command: bare handler function, wired by the registry."""
 
-import time
-
 from rich.console import Console
 
 from resume_roast.cli.chat import USER_PROMPT, require_api_key, run_chat_loop, stream_exchange
-from resume_roast.cli.utils import model_label, summary_line
+from resume_roast.cli.utils import model_label
 from resume_roast.integrations.conversation import Conversation
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.nvidia.client import NvidiaClient
@@ -43,16 +41,10 @@ def refine(bullet: str) -> None:
     conversation = Conversation.start(client, builder.build_system(), temperature=_TEMPERATURE)
 
     console = Console(highlight=False)
-    started = time.perf_counter()
     label = model_label(settings.model)
 
     # First turn — send the initial bullet
     console.print(f"{USER_PROMPT}{bullet}")
-    stream_exchange(conversation, console, builder.build_first_message(), label)
+    stream_exchange(conversation, console, builder.build_first_message(), label, settings.model)
 
-    run_chat_loop(conversation, console, state, builder, label, _HELP)
-
-    elapsed_seconds = time.perf_counter() - started
-    console.print(
-        summary_line(settings.model, conversation.total_usage, elapsed_seconds), style="dim"
-    )
+    run_chat_loop(conversation, console, state, builder, label, settings.model, _HELP)

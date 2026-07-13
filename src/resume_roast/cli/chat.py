@@ -6,11 +6,12 @@ the welcome text, any opening turn, the command vocabulary — stay in the handl
 everything below is common.
 """
 
+import time
 from typing import Protocol
 
 from rich.console import Console
 
-from resume_roast.cli.utils import stream_to_console
+from resume_roast.cli.utils import stream_to_console, summary_line
 from resume_roast.integrations.conversation import Conversation
 from resume_roast.integrations.errors import AuthenticationError, TransientError
 from resume_roast.persistence.credentials.store import CredentialsStore
@@ -49,6 +50,7 @@ def run_chat_loop(
     state: ChatState,
     builder: TurnBuilder,
     label: str,
+    model: str,
     help_text: str,
 ) -> None:
     """Read user turns until exit, dispatching each to the LLM.
@@ -73,14 +75,16 @@ def run_chat_loop(
                 continue
 
             user_text = builder.build_turn_message(parsed)
-            if stream_exchange(conversation, console, user_text, label):
+            if stream_exchange(conversation, console, user_text, label, model):
                 state.commit(parsed)  # only persist the turn once it lands
     except (EOFError, KeyboardInterrupt):
         console.print()
 
 
-def stream_exchange(conversation: Conversation, console: Console, message: str, label: str) -> bool:
-    """Stream one assistant reply to *message*.
+def stream_exchange(
+    conversation: Conversation, console: Console, message: str, label: str, model: str
+) -> bool:
+    """Stream one assistant reply to *message*, then print its metrics footprint.
 
     Returns ``True`` on success and ``False`` on a transient API error (reported
     so the user can retry the same turn against an unchanged conversation).
@@ -88,12 +92,15 @@ def stream_exchange(conversation: Conversation, console: Console, message: str, 
     the command's error boundary, ending the session, since retrying won't help.
     """
     console.print(f"{label}{USER_PROMPT}", end="", style="bold")
+    started = time.perf_counter()
     try:
         stream_to_console(conversation.send_stream(message), console)
     except TransientError as exc:
         console.print(f"\n{exc} — try again.", style="red")
         return False
+    latency_seconds = time.perf_counter() - started
     console.print()
     if conversation.last_finish_reason == "length":
         console.print("(reply cut off at the length limit)", style="dim")
+    console.print(summary_line(model, conversation.last_usage, latency_seconds), style="dim")
     return True
