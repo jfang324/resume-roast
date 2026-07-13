@@ -1,6 +1,5 @@
 """Builds the generate-block feature's prompt blocks — static system and per-turn messages."""
 
-from resume_roast.prompts.generate_block.input.state import GenerateBlockState
 from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
 
 _SYSTEM = (
@@ -60,14 +59,9 @@ reply, reassess and re-rate the block, leading with: [block rating: X/10]
 class GenerateBlockPromptBuilder:
     """Assembles the static system prompt and per-turn messages.
 
-    Parameters
-    ----------
-    state
-        Session state (unused for now; reserved for future use).
+    Stateless: unlike refine, the block-in-progress lives entirely in the
+    conversation history, so no per-turn context needs to be threaded in.
     """
-
-    def __init__(self, state: GenerateBlockState) -> None:
-        self._state = state
 
     # ------------------------------------------------------------------
     # Static prompt (built once per session)

@@ -24,6 +24,10 @@ class SubcommandParser(Protocol):
             End the session.
             The handler should break the interactive loop.
 
+        ``("help",)``
+            Show the command help.
+            The handler should print the usage summary and skip the turn.
+
         ``("chat", user_text)``
             A plain conversational turn.
             The handler should pass the user_text to the LLM as-is.
