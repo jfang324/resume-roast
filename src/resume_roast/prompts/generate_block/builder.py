@@ -43,6 +43,18 @@ reply, reassess and re-rate the block, leading with: [block rating: X/10]
 """
     + BULLET_PRINCIPLES
     + """\
+## Block Rating Scale
+
+Rate the block 0-10 by how convincingly its bullets convey competence. This is
+the scale the [block rating: X/10] header reports and the 8-10 gate refers to:
+- 9-10: Every bullet is an accomplishment, quantified with specific metrics; strong, varied action verbs; nothing vague
+- 7-8: Mostly accomplishment-focused with some quantification; a bullet or two could be sharper
+- 5-6: Duties mixed with accomplishments; sparse metrics; some weak verbs or vague phrasing
+- 3-4: Mostly task descriptions; few or no metrics; weak verbs or walls of text
+- 1-2: Vague throughout, no quantification
+
+Only generate a block once it would rate 8-10; below that, keep gathering.
+
 ## Rules
 
 - Stay in the gathering phase until the user types /generate — do not propose,
@@ -52,7 +64,8 @@ reply, reassess and re-rate the block, leading with: [block rating: X/10]
 - After /generate, lead every reply with [block rating: X/10] and re-rate the block each time
 - Each bullet must start with a strong past-tense action verb
 - No trailing period on bullet points
-- When generating, output each bullet on its own line, starting with "- " and 3-6 bullets"""
+- When generating, start with a header line naming the role (e.g. "Backend Engineer, Stripe"),
+  then 3-6 bullet points, each on its own line starting with "- \""""
 )
 
 
@@ -69,7 +82,7 @@ class GenerateBlockPromptBuilder:
 
     @staticmethod
     def build_system() -> str:
-        """Full system prompt: Context / Process / Principles / Rules."""
+        """Full system prompt: Context / Process / Principles / Block Rating Scale / Rules."""
         return _SYSTEM
 
     # ------------------------------------------------------------------

@@ -40,6 +40,14 @@ def test_system_requires_quality_gate_before_generation() -> None:
     assert "8-10/10" in system
 
 
+def test_system_defines_the_block_rating_scale() -> None:
+    system = GenerateBlockPromptBuilder.build_system()
+
+    # The gate refers to a scale, so the scale itself must be defined.
+    assert "## Block Rating Scale" in system
+    assert "9-10" in system
+
+
 def test_system_describes_three_phases() -> None:
     system = GenerateBlockPromptBuilder.build_system()
 
