@@ -96,12 +96,22 @@ def saved_key(tmp_path: Path) -> None:
 
 
 @pytest.mark.usefixtures("saved_key")
+def test_generate_block_shows_welcome_message() -> None:
+    result = runner.invoke(app, ["generate-block"], input="/exit\n")
+
+    assert result.exit_code == 0
+    assert "Tell me about a role or project" in result.output
+    assert "/help" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
 def test_generate_block_streams_a_reply() -> None:
     result = runner.invoke(
         app, ["generate-block"], input="Tell me about my role at Google\n/exit\n"
     )
 
     assert result.exit_code == 0
+    assert "Tell me about a role or project" in result.output
     assert "Tell me more about your role." in result.output
 
 
@@ -133,6 +143,7 @@ def test_prints_the_summary_line(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert "1,000 input tokens · 200 output tokens" in result.output
     assert "nemotron-3-super" in result.output
+    assert "Tell me about a role or project" in result.output
 
 
 def test_requires_an_api_key() -> None:
@@ -141,6 +152,7 @@ def test_requires_an_api_key() -> None:
     assert result.exit_code == 1
     assert "No NVIDIA API key configured" in result.output
     assert "Traceback" not in result.output
+    assert "Tell me about a role" not in result.output  # never gets past setup
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -190,6 +202,20 @@ def test_exit_ends_the_session() -> None:
     client = _FakeClient.last
     assert client is not None
     assert len(client.calls) == 0  # no API calls were made
+    assert "Tell me about a role" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_help_prints_available_commands() -> None:
+    result = runner.invoke(app, ["generate-block"], input="/help\n/exit\n")
+
+    assert result.exit_code == 0
+    assert "/generate" in result.output
+    assert "/exit" in result.output
+    assert "/help" in result.output
+    client = _FakeClient.last
+    assert client is not None
+    assert len(client.calls) == 0  # no API calls for /help
 
 
 @pytest.mark.usefixtures("saved_key")

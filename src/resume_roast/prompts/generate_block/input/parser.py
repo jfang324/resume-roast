@@ -2,7 +2,7 @@
 
 
 class GenerateBlockParser:
-    """Parse ``/generate``, ``/exit``, and bare chat input.
+    """Parse ``/generate``, ``/exit``, ``/help``, and bare chat input.
 
     All methods are pure — no state, no side effects.
     """
@@ -21,6 +21,9 @@ class GenerateBlockParser:
         if raw.startswith("/generate "):
             arg = raw.removeprefix("/generate ").strip()
             return ("generate", arg) if arg else ("generate",)
+
+        if raw == "/help":
+            return ("help",)
 
         if raw.startswith("/"):
             return None

@@ -37,7 +37,14 @@ def test_system_specifies_block_rating_format() -> None:
 def test_system_forbids_drafting_in_gathering() -> None:
     system = GenerateBlockPromptBuilder.build_system()
 
-    assert "do not propose or draft bullet points" in system
+    assert "Do NOT propose, draft, or hint at bullet points" in system
+    assert "Stay strictly in information-gathering" in system
+
+
+def test_system_requires_quality_gate_before_generation() -> None:
+    system = GenerateBlockPromptBuilder.build_system()
+
+    assert "8-10/10" in system
 
 
 def test_system_describes_three_phases() -> None:
@@ -67,6 +74,23 @@ def test_generate_message_triggers_block_creation() -> None:
 
     assert "generate a complete resume entry" in message.lower()
     assert "this role or project" in message.lower()
+
+
+def test_generate_message_includes_format_instructions() -> None:
+    builder = GenerateBlockPromptBuilder(_state())
+    message = builder.build_turn_message(("generate",))
+
+    assert "Format the block" in message
+    assert "- " in message
+    assert "header line" in message
+
+
+def test_generate_message_includes_quality_check() -> None:
+    builder = GenerateBlockPromptBuilder(_state())
+    message = builder.build_turn_message(("generate",))
+
+    assert "Only proceed if" in message
+    assert "8-10/10" in message
 
 
 def test_generate_message_with_note() -> None:
