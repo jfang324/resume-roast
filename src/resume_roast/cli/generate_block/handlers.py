@@ -40,6 +40,12 @@ def generate_block() -> None:
     started = time.perf_counter()
     label = model_label(settings.model)
 
+    console.print(
+        "Tell me about a role or project you've worked on. I'll ask questions to gather "
+        "details, then generate a resume block when you type /generate.\n"
+        "Type /help to see available commands."
+    )
+
     try:
         while True:
             raw = input(_USER_PROMPT).strip()
@@ -50,6 +56,17 @@ def generate_block() -> None:
                 continue
             if parsed[0] == "exit":
                 break
+            if parsed[0] == "help":
+                console.print(
+                    "Available commands:\n"
+                    "  /generate <notes>  Generate a resume block\n"
+                    "  /exit              End the session\n"
+                    "  /help              Show this message\n"
+                    "\n"
+                    "Or just type naturally and I'll ask questions.",
+                    style="dim",
+                )
+                continue
 
             user_text = builder.build_turn_message(parsed)
             if _stream_exchange(conversation, console, user_text, label):
