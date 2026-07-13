@@ -1,11 +1,14 @@
 """Structured completions: drive any LLM client until its response parses."""
 
+import logging
 from collections.abc import Callable, Sequence
 
 from resume_roast.integrations.errors import MalformedResponseError, TruncatedResponseError
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.types import Message, Usage
 from resume_roast.integrations.usage import total_usage
+
+logger = logging.getLogger(__name__)
 
 _FEEDBACK_TEMPLATE = """\
 Your previous response could not be used: {reason}.
@@ -47,8 +50,14 @@ def structured_completion[T](
         try:
             return parse(completion.text), total_usage(usages)
         except MalformedResponseError as exc:
+            # The parse error names the structural fault (safe at ERROR); the raw
+            # body can quote resume content, so it stays at DEBUG per the PII rule.
             if parse_retries == 0:
+                logger.error("Malformed response, no retries left: %s", exc)
+                logger.debug("Malformed raw response: %s", completion.text)
                 raise
+            logger.error("Malformed response, retrying: %s", exc)
+            logger.debug("Malformed raw response: %s", completion.text)
             parse_retries -= 1
             conversation.append(Message(role="assistant", content=completion.text))
             conversation.append(Message(role="user", content=_FEEDBACK_TEMPLATE.format(reason=exc)))
