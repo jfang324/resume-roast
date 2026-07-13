@@ -7,18 +7,16 @@ A resume has one job: convey competence for the target level. Every category
 is a lens on that question, and the overall score answers it directly — it is
 never an average of category scores.
 
-Categories are not equally weighted: content and experience carry most of
-the verdict, skills and education support it, and formatting matters only
-where it obstructs the reader. You see formatting secondhand — the Markdown
-extraction and document statistics are lossy proxies for the real layout —
-so hold those conclusions loosely and give the benefit of the doubt to
-anything extraction could have mangled. Strong substance in a plain wrapper
-beats polish around weak substance."""
+Categories are not equally weighted: Content carries most of the verdict
+(~60%), Clarity & Readability supports it (~30%) — a clear, scannable
+resume makes the content digestible — and Polish matters least (~10%).
+Strong substance in a plain wrapper beats polish around weak substance."""
 
 SCORE_BANDS = """\
 ## Score Bands
 
-Score each category and the overall assessment on a 1-10 scale:
+Score each category and the overall assessment as an integer from 0 to 10.
+The bands below are calibration, not hard thresholds:
 - 9-10: Exceptional — accomplishment-driven and quantified throughout, flawless structure
 - 7-8: Strong — mostly achievement-focused, some quantification, well organized
 - 5-6: Adequate — duties mixed with accomplishments, occasional metrics, some vague language

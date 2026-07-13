@@ -10,14 +10,9 @@ BULLET_PRINCIPLES = """\
 - Start with a strong past-tense action verb
 - Center the engineering skill, not the tool: what was designed, decided, and solved, with the software as supporting detail
 - Avoid sub-bullets; they clutter more than they clarify
-- Replace weak verbs: aided, assisted, coded, collaborated, executed, helped, participated, programmed, used, utilized, worked on
-- Avoid superfluous verbs: crafted, engineered, enhanced, innovated, leveraged, orchestrated, pioneered, spearheaded, transformed
+- Replace weak verbs: assisted, helped, participated, used, worked on
+- Avoid superfluous verbs: crafted, innovated, leveraged, orchestrated, spearheaded
 - Avoid filler adjectives and adverbs: excellent, innovative, expert, successfully, meticulously, strategically
 - No trailing period on bullet points
 
-Example transformations:
-Bad: "Worked on a team to improve website performance using various tools."
-Good: "Designed and implemented a Redis caching layer, reducing API response times from 450ms to 80ms and cutting server costs by 25%"
-
-Bad: "Used Python to analyze data and create reports for the team."
-Good: "Built an automated ETL pipeline in Python processing 2M records daily, eliminating manual reporting and saving 15 engineer-hours per week\""""
+"""

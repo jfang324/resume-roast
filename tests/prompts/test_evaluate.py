@@ -4,6 +4,7 @@ import pytest
 
 from resume_roast.persistence.settings.types import LEVELS, PERSONAS
 from resume_roast.prompts.evaluate.builder import build_evaluate_prompt
+from resume_roast.prompts.evaluate.schema import CATEGORY_NAMES
 from resume_roast.prompts.levels import LEVEL_CONTEXT
 from resume_roast.prompts.personas import PERSONA_PROMPTS
 from resume_roast.prompts.types import Prompt
@@ -49,7 +50,7 @@ def test_system_contains_rubric_and_format_sections(prompt: Prompt) -> None:
 
 def test_system_forbids_fabricated_rewrites(prompt: Prompt) -> None:
     unwrapped = " ".join(prompt.system.split())
-    assert "never invent metrics, technologies, or claims" in unwrapped
+    assert "Never invent metrics, technologies, or claims" in unwrapped
 
 
 def test_system_calibrates_document_statistics(prompt: Prompt) -> None:
@@ -59,8 +60,8 @@ def test_system_calibrates_document_statistics(prompt: Prompt) -> None:
 
 def test_system_warns_about_extraction_artifacts(prompt: Prompt) -> None:
     unwrapped = " ".join(prompt.system.split())
-    assert "Extraction is imperfect" in unwrapped
-    assert "never report a section as missing" in unwrapped
+    assert "The Markdown extraction preserves" in unwrapped
+    assert "Never report a section as missing" in unwrapped
 
 
 def test_system_covers_chronology(prompt: Prompt) -> None:
@@ -81,28 +82,23 @@ def test_system_frames_guidance_as_judgment_not_checklist(prompt: Prompt) -> Non
     assert "rules of thumb" in unwrapped
 
 
-def test_system_locks_output_to_markdown(prompt: Prompt) -> None:
+def test_system_locks_output_to_json(prompt: Prompt) -> None:
     unwrapped = " ".join(prompt.system.split())
-    assert "never JSON" in unwrapped
+    assert "one raw JSON object" in unwrapped
     assert "a 100-point scale is never used" in unwrapped
-    for heading in (
-        "## Formatting — <n>/10",
-        "## Content — <n>/10",
-        "## Skills — <n>/10",
-        "## Experience — <n>/10",
-        "## Education — <n>/10",
-        "## Suggestions",
-    ):
-        assert heading in prompt.system
+    assert '"overall_score": <n>' in prompt.system
+    for name in CATEGORY_NAMES:
+        assert f'"{name}": {{"score": <n>, "findings":' in prompt.system
+    assert '"suggestions"' in prompt.system
 
 
 def test_user_message_closes_with_the_output_contract(prompt: Prompt) -> None:
     assert prompt.user is not None
     unwrapped = " ".join(prompt.user.split())
-    assert unwrapped.endswith("Every score is an integer out of 10 — never out of 100.")
-    assert "the first line of your response is `## Overall Assessment`" in unwrapped
+    assert unwrapped.endswith("in the Output Format section — nothing else.")
+    assert "single raw JSON object" in unwrapped
     # The task restatement comes after the resume and statistics, not before.
-    assert prompt.user.index("<resume>") < prompt.user.index("Follow the Output Format skeleton")
+    assert prompt.user.index("<resume>") < prompt.user.index("Respond with the single raw JSON")
 
 
 def test_resume_goes_delimited_into_user_not_system(prompt: Prompt) -> None:
