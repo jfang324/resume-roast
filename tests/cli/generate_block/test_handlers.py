@@ -8,7 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from resume_roast.cli.registry import build_subcommand_registry
-from resume_roast.integrations.errors import ApiError
+from resume_roast.integrations.errors import AuthenticationError, TransientError
 from resume_roast.integrations.types import Completion, Message, Usage
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.credentials.types import Credentials
@@ -41,6 +41,7 @@ class _FakeClient:
     usage: ClassVar[Usage | None] = None
     last: ClassVar["_FakeClient | None"] = None
     fail_on_call: ClassVar[int | None] = None
+    fail_error: ClassVar[type[Exception]] = TransientError
     _call_count: ClassVar[int] = 0
 
     def __init__(self, api_key: str, model: str) -> None:
@@ -64,7 +65,7 @@ class _FakeClient:
             type(self).fail_on_call is not None
             and type(self)._call_count == type(self).fail_on_call
         ):
-            raise ApiError("Simulated transient error")
+            raise type(self).fail_error("Simulated API error")
         return _FakeStream(type(self).reply, type(self).usage)
 
 
@@ -73,6 +74,7 @@ def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Path:
     monkeypatch.setattr("resume_roast.cli.generate_block.handlers.storage_dir", lambda: tmp_path)
+    monkeypatch.setattr("resume_roast.cli.chat.storage_dir", lambda: tmp_path)
     return tmp_path
 
 
@@ -83,6 +85,7 @@ def _fake_client(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[re
     monkeypatch.setattr(_FakeClient, "usage", None)
     monkeypatch.setattr(_FakeClient, "last", None)
     monkeypatch.setattr(_FakeClient, "fail_on_call", None)
+    monkeypatch.setattr(_FakeClient, "fail_error", TransientError)
     monkeypatch.setattr(_FakeClient, "_call_count", 0)
 
 
@@ -263,3 +266,22 @@ def test_transient_error_is_reported_and_session_survives(monkeypatch: pytest.Mo
     assert client is not None
     # Two API calls: first chat succeeds, second chat fails (no retry since /exit follows)
     assert len(client.calls) == 2
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_non_transient_error_ends_the_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_FakeClient, "fail_on_call", 1)  # first call fails
+    monkeypatch.setattr(_FakeClient, "fail_error", AuthenticationError)
+
+    result = runner.invoke(
+        app,
+        ["generate-block"],
+        input="I worked at Google\nwhat about Stripe?\n/exit\n",
+    )
+
+    assert result.exit_code == 1
+    assert "try again" not in result.output  # a rejected key is not retryable
+    client = _FakeClient.last
+    assert client is not None
+    # The session ends on the first (failing) turn — the later turns never run.
+    assert len(client.calls) == 1

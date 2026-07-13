@@ -3,14 +3,7 @@
 import pytest
 
 from resume_roast.prompts.generate_block.builder import GenerateBlockPromptBuilder
-from resume_roast.prompts.generate_block.input.parser import GenerateBlockParser
-from resume_roast.prompts.generate_block.input.state import GenerateBlockState
 from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
-
-
-def _state() -> GenerateBlockState:
-    return GenerateBlockState(GenerateBlockParser())
-
 
 # -- system prompt -----------------------------------------------------------
 
@@ -59,7 +52,7 @@ def test_system_describes_three_phases() -> None:
 
 
 def test_chat_message_passes_through_raw_text() -> None:
-    builder = GenerateBlockPromptBuilder(_state())
+    builder = GenerateBlockPromptBuilder()
     message = builder.build_turn_message(("chat", "I was a backend engineer at Stripe"))
 
     assert message == "I was a backend engineer at Stripe"
@@ -69,7 +62,7 @@ def test_chat_message_passes_through_raw_text() -> None:
 
 
 def test_generate_message_triggers_block_creation() -> None:
-    builder = GenerateBlockPromptBuilder(_state())
+    builder = GenerateBlockPromptBuilder()
     message = builder.build_turn_message(("generate",))
 
     assert "generate a complete resume entry" in message.lower()
@@ -77,7 +70,7 @@ def test_generate_message_triggers_block_creation() -> None:
 
 
 def test_generate_message_includes_format_instructions() -> None:
-    builder = GenerateBlockPromptBuilder(_state())
+    builder = GenerateBlockPromptBuilder()
     message = builder.build_turn_message(("generate",))
 
     assert "Format the block" in message
@@ -86,7 +79,7 @@ def test_generate_message_includes_format_instructions() -> None:
 
 
 def test_generate_message_includes_quality_check() -> None:
-    builder = GenerateBlockPromptBuilder(_state())
+    builder = GenerateBlockPromptBuilder()
     message = builder.build_turn_message(("generate",))
 
     assert "Only proceed if" in message
@@ -94,7 +87,7 @@ def test_generate_message_includes_quality_check() -> None:
 
 
 def test_generate_message_with_note() -> None:
-    builder = GenerateBlockPromptBuilder(_state())
+    builder = GenerateBlockPromptBuilder()
     message = builder.build_turn_message(("generate", "Focus on the payment processing work"))
 
     assert "generate a complete resume entry" in message.lower()
@@ -103,7 +96,7 @@ def test_generate_message_with_note() -> None:
 
 
 def test_generate_message_without_note_omits_additional_note() -> None:
-    builder = GenerateBlockPromptBuilder(_state())
+    builder = GenerateBlockPromptBuilder()
     message = builder.build_turn_message(("generate",))
 
     assert "Additional note" not in message
@@ -113,7 +106,7 @@ def test_generate_message_without_note_omits_additional_note() -> None:
 
 
 def test_unknown_command_raises_value_error() -> None:
-    builder = GenerateBlockPromptBuilder(_state())
+    builder = GenerateBlockPromptBuilder()
 
     with pytest.raises(ValueError, match="Unknown command"):
         builder.build_turn_message(("bogus",))

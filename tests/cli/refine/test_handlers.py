@@ -8,7 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from resume_roast.cli.registry import build_subcommand_registry
-from resume_roast.integrations.errors import ApiError
+from resume_roast.integrations.errors import TransientError
 from resume_roast.integrations.types import Completion, Message, Usage
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.credentials.types import Credentials
@@ -64,7 +64,7 @@ class _FakeClient:
             type(self).fail_on_call is not None
             and type(self)._call_count == type(self).fail_on_call
         ):
-            raise ApiError("Simulated transient error")
+            raise TransientError("Simulated transient error")
         return _FakeStream(type(self).reply, type(self).usage)
 
 
@@ -73,6 +73,7 @@ def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Path:
     monkeypatch.setattr("resume_roast.cli.refine.handlers.storage_dir", lambda: tmp_path)
+    monkeypatch.setattr("resume_roast.cli.chat.storage_dir", lambda: tmp_path)
     return tmp_path
 
 
