@@ -1,3 +1,10 @@
+[![PyPI Version](https://img.shields.io/pypi/v/resume-roast)](https://pypi.org/project/resume-roast/)
+![Python Versions](https://img.shields.io/pypi/pyversions/resume-roast)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/resume-roast?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/resume-roast)
+[![License](https://img.shields.io/github/license/jfang324/resume-roast)](https://github.com/jfang324/resume-roast/blob/main/LICENSE)
+[![CI](https://github.com/jfang324/resume-roast/actions/workflows/ci.yaml/badge.svg)](https://github.com/jfang324/resume-roast/actions/workflows/ci.yaml)
+[![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+
 # Resume Roast
 
 A terminal-based LLM-powered resume coaching tool. Get brutal, structured feedback on your resume, refine individual bullet points through back-and-forth chat, or generate new resume blocks from scratch.
