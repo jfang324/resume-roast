@@ -1,12 +1,14 @@
 [project]
 name = "resume-roast"
-version = "0.1.0"
-description = ""
+version = "1.0.0"
+description = "A terminal-based LLM-powered resume coaching tool"
 authors = [
     {name = "Jeffery Fang",email = "jefferyfang324@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+repository = "https://github.com/jfang324/resume-roast"
 dependencies = [
     "typer (>=0.16,<1.0)",
     "pymupdf4llm (>=1.28.0,<2.0.0)",

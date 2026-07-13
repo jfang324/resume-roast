@@ -43,8 +43,8 @@ make report
 Run a targeted test file or test case:
 
 ```bash
-poetry run coverage run -m pytest tests/unit/workers/test_download_worker.py -v
-poetry run coverage run -m pytest tests/unit/workers/test_download_worker.py::TestDownloadWorkerDoWork::test_do_work_returns_merging_job -v
+poetry run coverage run -m pytest tests/cli/refine/test_handlers.py -v
+poetry run coverage run -m pytest tests/cli/refine/test_handlers.py::test_replace_updates_current_bullet_and_triggers_re_rating -v
 ```
 
 ## Code Quality
