@@ -5,8 +5,7 @@ import pytest
 from resume_roast.persistence.settings.types import LEVELS, PERSONAS
 from resume_roast.prompts.evaluate.builder import build_evaluate_prompt
 from resume_roast.prompts.evaluate.output.schema import CATEGORY_NAMES
-from resume_roast.prompts.levels import LEVEL_CONTEXT
-from resume_roast.prompts.personas import PERSONA_PROMPTS
+from resume_roast.prompts.system_prompt import LEVEL_CONTEXT, PERSONA_PROMPTS
 from resume_roast.prompts.types import Prompt
 from resume_roast.utils.extraction.types import DocumentMetadata, PageMetadata, ParsedResume
 

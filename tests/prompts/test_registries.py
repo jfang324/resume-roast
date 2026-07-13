@@ -1,8 +1,7 @@
 """Guards against drift between the settings choices and the prompt registries."""
 
 from resume_roast.persistence.settings.types import LEVELS, PERSONAS
-from resume_roast.prompts.levels import LEVEL_CONTEXT
-from resume_roast.prompts.personas import PERSONA_PROMPTS
+from resume_roast.prompts.system_prompt import LEVEL_CONTEXT, PERSONA_PROMPTS
 
 
 def test_every_persona_setting_has_a_prompt() -> None:
