@@ -34,10 +34,12 @@ def test_system_forbids_drafting_in_gathering() -> None:
     assert "Stay strictly in information-gathering" in system
 
 
-def test_system_requires_quality_gate_before_generation() -> None:
+def test_system_forces_generation_on_command() -> None:
     system = GenerateBlockPromptBuilder.build_system()
 
-    assert "8-10/10" in system
+    # /generate must always produce a block — the rating is feedback, not a gate.
+    assert "always produce a complete resume block" in system
+    assert "not a gate" in system
 
 
 def test_system_defines_the_block_rating_scale() -> None:
@@ -86,12 +88,13 @@ def test_generate_message_includes_format_instructions() -> None:
     assert "header line" in message
 
 
-def test_generate_message_includes_quality_check() -> None:
+def test_generate_message_forces_generation() -> None:
     builder = GenerateBlockPromptBuilder()
     message = builder.build_turn_message(("generate",))
 
-    assert "Only proceed if" in message
-    assert "8-10/10" in message
+    # /generate unconditionally produces a block rather than deferring to gather more.
+    assert "Always produce a block" in message
+    assert "do not ask for more details" in message
 
 
 def test_generate_message_with_note() -> None:
