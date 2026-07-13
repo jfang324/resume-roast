@@ -1,7 +1,7 @@
 """Tests for the plain-text report rendering."""
 
-from resume_roast.prompts.evaluate.rendering import render_report
-from resume_roast.prompts.evaluate.schema import (
+from resume_roast.prompts.evaluate.output.rendering import render_report
+from resume_roast.prompts.evaluate.output.schema import (
     CATEGORY_NAMES,
     CategoryReview,
     Example,
