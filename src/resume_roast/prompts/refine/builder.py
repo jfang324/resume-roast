@@ -54,15 +54,27 @@ class RefinePromptBuilder:
         return _SYSTEM
 
     # ------------------------------------------------------------------
-    # Per-turn context blocks
+    # Per-turn user messages
     # ------------------------------------------------------------------
 
-    def build_initial_block(self) -> str:
-        """Context block injected before the first user turn."""
-        return f"<current bullet point>\n{self._state.current_bullet}\n</current bullet point>"
+    def build_first_message(self) -> str:
+        """Build the candidate's opening turn: the bullet to improve, tagged for the header.
 
-    def build_turn_block(self, parsed: tuple[str, ...]) -> str:
-        """Return a context block for the parsed command.
+        The ``<current bullet point>`` tag anchors the ``[current bullet point]``
+        header the model maintains — the first message carries it so the header
+        is well-defined from the very first reply.
+        """
+        return (
+            f"This is the bullet I want to improve:\n\n"
+            f"<current bullet point>\n{self._state.current_bullet}\n</current bullet point>"
+        )
+
+    def build_turn_message(self, parsed: tuple[str, ...]) -> str:
+        """Return the user-turn text for the parsed command.
+
+        The per-turn context rides *inside the user turn* (the system prompt is
+        set once and never re-sent), so the conversation stays a single system
+        message followed by user/assistant turns.
 
         Parameters
         ----------
@@ -71,41 +83,43 @@ class RefinePromptBuilder:
         """
         cmd = parsed[0]
         if cmd == "chat":
-            return self._block_chat()
+            return self._chat_message(parsed[1])
         if cmd == "replace":
-            return self._block_replace(parsed[1])
+            return self._replace_message(parsed[1])
         if cmd == "generate":
-            return self._block_generate(parsed[1] if len(parsed) > 1 else None)
+            return self._generate_message(parsed[1] if len(parsed) > 1 else None)
         msg = f"Unknown command: {cmd!r}"
         raise ValueError(msg)
 
-    # -- private block builders ---------------------------------------
+    # -- private message builders -------------------------------------
 
-    def _block_chat(self) -> str:
-        return self.build_initial_block()
-
-    def _block_replace(self, new_bullet: str) -> str:
+    def _chat_message(self, user_text: str) -> str:
         return (
-            f"The candidate has updated their bullet point. "
-            f"The new current bullet is:\n\n"
-            f"<current bullet point>\n{new_bullet}\n</current bullet point>\n\n"
-            f"Update the current bullet in your [current bullet point] header "
-            f"and re-rate the new bullet."
+            f"<current bullet point>\n{self._state.current_bullet}\n</current bullet point>\n\n"
+            f"{user_text}"
         )
 
-    def _block_generate(self, note: str | None) -> str:
-        block = "Generate a new and improved bullet point based on the current bullet point"
+    def _replace_message(self, new_bullet: str) -> str:
+        return (
+            f"I've updated my bullet to:\n\n"
+            f"<current bullet point>\n{new_bullet}\n</current bullet point>\n\n"
+            f"Update the current bullet in your [current bullet point] header "
+            f"and re-rate it."
+        )
+
+    def _generate_message(self, note: str | None) -> str:
+        message = "Generate a new and improved bullet point based on the current bullet point"
         if note is not None:
-            block += " and the note provided.\n\n"
+            message += " and the note provided.\n\n"
         else:
-            block += ".\n\n"
-        block += f"<current bullet point>\n{self._state.current_bullet}\n</current bullet point>"
+            message += ".\n\n"
+        message += f"<current bullet point>\n{self._state.current_bullet}\n</current bullet point>"
         if note is not None:
-            block += f"\n\n<note>\n{note}\n</note>"
-        block += (
+            message += f"\n\n<note>\n{note}\n</note>"
+        message += (
             "\n\nOutput the candidate bullet on its own line, followed by a "
             "blank line, then a short explanation of what changed and why "
             "compared to the current bullet. Do NOT change the current "
-            "bullet in your header."
+            "bullet in your [current bullet point] header."
         )
-        return block
+        return message

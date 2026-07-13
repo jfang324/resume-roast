@@ -9,7 +9,6 @@ from resume_roast.integrations.conversation import Conversation
 from resume_roast.integrations.errors import ApiError, AuthenticationError
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.nvidia.client import NvidiaClient
-from resume_roast.integrations.types import Message
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.paths import storage_dir
 from resume_roast.persistence.settings.store import SettingsStore
@@ -37,7 +36,6 @@ def refine(bullet: str) -> None:
     builder = RefinePromptBuilder(state)
 
     conversation = Conversation.start(client, builder.build_system(), temperature=_TEMPERATURE)
-    conversation.messages.append(Message(role="system", content=builder.build_initial_block()))
 
     console = Console(highlight=False)
     started = time.perf_counter()
@@ -45,7 +43,7 @@ def refine(bullet: str) -> None:
 
     # First turn — send the initial bullet
     console.print(f"{_USER_PROMPT}{bullet}")
-    _stream_exchange(conversation, console, bullet, label)
+    _stream_exchange(conversation, console, builder.build_first_message(), label)
 
     # Subsequent turns
     try:
@@ -59,19 +57,9 @@ def refine(bullet: str) -> None:
             if parsed[0] == "exit":
                 break
 
-            cmd = parsed[0]
-            block = builder.build_turn_block(parsed)
-            conversation.messages.append(Message(role="system", content=block))
-
-            if cmd == "replace":
-                user_text = "I've updated my bullet."
-            elif cmd == "generate":
-                user_text = "Generate a candidate."
-            else:
-                user_text = parsed[1] if len(parsed) > 1 else raw
-
-            if not _stream_exchange(conversation, console, user_text, label):
-                conversation.messages.pop()  # roll back the system block
+            user_text = builder.build_turn_message(parsed)
+            if _stream_exchange(conversation, console, user_text, label):
+                state.commit(parsed)  # only persist the turn once it lands
     except (EOFError, KeyboardInterrupt):
         console.print()
 

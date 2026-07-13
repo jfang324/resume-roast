@@ -47,63 +47,63 @@ def test_system_keeps_replies_short() -> None:
     assert "no headings" in system
 
 
-# -- initial block -----------------------------------------------------------
+# -- first message -----------------------------------------------------------
 
 
-def test_initial_block_shows_current_bullet() -> None:
-    block = RefinePromptBuilder(_state("Led a team of 10")).build_initial_block()
+def test_first_message_shows_current_bullet() -> None:
+    message = RefinePromptBuilder(_state("Led a team of 10")).build_first_message()
 
-    assert "<current bullet point>" in block
-    assert "Led a team of 10" in block
-    assert "</current bullet point>" in block
-
-
-# -- chat block --------------------------------------------------------------
+    assert "<current bullet point>" in message
+    assert "Led a team of 10" in message
+    assert "</current bullet point>" in message
 
 
-def test_chat_block_shows_current_bullet() -> None:
+# -- chat message ------------------------------------------------------------
+
+
+def test_chat_message_carries_the_bullet_and_the_user_text() -> None:
     builder = RefinePromptBuilder(_state("Managed sprints"))
-    block = builder.build_turn_block(("chat", "what about the verb?"))
+    message = builder.build_turn_message(("chat", "what about the verb?"))
 
-    assert "<current bullet point>" in block
-    assert "Managed sprints" in block
-    assert "what about the verb?" not in block
-
-
-# -- replace block -----------------------------------------------------------
+    assert "<current bullet point>" in message
+    assert "Managed sprints" in message
+    assert "what about the verb?" in message
 
 
-def test_replace_block_includes_new_bullet() -> None:
+# -- replace message ---------------------------------------------------------
+
+
+def test_replace_message_includes_new_bullet() -> None:
     builder = RefinePromptBuilder(_state("Old bullet"))
-    block = builder.build_turn_block(("replace", "New and improved bullet"))
+    message = builder.build_turn_message(("replace", "New and improved bullet"))
 
-    assert "<current bullet point>" in block
-    assert "New and improved bullet" in block
-    assert "re-rate" in block.lower()
-
-
-# -- generate block ----------------------------------------------------------
+    assert "<current bullet point>" in message
+    assert "New and improved bullet" in message
+    assert "re-rate" in message.lower()
 
 
-def test_generate_block_with_note() -> None:
+# -- generate message --------------------------------------------------------
+
+
+def test_generate_message_with_note() -> None:
     builder = RefinePromptBuilder(_state("Fixed bugs"))
-    block = builder.build_turn_block(("generate", "I was the lead engineer"))
+    message = builder.build_turn_message(("generate", "I was the lead engineer"))
 
-    assert "<current bullet point>" in block
-    assert "Fixed bugs" in block
-    assert "<note>" in block
-    assert "I was the lead engineer" in block
-    assert "explanation" in block.lower()
+    assert "<current bullet point>" in message
+    assert "Fixed bugs" in message
+    assert "<note>" in message
+    assert "I was the lead engineer" in message
+    assert "explanation" in message.lower()
 
 
-def test_generate_block_without_note() -> None:
+def test_generate_message_without_note() -> None:
     builder = RefinePromptBuilder(_state("Fixed bugs"))
-    block = builder.build_turn_block(("generate",))
+    message = builder.build_turn_message(("generate",))
 
-    assert "<current bullet point>" in block
-    assert "Fixed bugs" in block
-    assert "<note>" not in block
-    assert "explanation" in block.lower()
+    assert "<current bullet point>" in message
+    assert "Fixed bugs" in message
+    assert "<note>" not in message
+    assert "explanation" in message.lower()
 
 
 # -- unknown command ---------------------------------------------------------
@@ -113,4 +113,4 @@ def test_unknown_command_raises_value_error() -> None:
     builder = RefinePromptBuilder(_state("Bullet"))
 
     with pytest.raises(ValueError, match="Unknown command"):
-        builder.build_turn_block(("bogus",))
+        builder.build_turn_message(("bogus",))
