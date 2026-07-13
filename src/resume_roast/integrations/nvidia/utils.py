@@ -1,5 +1,6 @@
 """Conversions between our boundary types and the OpenAI SDK's."""
 
+import logging
 from collections.abc import Sequence
 
 import openai
@@ -9,6 +10,8 @@ from openai.types.completion_usage import CompletionUsage
 from resume_roast.integrations.errors import ApiError, AuthenticationError, TransientError
 from resume_roast.integrations.types import Message, Usage
 
+logger = logging.getLogger(__name__)
+
 
 def map_error(exc: openai.OpenAIError) -> ApiError:
     """Translate an SDK error into ours, split by what the user can do."""
@@ -16,10 +19,13 @@ def map_error(exc: openai.OpenAIError) -> ApiError:
         return AuthenticationError(
             f"NVIDIA API rejected the key ({exc}). Run: resume-roast config credentials"
         )
-    if isinstance(
-        exc,
-        openai.RateLimitError | openai.APIConnectionError | openai.InternalServerError,
-    ):
+    if isinstance(exc, openai.RateLimitError):
+        # Logged here because map_error folds rate limits into TransientError
+        # alongside connection/server errors; no downstream catch site can tell
+        # a 429 from the rest. This 429 already survived the SDK's own retries.
+        logger.error("NVIDIA API rate limit hit: %s", exc)
+        return TransientError(f"NVIDIA API is unavailable ({exc}). Try again in a moment.")
+    if isinstance(exc, openai.APIConnectionError | openai.InternalServerError):
         return TransientError(f"NVIDIA API is unavailable ({exc}). Try again in a moment.")
     return ApiError(str(exc))
 
