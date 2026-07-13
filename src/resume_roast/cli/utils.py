@@ -1,9 +1,10 @@
 """Display helpers shared across subcommand groups."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from rich.console import Console, RenderableType
 from rich.live import Live
+from rich.padding import Padding
 from rich.spinner import Spinner
 from rich.text import Text
 
@@ -17,6 +18,23 @@ _MESSAGE_SECONDS = 5.0
 def display_value(value: str | tuple[str, ...]) -> str:
     """Render a setting value for prompts and display."""
     return ", ".join(value) if isinstance(value, tuple) else value
+
+
+def print_highlighted_lines(text: str, console: Console, styles: Mapping[str, str]) -> None:
+    """Print `text`, filling the background of prefix-matched lines to full width.
+
+    `styles` maps a line prefix to a Rich style; a line starting with a prefix
+    is padded out to the terminal width so its background spans the whole row —
+    and every wrapped row — where a bare style colors only the characters.
+    Off a terminal the fill would only add trailing whitespace, so every line
+    prints plain. `Text` (never markup) keeps bracketed titles intact.
+    """
+    for line in text.splitlines():
+        style = next((s for prefix, s in styles.items() if line.startswith(prefix)), None)
+        if style is not None and console.is_terminal:
+            console.print(Padding(Text(line), (0, 0), style=style))
+        else:
+            console.print(Text(line), soft_wrap=True)
 
 
 class RotatingSpinner(Spinner):

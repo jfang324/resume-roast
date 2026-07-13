@@ -3,8 +3,9 @@
 # The fixture drives PyMuPDF's partially annotated document-building API.
 # pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
 
+import json
 import re
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -13,10 +14,11 @@ import pytest
 from typer.testing import CliRunner
 
 from resume_roast.cli.registry import build_subcommand_registry
-from resume_roast.integrations.errors import TransientError
-from resume_roast.integrations.types import Message, Usage
+from resume_roast.integrations.errors import TransientError, TruncatedResponseError
+from resume_roast.integrations.types import Completion, Message, Usage
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.credentials.types import Credentials
+from resume_roast.prompts.evaluate.schema import CATEGORY_NAMES
 
 app = build_subcommand_registry()
 runner = CliRunner()
@@ -24,39 +26,56 @@ runner = CliRunner()
 _MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
 
-class _FakeStream:
-    def __init__(self, chunks: list[str], usage: Usage | None, finish_reason: str | None) -> None:
-        self._chunks = chunks
-        self.usage = usage
-        self.finish_reason = finish_reason
-
-    def __iter__(self) -> Iterator[str]:
-        yield from self._chunks
+def _report_json() -> str:
+    suggestions = [
+        {
+            "recommendation": "Quantify your impact",
+            "examples": [{"quote": "Roasted resumes", "rewrite": "Roasted [X]% more resumes"}],
+        }
+    ]
+    return json.dumps(
+        {
+            "overall": "It's a roast.",
+            "overall_score": 4,
+            "categories": {
+                name: {"score": 5, "findings": f"{name} needs work.", "suggestions": suggestions}
+                for name in CATEGORY_NAMES
+            },
+            "strengths": ["Concise"],
+            "weaknesses": ["No metrics"],
+        }
+    )
 
 
 class _FakeClient:
-    """Stands in for NvidiaClient; records what the handler sends."""
+    """Stands in for NvidiaClient; answers prompt() from a queue of texts."""
 
-    chunks: ClassVar[list[str]] = ["It's ", "a roast."]
-    usage: ClassVar[Usage | None] = Usage(
-        prompt_tokens=2_000, completion_tokens=1_214, total_tokens=3_214
-    )
-    finish_reason: ClassVar[str | None] = "stop"
+    texts: ClassVar[list[str]] = []
+    """Responses served in order; an empty queue serves the default report."""
+
+    usage: ClassVar[Usage | None] = None
     error: ClassVar[Exception | None] = None
     last: ClassVar["_FakeClient | None"] = None
 
     def __init__(self, api_key: str, model: str) -> None:
         self.api_key = api_key
         self.model = model
-        self.messages: Sequence[Message] | None = None
+        self.calls: list[list[Message]] = []
         type(self).last = self
 
-    def prompt_stream(self, messages: Sequence[Message]) -> _FakeStream:
-        self.messages = messages
+    def prompt(
+        self,
+        messages: Sequence[Message],
+        *,
+        temperature: float = 0.0,  # noqa: ARG002 — the protocol's signature requires it
+    ) -> Completion:
+        self.calls.append(list(messages))
         error = type(self).error
         if error is not None:
             raise error
-        return _FakeStream(type(self).chunks, type(self).usage, type(self).finish_reason)
+        queue = type(self).texts
+        text = queue.pop(0) if queue else _report_json()
+        return Completion(text=text, usage=type(self).usage, finish_reason="stop")
 
 
 @pytest.fixture(autouse=True)
@@ -70,13 +89,12 @@ def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
 @pytest.fixture(autouse=True)
 def _fake_client(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]
     monkeypatch.setattr("resume_roast.cli.evaluate.handlers.NvidiaClient", _FakeClient)
-    monkeypatch.setattr(_FakeClient, "chunks", ["It's ", "a roast."])
+    monkeypatch.setattr(_FakeClient, "texts", [])
     monkeypatch.setattr(
         _FakeClient,
         "usage",
         Usage(prompt_tokens=2_000, completion_tokens=1_214, total_tokens=3_214),
     )
-    monkeypatch.setattr(_FakeClient, "finish_reason", "stop")
     monkeypatch.setattr(_FakeClient, "error", None)
     monkeypatch.setattr(_FakeClient, "last", None)
 
@@ -99,22 +117,21 @@ def sample_pdf(tmp_path: Path) -> Path:
 
 
 @pytest.mark.usefixtures("saved_key")
-def test_evaluate_streams_the_roast(sample_pdf: Path) -> None:
+def test_evaluate_prints_the_rendered_report(sample_pdf: Path) -> None:
     result = runner.invoke(app, ["evaluate", str(sample_pdf)])
 
     assert result.exit_code == 0
-    assert "It's a roast." in result.output
-
-
-@pytest.mark.usefixtures("saved_key")
-def test_evaluate_survives_an_empty_stream(
-    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(_FakeClient, "chunks", [])
-
-    result = runner.invoke(app, ["evaluate", str(sample_pdf)])
-
-    assert result.exit_code == 0
+    assert "[Overall Assessment]\nIt's a roast." in result.output
+    assert "Overall: 4/10" in result.output
+    for name in CATEGORY_NAMES:
+        assert f"[{name} — 5/10]" in result.output
+        assert f"{name} needs work." in result.output
+    assert "[What's Good]\n- Concise" in result.output
+    assert "[What's Bad]\n- No metrics" in result.output
+    assert "Suggestions:\n- Quantify your impact" in result.output
+    # Diff hunks: the removal line, then the addition line the handler colors.
+    assert "  - Roasted resumes" in result.output
+    assert "  + Roasted [X]% more resumes" in result.output
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -125,8 +142,7 @@ def test_evaluate_sends_system_and_user_messages(sample_pdf: Path) -> None:
     assert client is not None
     assert client.api_key == "nv-key"  # pragma: allowlist secret
     assert client.model == _MODEL  # default settings
-    assert client.messages is not None
-    system, user = client.messages
+    system, user = client.calls[0]
     assert system.role == "system"
     assert "## Persona: Recruiter" in system.content
     assert user.role == "user"
@@ -134,11 +150,60 @@ def test_evaluate_sends_system_and_user_messages(sample_pdf: Path) -> None:
 
 
 @pytest.mark.usefixtures("saved_key")
+def test_evaluate_retries_a_malformed_response(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(_FakeClient, "texts", ["not json at all", _report_json()])
+
+    result = runner.invoke(app, ["evaluate", str(sample_pdf)])
+
+    assert result.exit_code == 0
+    assert "Overall: 4/10" in result.output
+    client = _FakeClient.last
+    assert client is not None
+    assert len(client.calls) == 2
+    retry_feedback = client.calls[1][-1]
+    assert retry_feedback.role == "user"
+    assert "not valid JSON" in retry_feedback.content
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_evaluate_reports_a_response_that_never_parses(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(_FakeClient, "texts", ["nope", "still nope"])
+
+    result = runner.invoke(app, ["evaluate", str(sample_pdf)])
+
+    assert result.exit_code == 1
+    assert "not valid JSON" in result.output
+    assert "Traceback" not in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_evaluate_reports_truncation_after_retrying(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        _FakeClient, "error", TruncatedResponseError("Response hit the completion limit.")
+    )
+
+    result = runner.invoke(app, ["evaluate", str(sample_pdf)])
+
+    assert result.exit_code == 1
+    assert "completion limit" in result.output
+    client = _FakeClient.last
+    assert client is not None
+    assert len(client.calls) == 2  # the truncation retry ran
+    assert "Traceback" not in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
 def test_evaluate_prints_summary_line(sample_pdf: Path) -> None:
     result = runner.invoke(app, ["evaluate", str(sample_pdf)])
 
     # 2000/1M * $0.09 + 1214/1M * $0.45 = $0.00072...
-    assert "2,000 in · 1,214 out · ~$0.0007 · " in result.output
+    assert "2,000 input tokens · 1,214 output tokens · ~$0.0007 · " in result.output
     assert _MODEL not in result.output
     assert re.search(r"· \d+\.\ds", result.output)
 
@@ -152,19 +217,9 @@ def test_evaluate_summary_omits_tokens_and_cost_without_usage(
     result = runner.invoke(app, ["evaluate", str(sample_pdf)])
 
     assert result.exit_code == 0
-    assert " in ·" not in result.output
+    assert " input tokens ·" not in result.output
     assert "$" not in result.output
     assert re.search(r"^\d+\.\ds", result.output, re.MULTILINE)
-
-
-@pytest.mark.usefixtures("saved_key")
-def test_evaluate_warns_on_truncation(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(_FakeClient, "finish_reason", "length")
-
-    result = runner.invoke(app, ["evaluate", str(sample_pdf)])
-
-    assert result.exit_code == 0
-    assert "completion-token limit" in result.output
 
 
 def test_evaluate_requires_an_api_key(sample_pdf: Path) -> None:

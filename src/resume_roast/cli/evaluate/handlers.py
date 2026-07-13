@@ -5,34 +5,47 @@ import time
 from pathlib import Path
 
 import typer
+from rich.console import Console
 
-from resume_roast.cli.utils import spinner
+from resume_roast.cli.utils import print_highlighted_lines, spinner
 from resume_roast.integrations.errors import AuthenticationError
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.nvidia.client import NvidiaClient
 from resume_roast.integrations.nvidia.pricing import estimate_cost
+from resume_roast.integrations.structured import structured_completion
 from resume_roast.integrations.types import Message, Usage
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.paths import storage_dir
 from resume_roast.persistence.settings.store import SettingsStore
 from resume_roast.prompts.evaluate.builder import build_evaluate_prompt
+from resume_roast.prompts.evaluate.parser import RoastReportParser
+from resume_roast.prompts.evaluate.rendering import (
+    DIFF_ADDITION_PREFIX,
+    DIFF_REMOVAL_PREFIX,
+    render_report,
+)
 from resume_roast.prompts.types import Prompt
 from resume_roast.utils.extraction.pdf_parser import PdfParser
 
 _SPINNER_MESSAGES = (
-    "Roasting your resume...",
-    "Summoning the resume wizard...",
-    "Counting the buzzwords...",
-    "Judging your font choices...",
-    "Consulting the hiring gods...",
-    "Searching for measurable impact...",
-    "Composing something devastating...",
+    "roasting your resume...",
+    "summoning the resume wizard...",
+    "counting the buzzwords...",
+    "judging your font choices...",
+    "consulting the hiring gods...",
+    "searching for measurable impact...",
+    "composing something devastating...",
 )
-"""Rotated through while the model thinks; placeholder fun until real copy lands."""
+
+_DIFF_STYLES = {
+    DIFF_REMOVAL_PREFIX: "on #3a0000",
+    DIFF_ADDITION_PREFIX: "on #003a00",
+}
+"""Full-width background colors for the removal/addition lines of a rewrite."""
 
 
 def evaluate(path: Path) -> None:
-    """Roast a PDF resume with the configured model, streaming the response."""
+    """Roast a PDF resume with the configured model and print the report."""
     api_key = _require_api_key()
     settings = SettingsStore(storage_dir()).load_or_create()
     parsed = PdfParser().parse(path)
@@ -40,30 +53,20 @@ def evaluate(path: Path) -> None:
 
     client: LlmClient = NvidiaClient(api_key=api_key, model=settings.model)
     started = time.perf_counter()
-    # The request plus a thinking model's silent reasoning can run tens of
-    # seconds before anything streams; keep a spinner up until the first chunk.
     shuffled = random.sample(_SPINNER_MESSAGES, len(_SPINNER_MESSAGES))
     with spinner(*shuffled):
-        stream = client.prompt_stream(_to_messages(prompt))
-        chunks = iter(stream)
-        first = next(chunks, None)
-    if first is not None:
-        typer.echo(first, nl=False)
-    for chunk in chunks:
-        typer.echo(chunk, nl=False)
-    typer.echo()
+        report, usage = structured_completion(
+            client, _to_messages(prompt), RoastReportParser().parse
+        )
     latency_seconds = time.perf_counter() - started
 
-    if stream.finish_reason == "length":
-        typer.secho(
-            "Warning: the response hit the completion-token limit; the roast may be incomplete.",
-            err=True,
-        )
-    typer.secho(_summary_line(settings.model, stream.usage, latency_seconds), dim=True)
+    console = Console(highlight=False)
+    print_highlighted_lines(render_report(report), console, _DIFF_STYLES)
+    typer.echo()
+    console.print(_summary_line(settings.model, usage, latency_seconds), style="dim")
 
 
 def _require_api_key() -> str:
-    """Return the saved NVIDIA API key, failing fast before any slow work."""
     credentials = CredentialsStore(storage_dir()).load()
     if credentials.nvidia_api_key is None:
         raise AuthenticationError(
@@ -73,10 +76,6 @@ def _require_api_key() -> str:
 
 
 def _to_messages(prompt: Prompt) -> list[Message]:
-    """Convert a built prompt into client messages.
-
-    Lives here because prompts/ stays decoupled from integrations/.
-    """
     messages = [Message(role="system", content=prompt.system)]
     if prompt.user is not None:
         messages.append(Message(role="user", content=prompt.user))
@@ -84,11 +83,10 @@ def _to_messages(prompt: Prompt) -> list[Message]:
 
 
 def _summary_line(model: str, usage: Usage | None, latency_seconds: float) -> str:
-    """Render the post-roast stats line, omitting whatever the API didn't report."""
     parts: list[str] = []
     if usage is not None:
-        parts.append(f"{usage.prompt_tokens:,} in")
-        parts.append(f"{usage.completion_tokens:,} out")
+        parts.append(f"{usage.prompt_tokens:,} input tokens")
+        parts.append(f"{usage.completion_tokens:,} output tokens")
         cost = estimate_cost(usage, model)
         if cost is not None:
             parts.append(f"~${cost:.4f}")
