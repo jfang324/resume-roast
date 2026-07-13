@@ -2,7 +2,7 @@
 
 
 class RefineParser:
-    """Parse ``/replace``, ``/generate``, ``/exit``, and bare chat input.
+    """Parse ``/replace``, ``/generate``, ``/exit``, ``/help``, and bare chat input.
 
     All methods are pure — no side effects.  Stateful side effects (e.g.
     updating the current bullet) belong in :class:`RefineState`.
@@ -34,6 +34,10 @@ class RefineParser:
         # ――― bare /replace with no text ―――
         if raw == "/replace":
             return None
+
+        # ――― help ―――
+        if raw == "/help":
+            return ("help",)
 
         # ――― unrecognised command (starts with / but we don't know it) ―――
         if raw.startswith("/"):
