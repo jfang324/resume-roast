@@ -17,5 +17,13 @@ class EmptyResponseError(ApiError):
     """The API returned a completion with no content."""
 
 
+class MalformedResponseError(ApiError):
+    """The response text does not satisfy the caller's expected structure.
+
+    The message is written for the model, naming the offending field and the
+    rule it broke — retry loops send it back verbatim as feedback.
+    """
+
+
 class TruncatedResponseError(ApiError):
     """The model hit the completion-token limit before finishing its response."""
