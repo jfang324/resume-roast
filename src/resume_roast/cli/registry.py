@@ -9,6 +9,7 @@ from resume_roast.cli.guards import guarded
 from resume_roast.cli.refine.handlers import refine
 from resume_roast.cli.show import handlers as show
 from resume_roast.cli.types import Group, Handler
+from resume_roast.logging_config import configure_logging
 
 TOP_LEVEL_HANDLERS: tuple[Handler, ...] = (evaluate, refine, generate_block)
 
@@ -26,9 +27,22 @@ SUBCOMMAND_GROUPS: tuple[Group, ...] = (
 )
 
 
+def _configure_logging(
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        help="Write full debug logs to ~/.resume-roast/logs/debug.log; "
+        "includes raw prompts and responses containing resume content.",
+    ),
+) -> None:
+    """Root callback: configure logging before any command runs."""
+    configure_logging(debug)
+
+
 def build_subcommand_registry() -> typer.Typer:
     """Assemble the CLI's command tree from every registered handler and group."""
     registry = typer.Typer(no_args_is_help=True)
+    registry.callback()(_configure_logging)
     for handler in TOP_LEVEL_HANDLERS:
         registry.command()(guarded(handler))
     for group in SUBCOMMAND_GROUPS:
