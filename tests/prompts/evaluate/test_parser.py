@@ -6,8 +6,8 @@ from typing import Any
 import pytest
 
 from resume_roast.integrations.errors import MalformedResponseError
-from resume_roast.prompts.evaluate.parser import RoastReportParser
-from resume_roast.prompts.evaluate.schema import CATEGORY_NAMES
+from resume_roast.prompts.evaluate.output.parser import RoastReportParser
+from resume_roast.prompts.evaluate.output.schema import CATEGORY_NAMES
 
 parser = RoastReportParser()
 

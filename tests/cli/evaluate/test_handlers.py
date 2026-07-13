@@ -18,7 +18,7 @@ from resume_roast.integrations.errors import TransientError, TruncatedResponseEr
 from resume_roast.integrations.types import Completion, Message, Usage
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.credentials.types import Credentials
-from resume_roast.prompts.evaluate.schema import CATEGORY_NAMES
+from resume_roast.prompts.evaluate.output.schema import CATEGORY_NAMES
 
 app = build_subcommand_registry()
 runner = CliRunner()

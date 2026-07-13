@@ -18,8 +18,8 @@ from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.paths import storage_dir
 from resume_roast.persistence.settings.store import SettingsStore
 from resume_roast.prompts.evaluate.builder import build_evaluate_prompt
-from resume_roast.prompts.evaluate.parser import RoastReportParser
-from resume_roast.prompts.evaluate.rendering import (
+from resume_roast.prompts.evaluate.output.parser import RoastReportParser
+from resume_roast.prompts.evaluate.output.rendering import (
     DIFF_ADDITION_PREFIX,
     DIFF_REMOVAL_PREFIX,
     render_report,
