@@ -2,10 +2,7 @@
 
 from resume_roast.prompts.bullets import BULLET_PRINCIPLES
 from resume_roast.prompts.evaluate.input import RESUME_INPUT, render_resume_input
-from resume_roast.prompts.evaluate.output import (
-    MARKDOWN_ROAST_FORMAT,
-    MARKDOWN_ROAST_REMINDER,
-)
+from resume_roast.prompts.evaluate.output import JSON_ROAST_FORMAT, JSON_ROAST_REMINDER, RULES
 from resume_roast.prompts.levels import LEVEL_CONTEXT
 from resume_roast.prompts.personas import PERSONA_PROMPTS
 from resume_roast.prompts.scoring import EVALUATION_PRIORITIES, SCORE_BANDS
@@ -30,11 +27,12 @@ def build_evaluate_prompt(parsed: ParsedResume, persona: str, level: str) -> Pro
             BULLET_PRINCIPLES,
             RESUME_STRUCTURE,
             RESUME_INPUT,
-            MARKDOWN_ROAST_FORMAT,
+            JSON_ROAST_FORMAT,
+            RULES,
         ]
     )
     # The task restatement closes the user message so the output contract is
     # the last thing the model reads — a long real resume otherwise pulls it
     # into its generic review-shaped prior.
-    user = "\n\n".join([render_resume_input(parsed), MARKDOWN_ROAST_REMINDER])
+    user = "\n\n".join([render_resume_input(parsed), JSON_ROAST_REMINDER])
     return Prompt(system=system, user=user)
