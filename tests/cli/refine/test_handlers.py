@@ -140,6 +140,19 @@ def test_refine_prints_the_summary_line(monkeypatch: pytest.MonkeyPatch) -> None
     assert _MODEL not in result.output
 
 
+@pytest.mark.usefixtures("saved_key")
+def test_footprint_prints_after_each_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    usage = Usage(prompt_tokens=1_000, completion_tokens=200, total_tokens=1_200)
+    monkeypatch.setattr(_FakeClient, "usage", usage)
+
+    # First auto-turn (the bullet) + one chat turn = two exchanges.
+    result = runner.invoke(app, ["refine", "Managed a team"], input="what verb?\n/exit\n")
+
+    assert result.exit_code == 0
+    # One per-message footprint per exchange — not a single cumulative line at exit.
+    assert result.output.count("input tokens") == 2
+
+
 def test_refine_requires_an_api_key() -> None:
     result = runner.invoke(app, ["refine", "Managed a team"], input="/exit\n")
 
