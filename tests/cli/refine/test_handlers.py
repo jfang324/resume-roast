@@ -107,7 +107,7 @@ def test_refine_streams_a_reply_to_the_bullet() -> None:
 
 
 @pytest.mark.usefixtures("saved_key")
-def test_refine_opens_with_the_bullet_as_the_first_user_turn() -> None:
+def test_refine_opens_with_a_single_system_message_then_the_bullet() -> None:
     runner.invoke(app, ["refine", "Managed a team"], input="/exit\n")
 
     client = _FakeClient.last
@@ -115,17 +115,17 @@ def test_refine_opens_with_the_bullet_as_the_first_user_turn() -> None:
     assert client.api_key == "nv-key"  # pragma: allowlist secret
     assert client.model == _MODEL  # default settings
 
-    # calls[0] has: system, initial-block system, user = bullet
+    # calls[0] is exactly: one leading system message, then the user turn.
     messages = client.calls[0]
-    # Last message is the user bullet
-    assert messages[-1] == Message(role="user", content="Managed a team")
-    # Some system messages are present
-    assert any(m.role == "system" for m in messages)
-    # System content includes the builder's sections
-    system_contents = [m.content for m in messages if m.role == "system"]
-    assert any("## Context" in c for c in system_contents)
-    assert any("## Principles" in c for c in system_contents)
-    assert any("## Rules" in c for c in system_contents)
+    assert [m.role for m in messages] == ["system", "user"]
+    # The single system message carries the builder's sections.
+    assert "## Context" in messages[0].content
+    assert "## Principles" in messages[0].content
+    assert "## Rules" in messages[0].content
+    # The opening user turn carries the bullet, tagged for the header.
+    assert messages[-1].role == "user"
+    assert "Managed a team" in messages[-1].content
+    assert "<current bullet point>" in messages[-1].content
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -165,14 +165,15 @@ def test_replace_updates_current_bullet_and_triggers_re_rating() -> None:
     # Two API calls: initial bullet + /replace
     assert len(client.calls) == 2
 
-    # Second call: system + initial-block + replace-block + user
+    # Exactly one system message throughout — per-turn context rides in user turns.
     messages = client.calls[1]
-    system_contents = [m.content for m in messages if m.role == "system"]
+    assert sum(m.role == "system" for m in messages) == 1
 
-    # A system block mentions the new bullet
-    assert any("Led a team of 10 engineers" in c for c in system_contents)
-    # User message is the synthetic replace text
-    assert messages[-1] == Message(role="user", content="I've updated my bullet.")
+    # The /replace user turn carries the new bullet and asks for a re-rating.
+    replace_turn = messages[-1]
+    assert replace_turn.role == "user"
+    assert "Led a team of 10 engineers" in replace_turn.content
+    assert "re-rate" in replace_turn.content.lower()
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -191,14 +192,13 @@ def test_generate_produces_candidate_without_changing_state() -> None:
     assert len(client.calls) == 2
 
     messages = client.calls[1]
-    system_contents = [m.content for m in messages if m.role == "system"]
+    assert sum(m.role == "system" for m in messages) == 1
 
-    # Generate block mentions the current bullet
-    assert any("Managed a team" in c for c in system_contents)
-    # Generate block has <note> with the note text
-    assert any("add metrics" in c for c in system_contents)
-    # User message is the synthetic generate text
-    assert messages[-1] == Message(role="user", content="Generate a candidate.")
+    # The /generate user turn carries the current bullet and the note.
+    generate_turn = messages[-1]
+    assert generate_turn.role == "user"
+    assert "Managed a team" in generate_turn.content
+    assert "add metrics" in generate_turn.content
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -214,9 +214,10 @@ def test_generate_without_notes_omits_note_tag() -> None:
     assert client is not None
     assert len(client.calls) == 2
 
-    system_contents = [m.content for m in client.calls[1] if m.role == "system"]
-    assert any("Managed a team" in c for c in system_contents)
-    assert not any("<note>" in c for c in system_contents)
+    generate_turn = client.calls[1][-1]
+    assert generate_turn.role == "user"
+    assert "Managed a team" in generate_turn.content
+    assert "<note>" not in generate_turn.content
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -243,13 +244,11 @@ def test_conversation_chat_does_not_change_current_bullet() -> None:
     client = _FakeClient.last
     assert client is not None
 
-    messages = client.calls[1]
-    system_contents = [m.content for m in messages if m.role == "system"]
-
-    # Current bullet remains the initial one
-    assert any("Initial bullet" in c for c in system_contents)
-    # User text is the chat message
-    assert messages[-1] == Message(role="user", content="what about the verb?")
+    # The chat turn carries both the current bullet and the user's question.
+    chat_turn = client.calls[1][-1]
+    assert chat_turn.role == "user"
+    assert "Initial bullet" in chat_turn.content
+    assert "what about the verb?" in chat_turn.content
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -268,3 +267,29 @@ def test_transient_error_is_reported_and_session_survives(monkeypatch: pytest.Mo
     assert client is not None
     # Three API calls: initial + failed chat + retry chat
     assert len(client.calls) == 3
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_failed_replace_does_not_commit_the_new_bullet(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_FakeClient, "fail_on_call", 2)  # the /replace call fails
+
+    result = runner.invoke(
+        app,
+        ["refine", "Original bullet"],
+        input="/replace New bullet that fails\nwhat next?\n/exit\n",
+    )
+
+    assert result.exit_code == 0
+    assert "try again" in result.output
+    client = _FakeClient.last
+    assert client is not None
+    # Three API calls: initial (ok) + replace (fails) + chat (ok).
+    assert len(client.calls) == 3
+
+    # The failed /replace was never committed: the chat turn still references
+    # the original bullet, and no trace of the failed replace remains.
+    chat_turn = client.calls[2][-1]
+    assert chat_turn.role == "user"
+    assert "Original bullet" in chat_turn.content
+    # No trace of the failed replace anywhere in the conversation.
+    assert not any("New bullet that fails" in m.content for m in client.calls[2])
