@@ -56,6 +56,16 @@ def refine(bullet: str) -> None:
                 continue
             if parsed[0] == "exit":
                 break
+            if parsed[0] == "help":
+                console.print(
+                    "Available commands:\n"
+                    "  /replace <text>    Replace the bullet with a new version\n"
+                    "  /generate <notes>  Generate a candidate rewrite\n"
+                    "  /exit              End the session\n"
+                    "  /help              Show this message",
+                    style="dim",
+                )
+                continue
 
             user_text = builder.build_turn_message(parsed)
             if _stream_exchange(conversation, console, user_text, label):

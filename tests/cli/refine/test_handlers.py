@@ -293,3 +293,32 @@ def test_failed_replace_does_not_commit_the_new_bullet(monkeypatch: pytest.Monke
     assert "Original bullet" in chat_turn.content
     # No trace of the failed replace anywhere in the conversation.
     assert not any("New bullet that fails" in m.content for m in client.calls[2])
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_help_prints_available_commands() -> None:
+    result = runner.invoke(
+        app,
+        ["refine", "Managed a team"],
+        input="/help\n/exit\n",
+    )
+
+    assert result.exit_code == 0
+    assert "/replace" in result.output
+    assert "/generate" in result.output
+    assert "/exit" in result.output
+    assert "/help" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_help_does_not_trigger_api_call() -> None:
+    runner.invoke(
+        app,
+        ["refine", "Managed a team"],
+        input="/help\n/exit\n",
+    )
+
+    client = _FakeClient.last
+    assert client is not None
+    # Only the one auto-turn from the initial bullet — /help made no extra call.
+    assert len(client.calls) == 1
