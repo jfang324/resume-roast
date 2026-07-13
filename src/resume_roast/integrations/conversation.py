@@ -22,6 +22,7 @@ class Conversation:
     temperature: float
     _usages: list[Usage] = field(default_factory=list[Usage])
     last_finish_reason: str | None = None
+    last_usage: Usage | None = None
 
     @classmethod
     def start(cls, client: LlmClient, system: str, *, temperature: float) -> "Conversation":
@@ -49,6 +50,7 @@ class Conversation:
         self.messages.append(Message(role="assistant", content="".join(chunks)))
         if stream.usage is not None:
             self._usages.append(stream.usage)
+        self.last_usage = stream.usage
         self.last_finish_reason = stream.finish_reason
 
     @property

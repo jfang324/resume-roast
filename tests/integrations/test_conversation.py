@@ -139,6 +139,30 @@ def test_records_the_last_finish_reason() -> None:
     assert conversation.last_finish_reason == "length"
 
 
+def test_records_the_last_usage() -> None:
+    client = _FakeClient([_FakeStream(["ok"], usage=_USAGE)])
+    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+
+    list(conversation.send_stream("hi"))
+
+    assert conversation.last_usage == _USAGE
+
+
+def test_last_usage_is_this_turn_not_the_running_total() -> None:
+    second = Usage(prompt_tokens=7, completion_tokens=3, total_tokens=10)
+    client = _FakeClient([_FakeStream(["one"]), _FakeStream(["two"], usage=second)])
+    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+
+    list(conversation.send_stream("first"))
+    list(conversation.send_stream("second"))
+
+    # last_usage tracks only the latest turn, unlike the cumulative total_usage.
+    assert conversation.last_usage == second
+    assert conversation.total_usage == Usage(
+        prompt_tokens=107, completion_tokens=53, total_tokens=160
+    )
+
+
 def test_rolls_back_the_user_turn_when_the_stream_fails() -> None:
     error = TransientError("NVIDIA API is unavailable")
     client = _FakeClient([_FakeStream(["par", "tial"], error=error), _FakeStream(["recovered"])])
