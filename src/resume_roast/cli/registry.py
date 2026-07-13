@@ -4,12 +4,13 @@ import typer
 
 from resume_roast.cli.config import handlers as config
 from resume_roast.cli.evaluate.handlers import evaluate
+from resume_roast.cli.generate_block.handlers import generate_block
 from resume_roast.cli.guards import guarded
 from resume_roast.cli.refine.handlers import refine
 from resume_roast.cli.show import handlers as show
 from resume_roast.cli.types import Group, Handler
 
-TOP_LEVEL_HANDLERS: tuple[Handler, ...] = (evaluate, refine)
+TOP_LEVEL_HANDLERS: tuple[Handler, ...] = (evaluate, refine, generate_block)
 
 SUBCOMMAND_GROUPS: tuple[Group, ...] = (
     Group(
