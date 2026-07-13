@@ -1,5 +1,6 @@
 """Thin chat-completion client for the NVIDIA NIM API, via the OpenAI SDK."""
 
+import logging
 from collections.abc import Iterator, Sequence
 
 import openai
@@ -15,6 +16,8 @@ from resume_roast.integrations.nvidia.constants import (
 )
 from resume_roast.integrations.nvidia.utils import map_error, to_openai_messages, to_usage
 from resume_roast.integrations.types import Completion, Message, Usage
+
+logger = logging.getLogger(__name__)
 
 
 class NvidiaCompletionStream:
@@ -33,6 +36,8 @@ class NvidiaCompletionStream:
         self.finish_reason: str | None = None
 
     def __iter__(self) -> Iterator[str]:
+        debug = logger.isEnabledFor(logging.DEBUG)
+        text_parts: list[str] = []
         try:
             for chunk in self._stream:
                 if chunk.usage is not None:
@@ -43,9 +48,18 @@ class NvidiaCompletionStream:
                 if choice.finish_reason is not None:
                     self.finish_reason = choice.finish_reason
                 if choice.delta.content:
+                    if debug:
+                        text_parts.append(choice.delta.content)
                     yield choice.delta.content
         except openai.OpenAIError as exc:
             raise map_error(exc) from exc
+        if debug:
+            logger.debug(
+                "NVIDIA raw response (streamed, finish_reason=%s, usage=%s): %s",
+                self.finish_reason,
+                self.usage,
+                "".join(text_parts),
+            )
 
 
 class NvidiaClient:
@@ -76,16 +90,19 @@ class NvidiaClient:
                 need the full text, and a truncated response silently missing
                 its tail is worse than a failure.
         """
+        openai_messages = to_openai_messages(messages)
+        logger.debug("NVIDIA request messages: %s", openai_messages)
         try:
             response = self._client.chat.completions.create(
                 model=self.model,
-                messages=to_openai_messages(messages),
+                messages=openai_messages,
                 temperature=temperature,
                 max_tokens=MAX_TOKENS,
                 stream=False,
             )
         except openai.OpenAIError as exc:
             raise map_error(exc) from exc
+        logger.debug("NVIDIA raw response: %s", response)
 
         if not response.choices:
             raise EmptyResponseError("NVIDIA API returned no choices.")
@@ -115,10 +132,12 @@ class NvidiaClient:
                 request cannot be started; errors mid-stream surface from the
                 returned iterator.
         """
+        openai_messages = to_openai_messages(messages)
+        logger.debug("NVIDIA request messages (streamed): %s", openai_messages)
         try:
             stream = self._client.chat.completions.create(
                 model=self.model,
-                messages=to_openai_messages(messages),
+                messages=openai_messages,
                 temperature=temperature,
                 max_tokens=MAX_TOKENS,
                 stream=True,
