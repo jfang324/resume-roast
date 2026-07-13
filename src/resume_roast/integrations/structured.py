@@ -5,6 +5,7 @@ from collections.abc import Callable, Sequence
 from resume_roast.integrations.errors import MalformedResponseError, TruncatedResponseError
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.types import Message, Usage
+from resume_roast.integrations.usage import total_usage
 
 _FEEDBACK_TEMPLATE = """\
 Your previous response could not be used: {reason}.
@@ -44,21 +45,10 @@ def structured_completion[T](
         if completion.usage is not None:
             usages.append(completion.usage)
         try:
-            return parse(completion.text), _total_usage(usages)
+            return parse(completion.text), total_usage(usages)
         except MalformedResponseError as exc:
             if parse_retries == 0:
                 raise
             parse_retries -= 1
             conversation.append(Message(role="assistant", content=completion.text))
             conversation.append(Message(role="user", content=_FEEDBACK_TEMPLATE.format(reason=exc)))
-
-
-def _total_usage(usages: Sequence[Usage]) -> Usage | None:
-    """Sum token counts across attempts, or None when no attempt reported any."""
-    if not usages:
-        return None
-    return Usage(
-        prompt_tokens=sum(usage.prompt_tokens for usage in usages),
-        completion_tokens=sum(usage.completion_tokens for usage in usages),
-        total_tokens=sum(usage.total_tokens for usage in usages),
-    )
