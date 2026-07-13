@@ -1,12 +1,15 @@
 """Display helpers shared across subcommand groups."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 from rich.console import Console, RenderableType
 from rich.live import Live
 from rich.padding import Padding
 from rich.spinner import Spinner
 from rich.text import Text
+
+from resume_roast.integrations.nvidia.pricing import estimate_cost
+from resume_roast.integrations.types import Usage
 
 NOT_SET = "(not set)"
 """Shown wherever an optional value has nothing saved."""
@@ -35,6 +38,33 @@ def print_highlighted_lines(text: str, console: Console, styles: Mapping[str, st
             console.print(Padding(Text(line), (0, 0), style=style))
         else:
             console.print(Text(line), soft_wrap=True)
+
+
+_MODEL_LABEL_MAX = 20
+
+
+def model_label(model: str) -> str:
+    name = model.rsplit("/", 1)[-1]
+    if len(name) > _MODEL_LABEL_MAX:
+        return f"{name[: _MODEL_LABEL_MAX - 1]}…"
+    return name
+
+
+def stream_to_console(chunks: Iterable[str], console: Console) -> None:
+    for chunk in chunks:
+        console.print(chunk, end="", markup=False, highlight=False, soft_wrap=True)
+
+
+def summary_line(model: str, usage: Usage | None, latency_seconds: float) -> str:
+    parts: list[str] = []
+    if usage is not None:
+        parts.append(f"{usage.prompt_tokens:,} input tokens")
+        parts.append(f"{usage.completion_tokens:,} output tokens")
+        cost = estimate_cost(usage, model)
+        if cost is not None:
+            parts.append(f"~${cost:.4f}")
+    parts.append(f"{latency_seconds:.1f}s")
+    return " · ".join(parts)
 
 
 class RotatingSpinner(Spinner):
