@@ -2,10 +2,10 @@
 
 import pytest
 
-from resume_roast.prompts.bullets import BULLET_PRINCIPLES
 from resume_roast.prompts.refine.builder import RefinePromptBuilder
 from resume_roast.prompts.refine.input.parser import RefineParser
 from resume_roast.prompts.refine.input.state import RefineState
+from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
 
 
 def _state(bullet: str) -> RefineState:

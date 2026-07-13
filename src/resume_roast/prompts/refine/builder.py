@@ -1,7 +1,7 @@
 """Builds the refine feature's prompt blocks — static system and per-turn state blocks."""
 
-from resume_roast.prompts.bullets import BULLET_PRINCIPLES
 from resume_roast.prompts.refine.input.state import RefineState
+from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
 
 _SYSTEM = (
     """\
