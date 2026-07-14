@@ -25,6 +25,9 @@ from resume_roast.prompts.evaluate.output.rendering import (
     render_report,
 )
 from resume_roast.prompts.types import Prompt
+from resume_roast.utils.extraction.document_parser import DocumentParser
+from resume_roast.utils.extraction.docx_parser import DocxParser
+from resume_roast.utils.extraction.errors import UnreadableDocumentError
 from resume_roast.utils.extraction.pdf_parser import PdfParser
 
 _SPINNER_MESSAGES = (
@@ -43,12 +46,26 @@ _DIFF_STYLES = {
 }
 """Full-width background colors for the removal/addition lines of a rewrite."""
 
+_PARSERS: dict[str, DocumentParser] = {
+    ".pdf": PdfParser(),
+    ".docx": DocxParser(),
+}
+"""Available format parsers keyed by the lowercase suffix they handle."""
+
+
+def _parser_for(path: Path) -> DocumentParser:
+    """Look up the parser for ``path``; raise the standard error otherwise."""
+    parser = _PARSERS.get(path.suffix.lower())
+    if parser is None:
+        raise UnreadableDocumentError(f"Unsupported file type: {path.suffix or '(no extension)'}")
+    return parser
+
 
 def evaluate(path: Path) -> None:
-    """Roast a PDF resume with the configured model and print the report."""
+    """Roast a PDF or DOCX resume with the configured model and print the report."""
     api_key = _require_api_key()
     settings = SettingsStore(storage_dir()).load_or_create()
-    parsed = PdfParser().parse(path)
+    parsed = _parser_for(path).parse(path)
     prompt = build_evaluate_prompt(parsed, persona=settings.persona, level=settings.level)
 
     client: LlmClient = NvidiaClient(api_key=api_key, model=settings.model)
