@@ -1,0 +1,114 @@
+"""DOCX -> `ParsedResume` extraction built on mammoth."""
+
+# DOCX has no fixed page geometry, so `DocumentMetadata.pages` stays empty.
+# Mammoth converts hyperlinks to bare URL strings, so we mine the resulting
+# Markdown for both `[text](url)` and standalone URLs instead of inspecting
+# the underlying relationships part.
+#
+# Mammoth ships without a full type stub; the values we use are narrowed
+# explicitly below.
+# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownVariableType=false
+
+import re
+import zipfile
+from pathlib import Path
+from typing import cast
+
+import mammoth
+from defusedxml.common import DefusedXmlException
+from defusedxml.ElementTree import fromstring
+
+from resume_roast.utils.extraction._helpers import none_when_blank
+from resume_roast.utils.extraction.errors import UnreadableDocumentError
+from resume_roast.utils.extraction.types import DocumentMetadata, ParsedResume
+
+_LINK_PATTERN = re.compile(r"\[(?:[^\]]*)\]\(([^)\s]+)\)")
+"""Markdown link form: captured group is the URL."""
+
+_BARE_URL_PATTERN = re.compile(r"https?://[^\s)<>]+")
+"""Bare URL form, possibly with mammoth's trailing backslash-escapes."""
+
+_MAMMOTH_ESCAPED_PUNCT = re.compile(r"\\([\W_])")
+"""A backslash before any char `re` considers non-word/underscore (mammoth's escape)."""
+
+DOCX_OPC_CORE_PROPERTIES = "docProps/core.xml"
+"""OPC part path holding the Dublin Core metadata: creator, dates, etc."""
+
+DOCX_OPC_APP_PROPERTIES = "docProps/app.xml"
+"""OPC part path holding extended properties; we surface `<Application>` only."""
+
+
+def _core_properties(xml_bytes: bytes) -> dict[str, str]:
+    """Parse `docProps/core.xml` bytes into a flat dict of non-empty values."""
+    root = fromstring(xml_bytes)
+    found: dict[str, str] = {}
+    for child in root:
+        tag = child.tag.rsplit("}", 1)[-1]
+        if child.text is not None and child.text.strip():
+            found[tag] = child.text.strip()
+    return found
+
+
+def _read_core_properties(path: Path) -> dict[str, str]:
+    """Load `docProps/core.xml` from the docx zip; missing part means no props."""
+    try:
+        with zipfile.ZipFile(path) as zf, zf.open(DOCX_OPC_CORE_PROPERTIES) as fh:
+            return _core_properties(fh.read())
+    except (KeyError, OSError, zipfile.BadZipFile, DefusedXmlException):
+        return {}
+
+
+def _read_app_properties(path: Path) -> dict[str, str]:
+    """Load `docProps/app.xml` from the docx zip; missing part means no props.
+
+    Currently the only field we surface is `<Application>`, the DOCX
+    equivalent of PDF's producer string.
+    """
+    try:
+        with zipfile.ZipFile(path) as zf, zf.open(DOCX_OPC_APP_PROPERTIES) as fh:
+            return _core_properties(fh.read())
+    except (KeyError, OSError, zipfile.BadZipFile, DefusedXmlException):
+        return {}
+
+
+def _clean_url(url: str) -> str:
+    """Unescape mammoth's backslash-escaped URL punctuation."""
+    return _MAMMOTH_ESCAPED_PUNCT.sub(r"\1", url)
+
+
+def _extract_links(markdown: str) -> tuple[str, ...]:
+    """Mine the rendered Markdown for hyperlinks written by mammoth."""
+    bracketed = {_clean_url(m) for m in _LINK_PATTERN.findall(markdown)}
+    bare = {_clean_url(match.rstrip(",;!?.")) for match in _BARE_URL_PATTERN.findall(markdown)}
+    return tuple(sorted(bracketed | bare))
+
+
+class DocxParser:
+    """Implements `DocumentParser` for DOCX files."""
+
+    def parse(self, path: Path) -> ParsedResume:
+        """Extract a DOCX file's content as Markdown plus metadata.
+
+        Two filesystem handles live inside this call: the mammoth stream used
+        for body text and the zipfile used for metadata. Both close before
+        the returned dataclasses escape.
+        """
+        try:
+            with open(path, "rb") as fh:
+                result = mammoth.convert_to_markdown(fh)
+        except (OSError, zipfile.BadZipFile, ValueError, KeyError, DefusedXmlException) as exc:
+            raise UnreadableDocumentError(f"Could not open {path}") from exc
+
+        markdown = cast(str, result.value)
+        core_props = _read_core_properties(path)
+        app_props = _read_app_properties(path)
+        metadata = DocumentMetadata(
+            page_count=0,
+            creator=none_when_blank(core_props.get("creator")),
+            producer=none_when_blank(app_props.get("Application")),
+            created=none_when_blank(core_props.get("created")),
+            modified=none_when_blank(core_props.get("modified")),
+            links=_extract_links(markdown),
+            pages=(),
+        )
+        return ParsedResume(markdown=markdown, metadata=metadata)
