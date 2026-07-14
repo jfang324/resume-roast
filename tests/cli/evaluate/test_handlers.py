@@ -1,7 +1,8 @@
 """Tests for `resume-roast evaluate`."""
 
 # The fixture drives PyMuPDF's partially annotated document-building API.
-# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
+# python-docx's stub is incomplete in this environment.
+# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownVariableType=false, reportGeneralTypeIssues=false
 
 import json
 import re
@@ -11,6 +12,7 @@ from typing import ClassVar
 
 import pymupdf
 import pytest
+from docx import Document
 from typer.testing import CliRunner
 
 from resume_roast.cli.registry import build_subcommand_registry
@@ -260,4 +262,42 @@ def test_evaluate_reports_missing_file(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "Error" in result.output
+    assert "Traceback" not in result.output
+
+
+@pytest.fixture
+def sample_docx(tmp_path: Path) -> Path:
+    path = tmp_path / "sample.docx"
+    document = Document()
+    document.add_heading("Jane Doe", level=1)
+    document.add_paragraph("Roasted resumes at Acme Corp")
+    document.core_properties.author = "unit-test"
+    document.save(str(path))
+    return path
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_evaluate_accepts_docx_input(sample_docx: Path) -> None:
+    result = runner.invoke(app, ["evaluate", str(sample_docx)])
+
+    assert result.exit_code == 0
+    assert "Overall: 4/10" in result.output
+    assert "[What's Good]\n- Concise" in result.output
+    assert "[What's Bad]\n- No metrics" in result.output
+    client = _FakeClient.last
+    assert client is not None
+    _, user = client.calls[0]
+    assert user.role == "user"
+    assert "Jane Doe" in user.content
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_evaluate_rejects_unsupported_extension(tmp_path: Path) -> None:
+    path = tmp_path / "resume.txt"
+    path.write_text("not a real resume", encoding="utf-8")
+
+    result = runner.invoke(app, ["evaluate", str(path)])
+
+    assert result.exit_code == 1
+    assert "Unsupported file type" in result.output
     assert "Traceback" not in result.output
