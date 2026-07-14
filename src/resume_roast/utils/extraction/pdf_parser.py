@@ -10,17 +10,11 @@ from typing import Any, cast
 import pymupdf
 import pymupdf4llm
 
+from resume_roast.utils.extraction._helpers import none_when_blank
 from resume_roast.utils.extraction.errors import UnreadableDocumentError
 from resume_roast.utils.extraction.types import BBox, DocumentMetadata, PageMetadata, ParsedResume
 
 _TEXT_BLOCK_TYPE = 0
-
-
-def _none_when_blank(value: str | None) -> str | None:
-    """PDF metadata stores absent values as empty strings; surface them as None."""
-    if value is None or not value.strip():
-        return None
-    return value
 
 
 def _page_metadata(page: pymupdf.Page) -> PageMetadata:
@@ -57,10 +51,10 @@ def _document_metadata(doc: pymupdf.Document) -> DocumentMetadata:
     info = cast(dict[str, str | None], doc.metadata or {})
     return DocumentMetadata(
         page_count=cast(int, doc.page_count),
-        creator=_none_when_blank(info.get("creator")),
-        producer=_none_when_blank(info.get("producer")),
-        created=_none_when_blank(info.get("creationDate")),
-        modified=_none_when_blank(info.get("modDate")),
+        creator=none_when_blank(info.get("creator")),
+        producer=none_when_blank(info.get("producer")),
+        created=none_when_blank(info.get("creationDate")),
+        modified=none_when_blank(info.get("modDate")),
         links=tuple(links),
         pages=tuple(pages),
     )
