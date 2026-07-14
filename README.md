@@ -107,6 +107,8 @@ See [docs/development.md](docs/development.md) for setup and development command
 - Typer (CLI framework)
 - Rich (terminal output, spinners, diff rendering)
 - pymupdf4llm (PDF to Markdown extraction)
+- mammoth (DOCX to Markdown extraction)
+- defusedxml (safe XML parsing for DOCX metadata parts)
 - openai SDK (NVIDIA NIM API client)
 
 ### Code Quality
