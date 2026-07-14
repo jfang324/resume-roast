@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Chat sessions now report metrics per message instead of a single cumulative summary at exit
+- Added support for docx files
 
 ## [1.0.1] - 2026-07-13
 
