@@ -22,7 +22,6 @@ from resume_roast.cli.interview.actions import (
     action_from_dict,
 )
 from resume_roast.cli.interview.input_provider import UserInputProvider, make_input_provider
-from resume_roast.cli.interview.parsers import parser_for
 from resume_roast.cli.utils import spinner, summary_line
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.nvidia.client import NvidiaClient
@@ -39,6 +38,7 @@ from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.prompts.interview.output.parser import parse_plan, parse_verdict
 from resume_roast.prompts.interview.output.schema import SessionData, Verdict
 from resume_roast.tools.evaluate.schema import EvaluateOutput
+from resume_roast.utils.extraction.mappings import get_parser
 
 logger = logging.getLogger(__name__)
 
@@ -537,7 +537,7 @@ def interview(path: Path) -> None:
     """Run an agentic behavioral interview on a PDF or DOCX resume."""
     api_key = require_api_key()
     settings = SettingsStore(storage_dir()).load_or_create()
-    parsed = parser_for(path).parse(path)
+    parsed = get_parser(path).parse(path)
     logger.debug("Parsed resume: %d chars", len(parsed.markdown))
 
     system_prompt = build_interview_system_prompt(parsed)

@@ -1,7 +1,7 @@
-"""Document-parser registry for the interview subcommand.
+"""Suffix-to-parser registry.
 
-Keeps the parser instance map in a single place so both ``handlers.py``
-and the document processing pipeline can reference it without duplication.
+Lives next to the parser implementations it dispatches to so the
+table and the implementations evolve together.
 """
 
 import os
@@ -17,7 +17,7 @@ PARSERS: dict[str, DocumentParser] = {
 }
 
 
-def parser_for(path: str | os.PathLike[str]) -> DocumentParser:
+def get_parser(path: str | os.PathLike[str]) -> DocumentParser:
     """Return the parser registered for *path*'s suffix.
 
     Raises:

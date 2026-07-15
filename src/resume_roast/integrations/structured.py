@@ -10,6 +10,9 @@ from resume_roast.integrations.usage import total_usage
 
 logger = logging.getLogger(__name__)
 
+_MAX_RETRIES: int = 1
+"""Retries allowed per failure mode, on top of the initial attempt."""
+
 _FEEDBACK_TEMPLATE = """\
 Your previous response could not be used: {reason}.
 Send the corrected response now — the complete raw JSON object only."""
@@ -20,7 +23,7 @@ def structured_completion[T](
     messages: Sequence[Message],
     parse: Callable[[str], T],
 ) -> tuple[T, Usage | None]:
-    """Prompt until the response parses, retrying each failure mode once.
+    """Prompt until the response parses, retrying each failure mode within budget.
 
     A malformed response is retried with the bad reply and the parse error
     appended to the conversation; a truncated response is retried as sent
@@ -30,34 +33,46 @@ def structured_completion[T](
 
     Raises:
         ApiError: transport errors from the client propagate untouched;
-            `TruncatedResponseError` or `MalformedResponseError` when the
-            retry for that failure mode fails the same way again.
+            `TruncatedResponseError` or `MalformedResponseError` once the
+            retry budget for that failure mode is exhausted.
     """
     conversation = list(messages)
     usages: list[Usage] = []
-    parse_retries = 1
-    truncation_retries = 1
+
+    parse_attempts = 0
+    truncation_attempts = 0
+
     while True:
         try:
             completion = client.prompt(conversation)
+
         except TruncatedResponseError:
-            if truncation_retries == 0:
+            truncation_attempts += 1
+            if truncation_attempts > _MAX_RETRIES:
                 raise
-            truncation_retries -= 1
             continue
+
         if completion.usage is not None:
             usages.append(completion.usage)
+
         try:
             return parse(completion.text), total_usage(usages)
+
         except MalformedResponseError as exc:
-            # The parse error names the structural fault (safe at ERROR); the raw
-            # body can quote resume content, so it stays at DEBUG per the PII rule.
-            if parse_retries == 0:
-                logger.error("Malformed response, no retries left: %s", exc)
-                logger.debug("Malformed raw response: %s", completion.text)
+            parse_attempts += 1
+            _log_malformed(exc, completion.text)
+            if parse_attempts > _MAX_RETRIES:
                 raise
-            logger.error("Malformed response, retrying: %s", exc)
-            logger.debug("Malformed raw response: %s", completion.text)
-            parse_retries -= 1
-            conversation.append(Message(role="assistant", content=completion.text))
-            conversation.append(Message(role="user", content=_FEEDBACK_TEMPLATE.format(reason=exc)))
+            _append_feedback(conversation, completion.text, exc)
+
+
+def _log_malformed(exc: MalformedResponseError, body: str) -> None:
+    logger.error("Malformed response: %s", exc)
+    logger.debug("Malformed raw response: %s", body)
+
+
+def _append_feedback(
+    conversation: list[Message], response_text: str, reason: MalformedResponseError
+) -> None:
+    conversation.append(Message(role="assistant", content=response_text))
+    conversation.append(Message(role="user", content=_FEEDBACK_TEMPLATE.format(reason=reason)))
