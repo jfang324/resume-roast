@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- New `interview` subcommand: agentic behavioral interview with resume-based fact-checking and competency scoring
 - Chat sessions now report metrics per message instead of a single cumulative summary at exit
 - Added support for docx files
 

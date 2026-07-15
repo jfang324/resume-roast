@@ -12,6 +12,7 @@ A terminal-based LLM-powered resume coaching tool. Get brutal, structured feedba
 ## Features
 
 - **`evaluate`** — Submit a PDF resume and receive a structured roast: per-category scores, highlighted strengths and weaknesses, and concrete rewrite suggestions with before/after examples
+- **`interview`** — Agentic behavioral interview that asks resume-tailored questions, fact-checks answers against your resume, and scores them across ownership, technical competence, problem-solving, and collaboration
 - **`refine`** — Interactive chat that coaches a single resume bullet, rating it on every turn and suggesting improvements
 - **`generate-block`** — Chat-based interviewer that gathers details about a role or project, then generates a formatted resume block rated against our bullet-writing principles
 - Multiple LLM models to choose from, with per-session token usage and cost reporting
@@ -94,6 +95,18 @@ Opens an interactive chat. The LLM interviews you about a role or project, askin
 | `/help`              | Show available commands                 |
 | `/exit`              | End the session                         |
 | *(plain text)*       | Answer questions, add details           |
+
+### Interview
+
+```sh
+resume-roast interview path/to/resume.pdf
+```
+
+Starts an agentic behavioral interview. The LLM generates questions tailored to your resume, asks them one at a time, fact-checks your answers against the resume, and probes deeper with follow-ups when needed. After all questions, produces a competency report with per-category scores, strengths, and growth areas. Available commands:
+
+| Command        | Action                       |
+| -------------- | ---------------------------- |
+| `/exit`        | End the interview early      |
 
 ## Development
 
