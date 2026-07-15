@@ -1,0 +1,506 @@
+"""Tests for `resume-roast interview`."""
+
+# The fixture drives PyMuPDF's partially annotated document-building API.
+# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownVariableType=false, reportGeneralTypeIssues=false
+
+import json
+from collections.abc import Sequence
+from pathlib import Path
+from typing import ClassVar
+
+import pymupdf
+import pytest
+from typer.testing import CliRunner
+
+from resume_roast.cli.registry import build_subcommand_registry
+from resume_roast.integrations.types import Completion, Message, Usage
+from resume_roast.persistence.credentials.store import CredentialsStore
+from resume_roast.persistence.credentials.types import Credentials
+from resume_roast.prompts.interview.competencies import COMPETENCIES
+
+app = build_subcommand_registry()
+runner = CliRunner()
+
+_MODEL = "nvidia/nemotron-3-super-120b-a12b"
+
+
+def _plan_json() -> str:
+    return json.dumps(
+        {
+            "questions": [
+                "Q one?",
+                "Q two?",
+                "Q three?",
+                "Q four?",
+            ]
+        }
+    )
+
+
+def _scores_json(critical_failure: bool = False) -> str:
+    return json.dumps(
+        {
+            "scores": {c.id: 7 for c in COMPETENCIES},
+            "critical_failure": critical_failure,
+            "strengths": [],
+            "gaps": [],
+        }
+    )
+
+
+def _verdict_json() -> str:
+    return json.dumps(
+        {
+            "verdict": "maybe",
+            "overall_rating": 5.0,
+            "summary": "Some summary.",
+            "strengths": [],
+            "growth_areas": [],
+        }
+    )
+
+
+def _verify_json() -> str:
+    return json.dumps(
+        {
+            "claims": [
+                {
+                    "text": "claim 1",
+                    "probability": 0.9,
+                    "evidence": "Match from resume",
+                    "contradiction": False,
+                }
+            ]
+        }
+    )
+
+
+class _FakeClient:
+    """Stands in for NvidiaClient; answers prompt() from a queue of texts."""
+
+    texts: ClassVar[list[str]] = []
+    usage: ClassVar[Usage | None] = None
+    error: ClassVar[Exception | None] = None
+    last: ClassVar["_FakeClient | None"] = None
+
+    def __init__(self, api_key: str, model: str) -> None:
+        self.api_key = api_key
+        self.model = model
+        self.calls: list[list[Message]] = []
+        type(self).last = self
+
+    def prompt(
+        self,
+        messages: Sequence[Message],
+        *,
+        temperature: float = 0.0,  # noqa: ARG002
+    ) -> Completion:
+        self.calls.append(list(messages))
+        error = type(self).error
+        if error is not None:
+            raise error
+        queue = type(self).texts
+        if not queue:
+            raise AssertionError("Unexpected extra LLM call")
+        text = queue.pop(0)
+        return Completion(text=text, usage=type(self).usage, finish_reason="stop")
+
+
+@pytest.fixture(autouse=True)
+def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Path:
+    monkeypatch.setattr("resume_roast.cli.interview.handlers.storage_dir", lambda: tmp_path)
+    monkeypatch.setattr("resume_roast.cli.chat.storage_dir", lambda: tmp_path)
+    return tmp_path
+
+
+@pytest.fixture(autouse=True)
+def _fake_client(  # pyright: ignore[reportUnusedFunction]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("resume_roast.cli.interview.handlers.NvidiaClient", _FakeClient)
+    monkeypatch.setattr(_FakeClient, "texts", [])
+    monkeypatch.setattr(
+        _FakeClient,
+        "usage",
+        Usage(prompt_tokens=2_000, completion_tokens=1_214, total_tokens=3_214),
+    )
+    monkeypatch.setattr(_FakeClient, "error", None)
+    monkeypatch.setattr(_FakeClient, "last", None)
+
+
+@pytest.fixture
+def saved_key(tmp_path: Path) -> None:
+    credentials = Credentials(nvidia_api_key="nv-key")  # pragma: allowlist secret
+    CredentialsStore(tmp_path).save(credentials)
+
+
+@pytest.fixture
+def sample_pdf(tmp_path: Path) -> Path:
+    path = tmp_path / "sample.pdf"
+    with pymupdf.open() as doc:
+        page = doc.new_page()
+        page.insert_text((72, 80), "Jane Doe", fontsize=20)
+        page.insert_text((72, 120), "Engineer at Acme Corp", fontsize=11)
+        doc.save(path)
+    return path
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_interview_advances_after_evaluate(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Q1 evaluate -> advance to Q2 (Blocker 1 regression guard)."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="answer one\n/exit\n")
+    assert result.exit_code == 0
+    assert "Q2:" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_interview_verify_then_evaluate(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """verify -> evaluate path advances to Q2."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "verify", "claims": ["claim 1"]}),
+            _verify_json(),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="some answer\n/exit\n")
+    assert result.exit_code == 0
+    assert "Q2:" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_interview_early_exit_on_two_critical_failures(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two critical_failure evaluations end the interview early."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(critical_failure=True),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(critical_failure=True),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="bad answer\nworse answer\n")
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+    assert "Q3:" not in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_interview_exhaustion_reaches_verdict(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """All base questions answered -> verdict phase reached."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(
+        app,
+        ["interview", str(sample_pdf)],
+        input="\n".join(["a1", "a2", "a3", "a4"]) + "\n",
+    )
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+    assert "Overall Rating:" in result.output
+    assert "Verdict:" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_interview_conclude_ends_and_scores(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """conclude action evaluates current question then ends."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "conclude"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="only answer\n")
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+    assert "7.0 /10" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_interview_turn_cap_prevents_hang(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Prose that never produces a valid action hits the turn cap instead of hanging."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            *([json.dumps({"action": "proceed"})] * 14),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(
+        app,
+        ["interview", str(sample_pdf)],
+        input="some answer\n/exit\n",
+    )
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_progress_block_never_accumulates(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each LLM payload contains at most one progress block."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(
+        app,
+        ["interview", str(sample_pdf)],
+        input="\n".join(["a1", "a2", "a3", "a4"]) + "\n",
+    )
+    assert result.exit_code == 0
+
+    client = _FakeClient.last
+    assert client is not None
+    for messages in client.calls:
+        blocks = [m for m in messages if "Interview progress:" in m.content]
+        assert len(blocks) <= 1, f"Found {len(blocks)} progress blocks in one payload"
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_immediate_exit(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """/exit on the first question aborts before any LLM turn."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [_plan_json(), json.dumps({"action": "proceed"}), _verdict_json()],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="/exit\n")
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_verify_cap_reached(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """3 verify actions in a row hits the cap and forces evaluate."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "verify", "claims": ["c1"]}),
+            _verify_json(),
+            json.dumps({"action": "verify", "claims": ["c2"]}),
+            _verify_json(),
+            json.dumps({"action": "verify", "claims": ["c3"]}),
+            _verify_json(),
+            json.dumps({"action": "verify", "claims": ["c4"]}),
+            _verify_json(),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="my answer\n")
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_max_cycle_turns_forced_evaluate(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """13 unknown actions hit the 12-turn cap and force evaluate."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            *([json.dumps({"action": "dance"})] * 13),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="my answer\n")
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_parse_failure_retry_then_evaluate(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Invalid JSON response triggers retry, then valid action succeeds."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            "not valid json",
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="my answer\n")
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_unknown_action_retry(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unknown action name triggers retry with feedback."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "unknown_action_name"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="my answer\n")
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_long_answer(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A very long answer (10k+ chars) is accepted without error."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    long_answer = "word " * 2_500
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input=f"{long_answer}\n")
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_empty_answer(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """An empty answer (blank line) is accepted."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="\n")
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_multiple_questions_score_accumulation(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scores from multiple questions accumulate."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "verify", "claims": ["c1"]}),
+            _verify_json(),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    result = runner.invoke(
+        app,
+        ["interview", str(sample_pdf)],
+        input="\n".join(["a1", "a2"]) + "\n",
+    )
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+    assert "14" in result.output or "7.0" in result.output
