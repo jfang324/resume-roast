@@ -45,6 +45,8 @@ class _FakeStream:
 class _FakeClient:
     """Satisfies LlmClient; serves a scripted stream per prompt_stream call."""
 
+    model: str = ""
+
     def __init__(self, streams: Sequence[_FakeStream]) -> None:
         self._streams = list(streams)
         self.calls: list[list[Message]] = []
