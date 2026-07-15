@@ -25,6 +25,8 @@ def _completion(text: str, usage: Usage | None = _USAGE) -> Completion:
 class _ScriptedClient:
     """Satisfies LlmClient; answers each prompt() from a script, recording calls."""
 
+    model: str = ""
+
     def __init__(self, script: Sequence[Completion | Exception]) -> None:
         self._script = list(script)
         self.calls: list[list[Message]] = []
