@@ -26,6 +26,8 @@ class CompletionStream(Protocol):
 class LlmClient(Protocol):
     """Any chat-completion client the CLI can drive."""
 
+    model: str
+
     def prompt(self, messages: Sequence[Message], *, temperature: float = 0.0) -> Completion:
         """Send `messages` and return the complete response.
 
