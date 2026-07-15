@@ -24,7 +24,7 @@ class ApiResponseParser[T](ABC):
             MalformedResponseError: when `text` is not valid JSON, is not a
                 JSON object, or fails the subclass's schema validation.
         """
-        unfenced = _strip_code_fence(text.strip())
+        unfenced = strip_code_fence(text.strip())
         try:
             data = json.loads(unfenced)
         except json.JSONDecodeError as exc:
@@ -38,7 +38,7 @@ class ApiResponseParser[T](ABC):
         """Validate the decoded JSON object against the feature's schema."""
 
 
-def _strip_code_fence(text: str) -> str:
+def strip_code_fence(text: str) -> str:
     """Drop a surrounding Markdown code fence, a common extraction artifact."""
     if not text.startswith("```"):
         return text
