@@ -63,7 +63,13 @@ class _FakeClient:
         return self._streams.pop(0)
 
 
-def test_start_seeds_only_a_system_message() -> None:
+def test_constructor_seeds_only_a_system_message() -> None:
+    conversation = Conversation(_FakeClient([]), "be helpful", temperature=0.5)
+
+    assert conversation.messages == [Message(role="system", content="be helpful")]
+
+
+def test_start_is_a_constructor_alias() -> None:
     conversation = Conversation.start(_FakeClient([]), "be helpful", temperature=0.5)
 
     assert conversation.messages == [Message(role="system", content="be helpful")]
@@ -71,7 +77,7 @@ def test_start_seeds_only_a_system_message() -> None:
 
 def test_send_stream_yields_chunks_and_records_the_turn() -> None:
     client = _FakeClient([_FakeStream(["Hel", "lo", "!"])])
-    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+    conversation = Conversation(client, "be helpful", temperature=0.5)
 
     chunks = list(conversation.send_stream("hi"))
 
@@ -85,7 +91,7 @@ def test_send_stream_yields_chunks_and_records_the_turn() -> None:
 
 def test_sends_the_full_conversation_and_temperature_to_the_client() -> None:
     client = _FakeClient([_FakeStream(["ok"])])
-    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+    conversation = Conversation(client, "be helpful", temperature=0.5)
 
     list(conversation.send_stream("hi"))
 
@@ -98,7 +104,7 @@ def test_sends_the_full_conversation_and_temperature_to_the_client() -> None:
 
 def test_later_turns_carry_the_prior_turns() -> None:
     client = _FakeClient([_FakeStream(["one"]), _FakeStream(["two"])])
-    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+    conversation = Conversation(client, "be helpful", temperature=0.5)
 
     list(conversation.send_stream("first"))
     list(conversation.send_stream("second"))
@@ -113,7 +119,7 @@ def test_later_turns_carry_the_prior_turns() -> None:
 
 def test_accumulates_usage_across_turns() -> None:
     client = _FakeClient([_FakeStream(["one"]), _FakeStream(["two"])])
-    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+    conversation = Conversation(client, "be helpful", temperature=0.5)
 
     list(conversation.send_stream("first"))
     list(conversation.send_stream("second"))
@@ -125,7 +131,7 @@ def test_accumulates_usage_across_turns() -> None:
 
 def test_total_usage_is_none_when_no_turn_reported_it() -> None:
     client = _FakeClient([_FakeStream(["ok"], usage=None)])
-    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+    conversation = Conversation(client, "be helpful", temperature=0.5)
 
     list(conversation.send_stream("hi"))
 
@@ -134,7 +140,7 @@ def test_total_usage_is_none_when_no_turn_reported_it() -> None:
 
 def test_records_the_last_finish_reason() -> None:
     client = _FakeClient([_FakeStream(["cut"], finish_reason="length")])
-    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+    conversation = Conversation(client, "be helpful", temperature=0.5)
 
     list(conversation.send_stream("hi"))
 
@@ -143,7 +149,7 @@ def test_records_the_last_finish_reason() -> None:
 
 def test_records_the_last_usage() -> None:
     client = _FakeClient([_FakeStream(["ok"], usage=_USAGE)])
-    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+    conversation = Conversation(client, "be helpful", temperature=0.5)
 
     list(conversation.send_stream("hi"))
 
@@ -153,7 +159,7 @@ def test_records_the_last_usage() -> None:
 def test_last_usage_is_this_turn_not_the_running_total() -> None:
     second = Usage(prompt_tokens=7, completion_tokens=3, total_tokens=10)
     client = _FakeClient([_FakeStream(["one"]), _FakeStream(["two"], usage=second)])
-    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+    conversation = Conversation(client, "be helpful", temperature=0.5)
 
     list(conversation.send_stream("first"))
     list(conversation.send_stream("second"))
@@ -168,7 +174,7 @@ def test_last_usage_is_this_turn_not_the_running_total() -> None:
 def test_rolls_back_the_user_turn_when_the_stream_fails() -> None:
     error = TransientError("NVIDIA API is unavailable")
     client = _FakeClient([_FakeStream(["par", "tial"], error=error), _FakeStream(["recovered"])])
-    conversation = Conversation.start(client, "be helpful", temperature=0.5)
+    conversation = Conversation(client, "be helpful", temperature=0.5)
 
     with pytest.raises(TransientError):
         list(conversation.send_stream("hi"))

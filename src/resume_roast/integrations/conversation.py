@@ -1,33 +1,45 @@
 """A stateful chat session: holds the growing message list and appends turns."""
 
 from collections.abc import Iterator
-from dataclasses import dataclass, field
 
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.types import Message, Usage
 from resume_roast.integrations.usage import total_usage
 
 
-@dataclass
 class Conversation:
     """A running conversation with an LLM, driven one user turn at a time.
 
     Wraps a stateless `LlmClient`: the message list *is* the history, and each
     `send_stream` appends the user turn, streams the reply, then appends the
     assistant turn. Usage accrues across turns so a session can report its cost.
+
+    Parameters
+    ----------
+    client
+        The LLM client every turn is sent through.
+    system_prompt
+        Seeds the message list as its single system message.
+    temperature
+        Sampling temperature applied to every turn.
     """
 
-    _client: LlmClient
-    messages: list[Message]
-    temperature: float
-    _usages: list[Usage] = field(default_factory=list[Usage])
-    last_finish_reason: str | None = None
-    last_usage: Usage | None = None
+    def __init__(self, client: LlmClient, system_prompt: str, *, temperature: float) -> None:
+        self._client = client
+        self.messages: list[Message] = [Message(role="system", content=system_prompt)]
+        self.temperature = temperature
+        self._usages: list[Usage] = []
+        self.last_finish_reason: str | None = None
+        self.last_usage: Usage | None = None
 
     @classmethod
     def start(cls, client: LlmClient, system: str, *, temperature: float) -> "Conversation":
-        """Open a conversation seeded with a single system message."""
-        return cls(client, [Message(role="system", content=system)], temperature)
+        """Open a conversation seeded with a single system message.
+
+        Legacy alias for the constructor — kept for generate-block; new code
+        calls ``Conversation(...)`` directly.
+        """
+        return cls(client, system, temperature=temperature)
 
     def send_stream(self, user_text: str) -> Iterator[str]:
         """Send a user turn and yield the reply's text chunks as they arrive.
