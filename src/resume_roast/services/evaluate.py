@@ -35,6 +35,7 @@ def run(
 
     started = time.perf_counter()
     report, usage = structured_completion(client, messages, RoastReportParser().parse)
+
     return EvaluateResult(
         report=report,
         usage=usage,
