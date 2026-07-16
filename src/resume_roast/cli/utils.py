@@ -8,11 +8,30 @@ from rich.padding import Padding
 from rich.spinner import Spinner
 from rich.text import Text
 
+from resume_roast.integrations.errors import AuthenticationError
+from resume_roast.integrations.llm_client import LlmClient
+from resume_roast.integrations.nvidia.client import NvidiaClient
 from resume_roast.integrations.nvidia.pricing import estimate_cost
 from resume_roast.integrations.types import Usage
+from resume_roast.persistence.credentials.store import CredentialsStore
+from resume_roast.persistence.paths import storage_dir
+from resume_roast.persistence.settings.store import SettingsStore
+from resume_roast.persistence.settings.types import Settings
 
 NOT_SET = "(not set)"
 """Shown wherever an optional value has nothing saved."""
+
+
+def build_client() -> tuple[LlmClient, Settings]:
+    """Load credentials and settings and return a ready-to-use client pair."""
+    credentials = CredentialsStore(storage_dir()).load()
+    if credentials.nvidia_api_key is None:
+        raise AuthenticationError(
+            "No NVIDIA API key configured. Run: resume-roast config credentials"
+        )
+    settings = SettingsStore(storage_dir()).load_or_create()
+    return NvidiaClient(api_key=credentials.nvidia_api_key, model=settings.model), settings
+
 
 _MESSAGE_SECONDS = 5.0
 """How long each spinner message stays up before rotating to the next."""
