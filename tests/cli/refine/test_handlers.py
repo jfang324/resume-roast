@@ -100,8 +100,9 @@ def test_refine_streams_a_reply_to_the_bullet() -> None:
     result = runner.invoke(app, ["refine", "Managed a team"], input="/exit\n")
 
     assert result.exit_code == 0
-    assert "> Managed a team" in result.output
-    # The reply is tagged with the model's name, not a generic "AI".
+    # The bullet is not echoed back — the session opens directly with the reply,
+    # tagged with the model's name rather than a generic "AI".
+    assert "> Managed a team" not in result.output
     assert "nemotron-3-super" in result.output
     assert "Lead with the metric." in result.output
 
