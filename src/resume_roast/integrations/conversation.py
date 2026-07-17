@@ -1,10 +1,64 @@
 """A stateful chat session: holds the growing message list and appends turns."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
-from resume_roast.integrations.llm_client import LlmClient
+from resume_roast.integrations.llm_client import CompletionStream, LlmClient
 from resume_roast.integrations.types import Message, Usage
-from resume_roast.integrations.usage import total_usage
+
+
+class ConversationReply:
+    """One streamed assistant reply, bundled with its post-stream metadata.
+
+    Iterate for text chunks; ``usage`` and ``finish_reason`` are None until the
+    stream is exhausted, then hold what the API reported — the same contract as
+    `CompletionStream`, which this class satisfies. Single-use: the reply must
+    be iterated exactly once, to exhaustion, for the assistant turn to be
+    recorded in the conversation; ``exhausted`` reports whether that happened.
+    """
+
+    def __init__(
+        self,
+        stream: CompletionStream,
+        on_complete: Callable[[str], None],
+        on_error: Callable[[], None],
+    ) -> None:
+        self._stream = stream
+        self._on_complete = on_complete
+        self._on_error = on_error
+        self._consumed = False
+        self._exhausted = False
+
+    def __iter__(self) -> Iterator[str]:
+        """Yield reply chunks, then record the turn; roll back if the stream fails."""
+        if self._consumed:
+            msg = "A ConversationReply can only be iterated once."
+            raise RuntimeError(msg)
+        self._consumed = True
+        chunks: list[str] = []
+        try:
+            for chunk in self._stream:
+                chunks.append(chunk)
+                yield chunk
+        except BaseException:
+            self._on_error()
+            raise
+        self._on_complete("".join(chunks))
+        self._exhausted = True
+
+    @property
+    def exhausted(self) -> bool:
+        """True once every chunk was yielded and the assistant turn recorded."""
+        return self._exhausted
+
+    @property
+    def usage(self) -> Usage | None:
+        """Token usage for this reply, None until the stream is exhausted."""
+        return self._stream.usage
+
+    @property
+    def finish_reason(self) -> str | None:
+        """Why the reply ended, None until the stream is exhausted."""
+        return self._stream.finish_reason
 
 
 class Conversation:
@@ -12,7 +66,7 @@ class Conversation:
 
     Wraps a stateless `LlmClient`: the message list *is* the history, and each
     `send_stream` appends the user turn, streams the reply, then appends the
-    assistant turn. Usage accrues across turns so a session can report its cost.
+    assistant turn.
 
     Parameters
     ----------
@@ -28,7 +82,6 @@ class Conversation:
         self._client = client
         self.messages: list[Message] = [Message(role="system", content=system_prompt)]
         self.temperature = temperature
-        self._usages: list[Usage] = []
         self.last_finish_reason: str | None = None
         self.last_usage: Usage | None = None
 
@@ -41,31 +94,32 @@ class Conversation:
         """
         return cls(client, system, temperature=temperature)
 
-    def send_stream(self, user_text: str) -> Iterator[str]:
-        """Send a user turn and yield the reply's text chunks as they arrive.
+    def send_stream(self, user_text: str) -> ConversationReply:
+        """Send a user turn and return the streamed reply.
 
-        The assistant turn is recorded only once the stream is exhausted, since
-        `usage` and `finish_reason` are unknown until then. If the client raises
-        mid-stream, the just-appended user turn is rolled back so the caller can
-        retry the same turn against an unchanged conversation.
+        The user turn is appended and the request opened eagerly — a failure to
+        open rolls the turn back and propagates. The assistant turn is recorded
+        only once the reply is exhausted, since `usage` and `finish_reason` are
+        unknown until then; if the stream fails mid-way, the user turn is rolled
+        back so the caller can retry the same turn against an unchanged
+        conversation.
         """
         self.messages.append(Message(role="user", content=user_text))
-        chunks: list[str] = []
         try:
             stream = self._client.prompt_stream(self.messages, temperature=self.temperature)
-            for chunk in stream:
-                chunks.append(chunk)
-                yield chunk
         except BaseException:
             self.messages.pop()
             raise
-        self.messages.append(Message(role="assistant", content="".join(chunks)))
-        if stream.usage is not None:
-            self._usages.append(stream.usage)
+        return ConversationReply(
+            stream,
+            on_complete=lambda text: self._record_assistant_turn(text, stream),
+            on_error=self._rollback_user_turn,
+        )
+
+    def _rollback_user_turn(self) -> None:
+        self.messages.pop()
+
+    def _record_assistant_turn(self, text: str, stream: CompletionStream) -> None:
+        self.messages.append(Message(role="assistant", content=text))
         self.last_usage = stream.usage
         self.last_finish_reason = stream.finish_reason
-
-    @property
-    def total_usage(self) -> Usage | None:
-        """Token usage summed across every turn that reported it, or None."""
-        return total_usage(self._usages)

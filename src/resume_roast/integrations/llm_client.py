@@ -13,10 +13,20 @@ class CompletionStream(Protocol):
     then whatever the API reported. Truncation is never raised here — by the
     time it is known, every chunk has already been delivered — callers
     inspect ``finish_reason`` instead.
+
+    Both are declared read-only so wrapper types can satisfy them with
+    properties; implementations are free to use plain attributes.
     """
 
-    usage: Usage | None
-    finish_reason: str | None
+    @property
+    def usage(self) -> Usage | None:
+        """Token usage for the reply, None until the stream is exhausted."""
+        ...
+
+    @property
+    def finish_reason(self) -> str | None:
+        """Why the reply ended, None until the stream is exhausted."""
+        ...
 
     def __iter__(self) -> Iterator[str]:
         """Yield response text chunks in arrival order."""

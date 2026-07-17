@@ -6,6 +6,7 @@ import pytest
 
 from resume_roast.integrations.conversation import Conversation
 from resume_roast.integrations.errors import TransientError
+from resume_roast.integrations.llm_client import CompletionStream
 from resume_roast.integrations.types import Completion, Message, Usage
 
 _USAGE = Usage(prompt_tokens=100, completion_tokens=50, total_tokens=150)
@@ -117,27 +118,6 @@ def test_later_turns_carry_the_prior_turns() -> None:
     ]
 
 
-def test_accumulates_usage_across_turns() -> None:
-    client = _FakeClient([_FakeStream(["one"]), _FakeStream(["two"])])
-    conversation = Conversation(client, "be helpful", temperature=0.5)
-
-    list(conversation.send_stream("first"))
-    list(conversation.send_stream("second"))
-
-    assert conversation.total_usage == Usage(
-        prompt_tokens=200, completion_tokens=100, total_tokens=300
-    )
-
-
-def test_total_usage_is_none_when_no_turn_reported_it() -> None:
-    client = _FakeClient([_FakeStream(["ok"], usage=None)])
-    conversation = Conversation(client, "be helpful", temperature=0.5)
-
-    list(conversation.send_stream("hi"))
-
-    assert conversation.total_usage is None
-
-
 def test_records_the_last_finish_reason() -> None:
     client = _FakeClient([_FakeStream(["cut"], finish_reason="length")])
     conversation = Conversation(client, "be helpful", temperature=0.5)
@@ -156,7 +136,7 @@ def test_records_the_last_usage() -> None:
     assert conversation.last_usage == _USAGE
 
 
-def test_last_usage_is_this_turn_not_the_running_total() -> None:
+def test_last_usage_tracks_only_the_latest_turn() -> None:
     second = Usage(prompt_tokens=7, completion_tokens=3, total_tokens=10)
     client = _FakeClient([_FakeStream(["one"]), _FakeStream(["two"], usage=second)])
     conversation = Conversation(client, "be helpful", temperature=0.5)
@@ -164,11 +144,7 @@ def test_last_usage_is_this_turn_not_the_running_total() -> None:
     list(conversation.send_stream("first"))
     list(conversation.send_stream("second"))
 
-    # last_usage tracks only the latest turn, unlike the cumulative total_usage.
     assert conversation.last_usage == second
-    assert conversation.total_usage == Usage(
-        prompt_tokens=107, completion_tokens=53, total_tokens=160
-    )
 
 
 def test_rolls_back_the_user_turn_when_the_stream_fails() -> None:
@@ -190,3 +166,96 @@ def test_rolls_back_the_user_turn_when_the_stream_fails() -> None:
         Message(role="user", content="hi"),
         Message(role="assistant", content="recovered"),
     ]
+
+
+def test_rolls_back_the_user_turn_when_the_request_cannot_be_opened() -> None:
+    class _RefusingClient:
+        """Satisfies LlmClient; the request itself is refused, no stream opens."""
+
+        model: str = ""
+
+        def prompt(self, messages: Sequence[Message], *, temperature: float = 0.0) -> Completion:
+            raise NotImplementedError
+
+        def prompt_stream(
+            self,
+            messages: Sequence[Message],  # noqa: ARG002 — the protocol's signature requires it
+            *,
+            temperature: float = 0.0,  # noqa: ARG002 — the protocol's signature requires it
+        ) -> _FakeStream:
+            raise TransientError("NVIDIA API is unavailable")
+
+    conversation = Conversation(_RefusingClient(), "be helpful", temperature=0.5)
+
+    # The request opens eagerly, so send_stream itself raises — before iteration.
+    with pytest.raises(TransientError):
+        conversation.send_stream("hi")
+
+    assert conversation.messages == [Message(role="system", content="be helpful")]
+
+
+def test_reply_metadata_is_none_until_the_stream_is_exhausted() -> None:
+    client = _FakeClient([_FakeStream(["ok"], finish_reason="stop")])
+    conversation = Conversation(client, "be helpful", temperature=0.5)
+
+    reply = conversation.send_stream("hi")
+
+    assert reply.usage is None
+    assert reply.finish_reason is None
+
+    list(reply)
+
+    assert reply.usage == _USAGE
+    assert reply.finish_reason == "stop"
+
+
+def test_the_assistant_turn_is_recorded_only_on_exhaustion() -> None:
+    client = _FakeClient([_FakeStream(["ok"])])
+    conversation = Conversation(client, "be helpful", temperature=0.5)
+
+    reply = conversation.send_stream("hi")
+
+    # Request opened, user turn appended — but no assistant turn yet.
+    assert [m.role for m in conversation.messages] == ["system", "user"]
+
+    list(reply)
+
+    assert [m.role for m in conversation.messages] == ["system", "user", "assistant"]
+
+
+def test_a_reply_reports_exhaustion_only_after_a_full_drain() -> None:
+    client = _FakeClient([_FakeStream(["ok"])])
+    conversation = Conversation(client, "be helpful", temperature=0.5)
+
+    reply = conversation.send_stream("hi")
+    assert not reply.exhausted
+
+    chunks = iter(reply)
+    next(chunks)
+    assert not reply.exhausted  # chunks delivered, but the stream is not done
+
+    with pytest.raises(StopIteration):
+        next(chunks)
+    assert reply.exhausted
+
+
+def test_a_reply_is_single_use() -> None:
+    client = _FakeClient([_FakeStream(["ok"])])
+    conversation = Conversation(client, "be helpful", temperature=0.5)
+
+    reply = conversation.send_stream("hi")
+    list(reply)
+
+    # A second pass would re-run the stream and double-record the turn.
+    with pytest.raises(RuntimeError, match="once"):
+        list(reply)
+    assert [m.role for m in conversation.messages] == ["system", "user", "assistant"]
+
+
+def test_a_reply_satisfies_the_completion_stream_protocol() -> None:
+    client = _FakeClient([_FakeStream(["ok"])])
+    conversation = Conversation(client, "be helpful", temperature=0.5)
+
+    # Static check: pyright verifies the assignment, the assert is incidental.
+    stream: CompletionStream = conversation.send_stream("hi")
+    assert list(stream) == ["ok"]
