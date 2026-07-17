@@ -21,6 +21,9 @@ from resume_roast.persistence.settings.types import Settings
 NOT_SET = "(not set)"
 """Shown wherever an optional value has nothing saved."""
 
+USER_PROMPT = "> "
+"""Prompt prefix for interactive user input and echoed user turns."""
+
 
 def build_client() -> tuple[LlmClient, Settings]:
     """Load credentials and settings and return a ready-to-use client pair."""
