@@ -1,9 +1,7 @@
-"""Shared interactive chat loop for conversational subcommands (refine, generate-block).
+"""Legacy interactive chat loop, kept for generate-block until its migration.
 
-Both chat features share the same shape: seed a `Conversation`, then read user
-turns until exit, streaming each turn as an LLM exchange. The per-feature parts —
-the welcome text, any opening turn, the command vocabulary — stay in the handler;
-everything below is common.
+Refine now drives :class:`resume_roast.services.chat.session.ChatSession`; this module
+is deleted once generate-block moves onto the service too.
 """
 
 import time
@@ -11,13 +9,11 @@ from typing import Protocol
 
 from rich.console import Console
 
-from resume_roast.cli.utils import stream_to_console, summary_line
+from resume_roast.cli.utils import USER_PROMPT, stream_to_console, summary_line
 from resume_roast.integrations.conversation import Conversation
 from resume_roast.integrations.errors import AuthenticationError, TransientError
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.paths import storage_dir
-
-USER_PROMPT = "> "
 
 
 class ChatState(Protocol):
