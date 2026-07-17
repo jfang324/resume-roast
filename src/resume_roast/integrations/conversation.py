@@ -82,17 +82,6 @@ class Conversation:
         self._client = client
         self.messages: list[Message] = [Message(role="system", content=system_prompt)]
         self.temperature = temperature
-        self.last_finish_reason: str | None = None
-        self.last_usage: Usage | None = None
-
-    @classmethod
-    def start(cls, client: LlmClient, system: str, *, temperature: float) -> "Conversation":
-        """Open a conversation seeded with a single system message.
-
-        Legacy alias for the constructor — kept for generate-block; new code
-        calls ``Conversation(...)`` directly.
-        """
-        return cls(client, system, temperature=temperature)
 
     def send_stream(self, user_text: str) -> ConversationReply:
         """Send a user turn and return the streamed reply.
@@ -112,14 +101,12 @@ class Conversation:
             raise
         return ConversationReply(
             stream,
-            on_complete=lambda text: self._record_assistant_turn(text, stream),
+            on_complete=self._record_assistant_turn,
             on_error=self._rollback_user_turn,
         )
 
     def _rollback_user_turn(self) -> None:
         self.messages.pop()
 
-    def _record_assistant_turn(self, text: str, stream: CompletionStream) -> None:
+    def _record_assistant_turn(self, text: str) -> None:
         self.messages.append(Message(role="assistant", content=text))
-        self.last_usage = stream.usage
-        self.last_finish_reason = stream.finish_reason

@@ -70,12 +70,6 @@ def test_constructor_seeds_only_a_system_message() -> None:
     assert conversation.messages == [Message(role="system", content="be helpful")]
 
 
-def test_start_is_a_constructor_alias() -> None:
-    conversation = Conversation.start(_FakeClient([]), "be helpful", temperature=0.5)
-
-    assert conversation.messages == [Message(role="system", content="be helpful")]
-
-
 def test_send_stream_yields_chunks_and_records_the_turn() -> None:
     client = _FakeClient([_FakeStream(["Hel", "lo", "!"])])
     conversation = Conversation(client, "be helpful", temperature=0.5)
@@ -118,33 +112,22 @@ def test_later_turns_carry_the_prior_turns() -> None:
     ]
 
 
-def test_records_the_last_finish_reason() -> None:
-    client = _FakeClient([_FakeStream(["cut"], finish_reason="length")])
-    conversation = Conversation(client, "be helpful", temperature=0.5)
-
-    list(conversation.send_stream("hi"))
-
-    assert conversation.last_finish_reason == "length"
-
-
-def test_records_the_last_usage() -> None:
-    client = _FakeClient([_FakeStream(["ok"], usage=_USAGE)])
-    conversation = Conversation(client, "be helpful", temperature=0.5)
-
-    list(conversation.send_stream("hi"))
-
-    assert conversation.last_usage == _USAGE
-
-
-def test_last_usage_tracks_only_the_latest_turn() -> None:
+def test_each_reply_carries_its_own_turn_metadata() -> None:
     second = Usage(prompt_tokens=7, completion_tokens=3, total_tokens=10)
-    client = _FakeClient([_FakeStream(["one"]), _FakeStream(["two"], usage=second)])
+    client = _FakeClient(
+        [_FakeStream(["one"], finish_reason="length"), _FakeStream(["two"], usage=second)]
+    )
     conversation = Conversation(client, "be helpful", temperature=0.5)
 
-    list(conversation.send_stream("first"))
-    list(conversation.send_stream("second"))
+    first_reply = conversation.send_stream("first")
+    list(first_reply)
+    second_reply = conversation.send_stream("second")
+    list(second_reply)
 
-    assert conversation.last_usage == second
+    assert first_reply.usage == _USAGE
+    assert first_reply.finish_reason == "length"
+    assert second_reply.usage == second
+    assert second_reply.finish_reason == "stop"
 
 
 def test_rolls_back_the_user_turn_when_the_stream_fails() -> None:
