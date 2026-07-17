@@ -1,15 +1,13 @@
-"""GenerateBlockPromptBuilder: system prompt sections and per-turn messages."""
+"""Generate-block prompt builders: system prompt sections and the /generate message."""
 
-import pytest
-
-from resume_roast.prompts.generate_block.builder import GenerateBlockPromptBuilder
+from resume_roast.prompts.generate_block.builder import build_generate_message, build_system
 from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
 
 # -- system prompt -----------------------------------------------------------
 
 
 def test_system_has_four_sections() -> None:
-    system = GenerateBlockPromptBuilder.build_system()
+    system = build_system()
 
     assert "## Context" in system
     assert "## Process" in system
@@ -18,24 +16,22 @@ def test_system_has_four_sections() -> None:
 
 
 def test_system_includes_bullet_principles() -> None:
-    assert BULLET_PRINCIPLES in GenerateBlockPromptBuilder.build_system()
+    assert BULLET_PRINCIPLES in build_system()
 
 
 def test_system_specifies_block_rating_format() -> None:
-    system = GenerateBlockPromptBuilder.build_system()
-
-    assert "[block rating: X/10]" in system
+    assert "[block rating: X/10]" in build_system()
 
 
 def test_system_forbids_drafting_in_gathering() -> None:
-    system = GenerateBlockPromptBuilder.build_system()
+    system = build_system()
 
     assert "Do NOT propose, draft, or hint at bullet points" in system
     assert "Stay strictly in information-gathering" in system
 
 
 def test_system_forces_generation_on_command() -> None:
-    system = GenerateBlockPromptBuilder.build_system()
+    system = build_system()
 
     # /generate must always produce a block — the rating is feedback, not a gate.
     assert "always produce a complete resume block" in system
@@ -43,7 +39,7 @@ def test_system_forces_generation_on_command() -> None:
 
 
 def test_system_defines_the_block_rating_scale() -> None:
-    system = GenerateBlockPromptBuilder.build_system()
+    system = build_system()
 
     # The gate refers to a scale, so the scale itself must be defined.
     assert "## Block Rating Scale" in system
@@ -51,37 +47,25 @@ def test_system_defines_the_block_rating_scale() -> None:
 
 
 def test_system_describes_three_phases() -> None:
-    system = GenerateBlockPromptBuilder.build_system()
+    system = build_system()
 
     assert "GATHERING" in system
     assert "GENERATION" in system
     assert "REFINEMENT" in system
 
 
-# -- chat message ------------------------------------------------------------
-
-
-def test_chat_message_passes_through_raw_text() -> None:
-    builder = GenerateBlockPromptBuilder()
-    message = builder.build_turn_message(("chat", "I was a backend engineer at Stripe"))
-
-    assert message == "I was a backend engineer at Stripe"
-
-
 # -- generate message --------------------------------------------------------
 
 
 def test_generate_message_triggers_block_creation() -> None:
-    builder = GenerateBlockPromptBuilder()
-    message = builder.build_turn_message(("generate",))
+    message = build_generate_message(None)
 
     assert "generate a complete resume entry" in message.lower()
     assert "this role or project" in message.lower()
 
 
 def test_generate_message_includes_format_instructions() -> None:
-    builder = GenerateBlockPromptBuilder()
-    message = builder.build_turn_message(("generate",))
+    message = build_generate_message(None)
 
     assert "Format the block" in message
     assert "- " in message
@@ -89,8 +73,7 @@ def test_generate_message_includes_format_instructions() -> None:
 
 
 def test_generate_message_forces_generation() -> None:
-    builder = GenerateBlockPromptBuilder()
-    message = builder.build_turn_message(("generate",))
+    message = build_generate_message(None)
 
     # /generate unconditionally produces a block rather than deferring to gather more.
     assert "Always produce a block" in message
@@ -98,8 +81,7 @@ def test_generate_message_forces_generation() -> None:
 
 
 def test_generate_message_with_note() -> None:
-    builder = GenerateBlockPromptBuilder()
-    message = builder.build_turn_message(("generate", "Focus on the payment processing work"))
+    message = build_generate_message("Focus on the payment processing work")
 
     assert "generate a complete resume entry" in message.lower()
     assert "Additional note" in message
@@ -107,17 +89,4 @@ def test_generate_message_with_note() -> None:
 
 
 def test_generate_message_without_note_omits_additional_note() -> None:
-    builder = GenerateBlockPromptBuilder()
-    message = builder.build_turn_message(("generate",))
-
-    assert "Additional note" not in message
-
-
-# -- unknown command ---------------------------------------------------------
-
-
-def test_unknown_command_raises_value_error() -> None:
-    builder = GenerateBlockPromptBuilder()
-
-    with pytest.raises(ValueError, match="Unknown command"):
-        builder.build_turn_message(("bogus",))
+    assert "Additional note" not in build_generate_message(None)

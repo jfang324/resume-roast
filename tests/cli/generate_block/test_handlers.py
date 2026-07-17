@@ -73,14 +73,13 @@ class _FakeClient:
 def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Path:
-    monkeypatch.setattr("resume_roast.cli.generate_block.handlers.storage_dir", lambda: tmp_path)
-    monkeypatch.setattr("resume_roast.cli.chat.storage_dir", lambda: tmp_path)
+    monkeypatch.setattr("resume_roast.cli.utils.storage_dir", lambda: tmp_path)
     return tmp_path
 
 
 @pytest.fixture(autouse=True)
 def _fake_client(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]
-    monkeypatch.setattr("resume_roast.cli.generate_block.handlers.NvidiaClient", _FakeClient)
+    monkeypatch.setattr("resume_roast.cli.utils.NvidiaClient", _FakeClient)
     monkeypatch.setattr(_FakeClient, "reply", "Tell me more about your role.")
     monkeypatch.setattr(_FakeClient, "usage", None)
     monkeypatch.setattr(_FakeClient, "last", None)

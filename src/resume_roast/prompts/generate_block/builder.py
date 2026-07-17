@@ -1,4 +1,9 @@
-"""Builds the generate-block feature's prompt blocks — static system and per-turn messages."""
+"""Builds the generate-block feature's prompt text — static system prompt and the /generate turn.
+
+All builders are pure functions of their inputs. Conversational turns need no
+builder — the feature passes chat text through untouched, and the block in
+progress lives entirely in the conversation history.
+"""
 
 from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
 
@@ -72,58 +77,25 @@ would raise it.
 )
 
 
-class GenerateBlockPromptBuilder:
-    """Assembles the static system prompt and per-turn messages.
+def build_system() -> str:
+    """Full system prompt: Context / Process / Principles / Block Rating Scale / Rules."""
+    return _SYSTEM
 
-    Stateless: unlike refine, the block-in-progress lives entirely in the
-    conversation history, so no per-turn context needs to be threaded in.
-    """
 
-    # ------------------------------------------------------------------
-    # Static prompt (built once per session)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def build_system() -> str:
-        """Full system prompt: Context / Process / Principles / Block Rating Scale / Rules."""
-        return _SYSTEM
-
-    # ------------------------------------------------------------------
-    # Per-turn user messages
-    # ------------------------------------------------------------------
-
-    def build_turn_message(self, parsed: tuple[str, ...]) -> str:
-        """Return the user-turn text for the parsed command.
-
-        Parameters
-        ----------
-        parsed
-            The result of :meth:`GenerateBlockState.parse` — ``(cmd, *args)``.
-        """
-        cmd = parsed[0]
-        if cmd == "chat":
-            return parsed[1]
-        if cmd == "generate":
-            return self._generate_message(parsed[1] if len(parsed) > 1 else None)
-        msg = f"Unknown command: {cmd!r}"
-        raise ValueError(msg)
-
-    # -- private message builders -------------------------------------
-
-    @staticmethod
-    def _generate_message(note: str | None) -> str:
-        msg = (
-            "Based on everything we've discussed, generate a complete resume entry "
-            "for this role or project now.\n"
-            "Always produce a block, even if the information is thin — do not ask for "
-            "more details instead. If it's weak, note what would strengthen it after "
-            "the block.\n"
-            "Format the block as follows:\n"
-            '- Start with a header line describing the role (e.g. "Backend Engineer, Stripe")\n'
-            '- Follow with 3-6 bullet points, each on its own line starting with "- "\n'
-            "- Lead your reply with [block rating: X/10]\n"
-            "- Follow the Bullet Writing Principles above"
-        )
-        if note is not None:
-            msg += f"\n\nAdditional note: {note}"
-        return msg
+def build_generate_message(note: str | None) -> str:
+    """Request the complete resume block, honoring an optional note."""
+    msg = (
+        "Based on everything we've discussed, generate a complete resume entry "
+        "for this role or project now.\n"
+        "Always produce a block, even if the information is thin — do not ask for "
+        "more details instead. If it's weak, note what would strengthen it after "
+        "the block.\n"
+        "Format the block as follows:\n"
+        '- Start with a header line describing the role (e.g. "Backend Engineer, Stripe")\n'
+        '- Follow with 3-6 bullet points, each on its own line starting with "- "\n'
+        "- Lead your reply with [block rating: X/10]\n"
+        "- Follow the Bullet Writing Principles above"
+    )
+    if note is not None:
+        msg += f"\n\nAdditional note: {note}"
+    return msg
