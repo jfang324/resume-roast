@@ -9,7 +9,6 @@ from typing import Any, cast
 
 from rich.console import Console
 
-from resume_roast.cli.chat import USER_PROMPT, require_api_key
 from resume_roast.cli.interview.actions import (
     AskAction,
     AskFollowupAction,
@@ -22,13 +21,10 @@ from resume_roast.cli.interview.actions import (
     action_from_dict,
 )
 from resume_roast.cli.interview.input_provider import UserInputProvider, make_input_provider
-from resume_roast.cli.utils import spinner, summary_line
+from resume_roast.cli.utils import USER_PROMPT, build_client, spinner, summary_line
 from resume_roast.integrations.llm_client import LlmClient
-from resume_roast.integrations.nvidia.client import NvidiaClient
 from resume_roast.integrations.types import Message, Usage
 from resume_roast.integrations.usage import total_usage
-from resume_roast.persistence.paths import storage_dir
-from resume_roast.persistence.settings.store import SettingsStore
 from resume_roast.prompts.interview.builder import (
     build_interview_system_prompt,
     build_progress_message,
@@ -535,13 +531,11 @@ def _print_report(
 
 def interview(path: Path) -> None:
     """Run an agentic behavioral interview on a PDF or DOCX resume."""
-    api_key = require_api_key()
-    settings = SettingsStore(storage_dir()).load_or_create()
+    client, _ = build_client()
     parsed = get_parser(path).parse(path)
     logger.debug("Parsed resume: %d chars", len(parsed.markdown))
 
     system_prompt = build_interview_system_prompt(parsed)
-    client = NvidiaClient(api_key=api_key, model=settings.model)
 
     messages: list[Message] = [Message(role="system", content=system_prompt)]
     data = SessionData(
