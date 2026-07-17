@@ -1,22 +1,19 @@
-"""RefinePromptBuilder: system prompt sections and per-turn context blocks."""
+"""Refine prompt builders: system prompt sections and per-turn context blocks."""
 
-import pytest
-
-from resume_roast.prompts.refine.builder import RefinePromptBuilder
-from resume_roast.prompts.refine.input.parser import RefineParser
-from resume_roast.prompts.refine.input.state import RefineState
+from resume_roast.prompts.refine.builder import (
+    build_chat_message,
+    build_first_message,
+    build_generate_message,
+    build_replace_message,
+    build_system,
+)
 from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
-
-
-def _state(bullet: str) -> RefineState:
-    return RefineState(RefineParser(), bullet)
-
 
 # -- system prompt -----------------------------------------------------------
 
 
 def test_system_has_three_sections() -> None:
-    system = RefinePromptBuilder.build_system()
+    system = build_system()
 
     assert "## Context" in system
     assert "## Principles" in system
@@ -24,24 +21,22 @@ def test_system_has_three_sections() -> None:
 
 
 def test_system_includes_bullet_principles() -> None:
-    assert BULLET_PRINCIPLES in RefinePromptBuilder.build_system()
+    assert BULLET_PRINCIPLES in build_system()
 
 
 def test_system_specifies_header_format() -> None:
-    system = RefinePromptBuilder.build_system()
+    system = build_system()
 
     assert "[current rating: X/10]" in system
     assert "[current bullet point:" in system
 
 
 def test_system_forbids_unsolicited_rewrites() -> None:
-    system = RefinePromptBuilder.build_system()
-
-    assert "Do not propose rewrites" in system
+    assert "Do not propose rewrites" in build_system()
 
 
 def test_system_keeps_replies_short() -> None:
-    system = RefinePromptBuilder.build_system()
+    system = build_system()
 
     assert "short and conversational" in system
     assert "no headings" in system
@@ -51,7 +46,7 @@ def test_system_keeps_replies_short() -> None:
 
 
 def test_first_message_shows_current_bullet() -> None:
-    message = RefinePromptBuilder(_state("Led a team of 10")).build_first_message()
+    message = build_first_message("Led a team of 10")
 
     assert "<current bullet point>" in message
     assert "Led a team of 10" in message
@@ -62,8 +57,7 @@ def test_first_message_shows_current_bullet() -> None:
 
 
 def test_chat_message_carries_the_bullet_and_the_user_text() -> None:
-    builder = RefinePromptBuilder(_state("Managed sprints"))
-    message = builder.build_turn_message(("chat", "what about the verb?"))
+    message = build_chat_message("Managed sprints", "what about the verb?")
 
     assert "<current bullet point>" in message
     assert "Managed sprints" in message
@@ -74,8 +68,7 @@ def test_chat_message_carries_the_bullet_and_the_user_text() -> None:
 
 
 def test_replace_message_includes_new_bullet() -> None:
-    builder = RefinePromptBuilder(_state("Old bullet"))
-    message = builder.build_turn_message(("replace", "New and improved bullet"))
+    message = build_replace_message("New and improved bullet")
 
     assert "<current bullet point>" in message
     assert "New and improved bullet" in message
@@ -86,8 +79,7 @@ def test_replace_message_includes_new_bullet() -> None:
 
 
 def test_generate_message_with_note() -> None:
-    builder = RefinePromptBuilder(_state("Fixed bugs"))
-    message = builder.build_turn_message(("generate", "I was the lead engineer"))
+    message = build_generate_message("Fixed bugs", "I was the lead engineer")
 
     assert "<current bullet point>" in message
     assert "Fixed bugs" in message
@@ -97,20 +89,9 @@ def test_generate_message_with_note() -> None:
 
 
 def test_generate_message_without_note() -> None:
-    builder = RefinePromptBuilder(_state("Fixed bugs"))
-    message = builder.build_turn_message(("generate",))
+    message = build_generate_message("Fixed bugs", None)
 
     assert "<current bullet point>" in message
     assert "Fixed bugs" in message
     assert "<note>" not in message
     assert "explanation" in message.lower()
-
-
-# -- unknown command ---------------------------------------------------------
-
-
-def test_unknown_command_raises_value_error() -> None:
-    builder = RefinePromptBuilder(_state("Bullet"))
-
-    with pytest.raises(ValueError, match="Unknown command"):
-        builder.build_turn_message(("bogus",))

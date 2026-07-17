@@ -2,13 +2,10 @@
 
 from rich.console import Console
 
-from resume_roast.cli.chat import USER_PROMPT, run_chat_loop, stream_exchange
-from resume_roast.cli.refine.constants import HELP, TEMPERATURE
-from resume_roast.cli.utils import build_client, model_label
-from resume_roast.integrations.conversation import Conversation
-from resume_roast.prompts.refine.builder import RefinePromptBuilder
-from resume_roast.prompts.refine.input.parser import RefineParser
-from resume_roast.prompts.refine.input.state import RefineState
+from resume_roast.cli.chat_renderer import ConsoleRenderer
+from resume_roast.cli.input_provider import ConsoleInputProvider
+from resume_roast.cli.utils import USER_PROMPT, build_client, model_label
+from resume_roast.services.refine.service import run
 
 
 def refine(bullet: str) -> None:
@@ -19,17 +16,11 @@ def refine(bullet: str) -> None:
     text for conversational coaching.
     """
     client, settings = build_client()
-
-    state = RefineState(RefineParser(), bullet)
-    builder = RefinePromptBuilder(state)
-
-    conversation = Conversation(client, builder.build_system(), temperature=TEMPERATURE)
-
     console = Console(highlight=False)
     label = model_label(settings.model)
+    renderer = ConsoleRenderer(console, label, settings.model)
+    input_provider = ConsoleInputProvider()
 
-    # First turn — send the initial bullet
+    # Echo the bullet as the user's first turn, then let the service drive.
     console.print(f"{USER_PROMPT}{bullet}")
-    stream_exchange(conversation, console, builder.build_first_message(), label, settings.model)
-
-    run_chat_loop(conversation, console, state, builder, label, settings.model, HELP)
+    run(client, bullet, renderer, input_provider)
