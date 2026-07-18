@@ -32,8 +32,13 @@ def build_client() -> tuple[LlmClient, Settings]:
         raise AuthenticationError(
             "No NVIDIA API key configured. Run: resume-roast config credentials"
         )
+
     settings = SettingsStore(storage_dir()).load_or_create()
-    return NvidiaClient(api_key=credentials.nvidia_api_key, model=settings.model), settings
+
+    return (
+        NvidiaClient(api_key=credentials.nvidia_api_key, model=settings.model),
+        settings,
+    )
 
 
 _MESSAGE_SECONDS = 5.0
@@ -45,7 +50,11 @@ def display_value(value: str | tuple[str, ...]) -> str:
     return ", ".join(value) if isinstance(value, tuple) else value
 
 
-def print_highlighted_lines(text: str, console: Console, styles: Mapping[str, str]) -> None:
+def print_highlighted_lines(
+    text: str,
+    console: Console,
+    styles: Mapping[str, str],
+) -> None:
     """Print `text`, filling the background of prefix-matched lines to full width.
 
     `styles` maps a line prefix to a Rich style; a line starting with a prefix
@@ -55,7 +64,10 @@ def print_highlighted_lines(text: str, console: Console, styles: Mapping[str, st
     prints plain. `Text` (never markup) keeps bracketed titles intact.
     """
     for line in text.splitlines():
-        style = next((s for prefix, s in styles.items() if line.startswith(prefix)), None)
+        style = next(
+            (s for prefix, s in styles.items() if line.startswith(prefix)),
+            None,
+        )
         if style is not None and console.is_terminal:
             console.print(Padding(Text(line), (0, 0), style=style))
         else:
@@ -121,4 +133,9 @@ def spinner(message: str, *more: str) -> Live:
     """
     texts = [Text(text, style="dim") for text in (message, *more)]
     rotating = RotatingSpinner("dots", texts, style="dim")
-    return Live(rotating, console=Console(stderr=True), transient=True, refresh_per_second=12.5)
+    return Live(
+        rotating,
+        console=Console(stderr=True),
+        transient=True,
+        refresh_per_second=12.5,
+    )

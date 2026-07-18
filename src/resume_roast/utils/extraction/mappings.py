@@ -31,4 +31,5 @@ def get_parser(path: str | os.PathLike[str]) -> DocumentParser:
         raise UnreadableDocumentError(
             f"Unsupported file type: {Path(path).suffix or '(no extension)'}"
         )
+
     return parser

@@ -14,7 +14,11 @@ from resume_roast.integrations.nvidia.constants import (
     MAX_TRANSPORT_RETRIES,
     TIMEOUT_SECONDS,
 )
-from resume_roast.integrations.nvidia.utils import map_error, to_openai_messages, to_usage
+from resume_roast.integrations.nvidia.utils import (
+    map_error,
+    to_openai_messages,
+    to_usage,
+)
 from resume_roast.integrations.types import Completion, Message, Usage
 
 logger = logging.getLogger(__name__)
@@ -42,17 +46,24 @@ class NvidiaCompletionStream:
             for chunk in self._stream:
                 if chunk.usage is not None:
                     self.usage = to_usage(chunk.usage)
+
                 if not chunk.choices:
                     continue
+
                 choice = chunk.choices[0]
+
                 if choice.finish_reason is not None:
                     self.finish_reason = choice.finish_reason
+
                 if choice.delta.content:
                     if debug:
                         text_parts.append(choice.delta.content)
+
                     yield choice.delta.content
+
         except openai.OpenAIError as exc:
             raise map_error(exc) from exc
+
         if debug:
             logger.debug(
                 "NVIDIA raw response (streamed, finish_reason=%s, usage=%s): %s",
@@ -79,7 +90,12 @@ class NvidiaClient:
         )
         self.model = model
 
-    def prompt(self, messages: Sequence[Message], *, temperature: float = 0.0) -> Completion:
+    def prompt(
+        self,
+        messages: Sequence[Message],
+        *,
+        temperature: float = 0.0,
+    ) -> Completion:
         """Send `messages` and return the complete response.
 
         Raises:
@@ -102,20 +118,25 @@ class NvidiaClient:
             )
         except openai.OpenAIError as exc:
             raise map_error(exc) from exc
+
         logger.debug("NVIDIA raw response: %s", response)
 
         if not response.choices:
             raise EmptyResponseError("NVIDIA API returned no choices.")
+
         choice = response.choices[0]
         if choice.finish_reason == "length":
             raise TruncatedResponseError(
                 f"Response hit the {MAX_TOKENS}-token completion limit before finishing."
             )
+
         if not choice.message.content:
             raise EmptyResponseError(
                 f"NVIDIA API returned no content (finish_reason: {choice.finish_reason})."
             )
+
         usage = to_usage(response.usage) if response.usage is not None else None
+
         return Completion(
             text=choice.message.content,
             usage=usage,
@@ -145,4 +166,5 @@ class NvidiaClient:
             )
         except openai.OpenAIError as exc:
             raise map_error(exc) from exc
+
         return NvidiaCompletionStream(stream)

@@ -49,4 +49,5 @@ def mask_secret(value: str) -> str:
     """
     if len(value) <= _VISIBLE_SUFFIX_LENGTH * 2:
         return _MASK
+
     return _MASK + value[-_VISIBLE_SUFFIX_LENGTH:]
