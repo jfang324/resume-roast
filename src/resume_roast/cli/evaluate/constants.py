@@ -1,9 +1,6 @@
 """Display constants for the `evaluate` subcommand."""
 
-from resume_roast.prompts.evaluate.output.rendering import (
-    DIFF_ADDITION_PREFIX,
-    DIFF_REMOVAL_PREFIX,
-)
+from resume_roast.cli.evaluate.rendering import DIFF_ADDITION_PREFIX, DIFF_REMOVAL_PREFIX
 
 SPINNER_MESSAGES: list[str] = [
     "roasting your resume...",

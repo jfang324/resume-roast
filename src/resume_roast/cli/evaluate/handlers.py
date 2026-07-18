@@ -6,8 +6,8 @@ import typer
 from rich.console import Console
 
 from resume_roast.cli.evaluate.constants import DIFF_STYLES, SPINNER_MESSAGES
+from resume_roast.cli.evaluate.rendering import render_report
 from resume_roast.cli.utils import build_client, print_highlighted_lines, spinner, summary_line
-from resume_roast.prompts.evaluate.output.rendering import render_report
 from resume_roast.services.evaluate import run as run_evaluate
 from resume_roast.utils.extraction.mappings import get_parser
 
