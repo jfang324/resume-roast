@@ -1,10 +1,9 @@
 """Display helpers shared across subcommand groups."""
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Sequence
 
 from rich.console import Console, RenderableType
 from rich.live import Live
-from rich.padding import Padding
 from rich.spinner import Spinner
 from rich.text import Text
 
@@ -24,6 +23,11 @@ NOT_SET = "(not set)"
 USER_PROMPT = "> "
 """Prompt prefix for interactive user input and echoed user turns."""
 
+_MESSAGE_SECONDS = 5.0
+"""How long each spinner message stays up before rotating to the next."""
+
+_MODEL_LABEL_MAX = 20
+
 
 def build_client() -> tuple[LlmClient, Settings]:
     """Load credentials and settings and return a ready-to-use client pair."""
@@ -41,40 +45,9 @@ def build_client() -> tuple[LlmClient, Settings]:
     )
 
 
-_MESSAGE_SECONDS = 5.0
-"""How long each spinner message stays up before rotating to the next."""
-
-
 def display_value(value: str | tuple[str, ...]) -> str:
     """Render a setting value for prompts and display."""
     return ", ".join(value) if isinstance(value, tuple) else value
-
-
-def print_highlighted_lines(
-    text: str,
-    console: Console,
-    styles: Mapping[str, str],
-) -> None:
-    """Print `text`, filling the background of prefix-matched lines to full width.
-
-    `styles` maps a line prefix to a Rich style; a line starting with a prefix
-    is padded out to the terminal width so its background spans the whole row —
-    and every wrapped row — where a bare style colors only the characters.
-    Off a terminal the fill would only add trailing whitespace, so every line
-    prints plain. `Text` (never markup) keeps bracketed titles intact.
-    """
-    for line in text.splitlines():
-        style = next(
-            (s for prefix, s in styles.items() if line.startswith(prefix)),
-            None,
-        )
-        if style is not None and console.is_terminal:
-            console.print(Padding(Text(line), (0, 0), style=style))
-        else:
-            console.print(Text(line), soft_wrap=True)
-
-
-_MODEL_LABEL_MAX = 20
 
 
 def model_label(model: str) -> str:
@@ -82,11 +55,6 @@ def model_label(model: str) -> str:
     if len(name) > _MODEL_LABEL_MAX:
         return f"{name[: _MODEL_LABEL_MAX - 1]}…"
     return name
-
-
-def stream_to_console(chunks: Iterable[str], console: Console) -> None:
-    for chunk in chunks:
-        console.print(chunk, end="", markup=False, highlight=False, soft_wrap=True)
 
 
 def summary_line(model: str, usage: Usage | None, latency_seconds: float) -> str:
