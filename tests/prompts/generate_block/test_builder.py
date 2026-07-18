@@ -1,7 +1,7 @@
 """Generate-block prompt builders: system prompt sections and the /generate message."""
 
+from resume_roast.prompts.bullets import BULLET_PRINCIPLES
 from resume_roast.prompts.generate_block.builder import build_generate_message, build_system
-from resume_roast.prompts.system_prompt.bullets import BULLET_PRINCIPLES
 
 # -- system prompt -----------------------------------------------------------
 

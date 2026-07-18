@@ -1,5 +1,6 @@
 """Builds the evaluate feature's roast prompt from a parsed resume."""
 
+from resume_roast.prompts.bullets import BULLET_PRINCIPLES
 from resume_roast.prompts.evaluate.levels import render_level
 from resume_roast.prompts.evaluate.output.format import (
     JSON_ROAST_FORMAT,
@@ -11,7 +12,6 @@ from resume_roast.prompts.evaluate.resume_input import RESUME_INPUT, render_resu
 from resume_roast.prompts.evaluate.scoring import EVALUATION_PRIORITIES, SCORE_BANDS
 from resume_roast.prompts.evaluate.structure import RESUME_STRUCTURE
 from resume_roast.prompts.evaluate.types import Prompt
-from resume_roast.prompts.system_prompt.bullets import BULLET_PRINCIPLES
 from resume_roast.utils.extraction.types import ParsedResume
 
 
