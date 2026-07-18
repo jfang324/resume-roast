@@ -1,12 +1,12 @@
 """Builds the evaluate feature's roast prompt from a parsed resume."""
 
-from resume_roast.prompts.evaluate.levels import LEVEL_CONTEXT
+from resume_roast.prompts.evaluate.levels import render_level
 from resume_roast.prompts.evaluate.output.format import (
     JSON_ROAST_FORMAT,
     JSON_ROAST_REMINDER,
     RULES,
 )
-from resume_roast.prompts.evaluate.personas import PERSONA_PROMPTS
+from resume_roast.prompts.evaluate.personas import render_persona
 from resume_roast.prompts.evaluate.resume_input import RESUME_INPUT, render_resume_input
 from resume_roast.prompts.evaluate.scoring import EVALUATION_PRIORITIES, SCORE_BANDS
 from resume_roast.prompts.evaluate.structure import RESUME_STRUCTURE
@@ -21,11 +21,10 @@ def build_evaluate_prompt(parsed: ParsedResume, persona: str, level: str) -> Pro
     ``persona`` and ``level`` arrive pre-validated as `Settings` choices;
     registry completeness is enforced by tests, not re-checked here.
     """
-    selected = PERSONA_PROMPTS[persona]
     system = "\n\n".join(
         [
-            f"## Persona: {selected.label}\n\n{selected.prompt}",
-            f"## Role Level\n\n{LEVEL_CONTEXT[level]}",
+            render_persona(persona),
+            render_level(level),
             EVALUATION_PRIORITIES,
             SCORE_BANDS,
             BULLET_PRINCIPLES,
