@@ -1,6 +1,6 @@
 """Refine's session entry point.
 
-Mirrors `services/evaluate.py`: the CLI handler wires credentials and display,
+Mirrors `services/evaluate/service.py`: the CLI handler wires credentials and display,
 `run()` owns the feature's orchestration — composing the command pipeline and
 the generic `ChatSession` around refine's executor.
 """

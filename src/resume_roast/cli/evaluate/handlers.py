@@ -8,18 +8,16 @@ from rich.console import Console
 from resume_roast.cli.evaluate.constants import DIFF_STYLES, SPINNER_MESSAGES
 from resume_roast.cli.evaluate.rendering import render_report
 from resume_roast.cli.utils import build_client, print_highlighted_lines, spinner, summary_line
-from resume_roast.services.evaluate import run as run_evaluate
-from resume_roast.utils.extraction.mappings import get_parser
+from resume_roast.services.evaluate.service import run
 
 
 def evaluate(path: Path) -> None:
     """Roast a PDF or DOCX resume with the configured model and print the report."""
     client, settings = build_client()
-    parsed = get_parser(path).parse(path)
     console = Console(highlight=False)
 
     with spinner(*SPINNER_MESSAGES):
-        result = run_evaluate(client, parsed, settings.persona, settings.level)
+        result = run(client, path, settings.persona, settings.level)
 
     print_highlighted_lines(render_report(result.report), console, DIFF_STYLES)
     typer.echo()

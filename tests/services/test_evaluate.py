@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -14,7 +15,8 @@ from resume_roast.integrations.errors import (
 from resume_roast.integrations.llm_client import CompletionStream
 from resume_roast.integrations.types import Completion, Message, Usage
 from resume_roast.prompts.evaluate.output.schema import CATEGORY_NAMES
-from resume_roast.services.evaluate import EvaluateResult, run
+from resume_roast.services.evaluate.service import run
+from resume_roast.services.evaluate.types import EvaluateResult
 from resume_roast.utils.extraction.types import DocumentMetadata, ParsedResume
 
 _USAGE = Usage(prompt_tokens=100, completion_tokens=50, total_tokens=150)
@@ -33,6 +35,27 @@ def _metadata() -> DocumentMetadata:
 
 
 _PARSED = ParsedResume(markdown="", metadata=_metadata())
+
+_PATH = Path("resume.pdf")
+
+
+class _StubDocParser:
+    """Stands in for extraction; returns the canned ParsedResume."""
+
+    def parse(
+        self,
+        path: Path,  # noqa: ARG002 — the extraction signature requires it
+    ) -> ParsedResume:
+        return _PARSED
+
+
+def _fake_get_parser(_: Path) -> _StubDocParser:
+    return _StubDocParser()
+
+
+@pytest.fixture(autouse=True)
+def _stub_extraction(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]
+    monkeypatch.setattr("resume_roast.services.evaluate.service.get_parser", _fake_get_parser)
 
 
 def _suggestion() -> dict[str, Any]:
@@ -92,7 +115,7 @@ class _ScriptedClient:
 def test_returns_a_complete_evaluate_result() -> None:
     client = _ScriptedClient([_completion(json.dumps(_valid_payload()))])
 
-    result = run(client, _PARSED, "recruiter", "mid")
+    result = run(client, _PATH, "recruiter", "mid")
 
     assert isinstance(result, EvaluateResult)
     assert result.report.overall_score == 6
@@ -104,7 +127,7 @@ def test_returns_a_complete_evaluate_result() -> None:
 def test_sends_system_then_user_messages() -> None:
     client = _ScriptedClient([_completion(json.dumps(_valid_payload()))])
 
-    run(client, _PARSED, "recruiter", "mid")
+    run(client, _PATH, "recruiter", "mid")
 
     assert len(client.calls) == 1
     messages = client.calls[0]
@@ -118,28 +141,28 @@ def test_propagates_truncation_after_retry_exhaustion() -> None:
     )
 
     with pytest.raises(TruncatedResponseError, match="again"):
-        run(client, _PARSED, "recruiter", "mid")
+        run(client, _PATH, "recruiter", "mid")
 
 
 def test_propagates_malformed_after_retry_exhaustion() -> None:
     client = _ScriptedClient([_completion("not json"), _completion("also not json")])
 
     with pytest.raises(MalformedResponseError):
-        run(client, _PARSED, "recruiter", "mid")
+        run(client, _PATH, "recruiter", "mid")
 
 
 def test_propagates_transport_errors_untouched() -> None:
     client = _ScriptedClient([TransientError("API is down")])
 
     with pytest.raises(TransientError):
-        run(client, _PARSED, "recruiter", "mid")
+        run(client, _PATH, "recruiter", "mid")
 
 
 def test_retries_a_malformed_response_with_feedback() -> None:
     """Confirms the structured_completion wiring: a first malformed answer feeds a second prompt."""
     client = _ScriptedClient([_completion("not json"), _completion(json.dumps(_valid_payload()))])
 
-    result = run(client, _PARSED, "recruiter", "mid")
+    result = run(client, _PATH, "recruiter", "mid")
 
     assert result.report.overall_score == 6
     assert len(client.calls) == 2
