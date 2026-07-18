@@ -3,9 +3,14 @@
 from typing import Any, cast
 
 from resume_roast.integrations.errors import MalformedResponseError
+from resume_roast.prompts.evaluate.output.schema import (
+    CATEGORY_NAMES,
+    CategoryReview,
+    Example,
+    RoastReport,
+    Suggestion,
+)
 from resume_roast.prompts.response_parser import ApiResponseParser
-
-from .schema import CATEGORY_NAMES, CategoryReview, Example, RoastReport, Suggestion
 
 _MAX_EXAMPLES = 3
 
