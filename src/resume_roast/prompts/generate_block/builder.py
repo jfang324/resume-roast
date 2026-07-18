@@ -5,7 +5,7 @@ builder — the feature passes chat text through untouched, and the block in
 progress lives entirely in the conversation history.
 """
 
-from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
+from resume_roast.prompts.system_prompt.bullets import BULLET_PRINCIPLES
 
 _SYSTEM = (
     """\

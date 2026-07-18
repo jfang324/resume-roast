@@ -6,14 +6,11 @@ from resume_roast.prompts.evaluate.output.format import (
     JSON_ROAST_REMINDER,
     RULES,
 )
-from resume_roast.prompts.system_prompt import (
-    BULLET_PRINCIPLES,
-    EVALUATION_PRIORITIES,
-    LEVEL_CONTEXT,
-    PERSONA_PROMPTS,
-    RESUME_STRUCTURE,
-    SCORE_BANDS,
-)
+from resume_roast.prompts.system_prompt.bullets import BULLET_PRINCIPLES
+from resume_roast.prompts.system_prompt.levels import LEVEL_CONTEXT
+from resume_roast.prompts.system_prompt.personas import PERSONA_PROMPTS
+from resume_roast.prompts.system_prompt.scoring import EVALUATION_PRIORITIES, SCORE_BANDS
+from resume_roast.prompts.system_prompt.structure import RESUME_STRUCTURE
 from resume_roast.prompts.types import Prompt
 from resume_roast.utils.extraction.types import ParsedResume
 

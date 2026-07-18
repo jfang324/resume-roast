@@ -7,7 +7,7 @@ from resume_roast.prompts.refine.builder import (
     build_replace_message,
     build_system,
 )
-from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
+from resume_roast.prompts.system_prompt.bullets import BULLET_PRINCIPLES
 
 # -- system prompt -----------------------------------------------------------
 
