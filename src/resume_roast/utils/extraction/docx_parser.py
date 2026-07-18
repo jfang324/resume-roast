@@ -51,6 +51,7 @@ def _core_properties(xml_bytes: bytes) -> dict[str, str]:
         tag = child.tag.rsplit("}", 1)[-1]
         if child.text is not None and child.text.strip():
             found[tag] = child.text.strip()
+
     return found
 
 
@@ -59,6 +60,7 @@ def _read_core_properties(path: Path) -> dict[str, str]:
     try:
         with zipfile.ZipFile(path) as zf, zf.open(DOCX_OPC_CORE_PROPERTIES) as fh:
             return _core_properties(fh.read())
+
     except (KeyError, OSError, zipfile.BadZipFile, DefusedXmlException):
         return {}
 
@@ -72,6 +74,7 @@ def _read_app_properties(path: Path) -> dict[str, str]:
     try:
         with zipfile.ZipFile(path) as zf, zf.open(DOCX_OPC_APP_PROPERTIES) as fh:
             return _core_properties(fh.read())
+
     except (KeyError, OSError, zipfile.BadZipFile, DefusedXmlException):
         return {}
 
@@ -85,6 +88,7 @@ def _extract_links(markdown: str) -> tuple[str, ...]:
     """Mine the rendered Markdown for hyperlinks written by mammoth."""
     bracketed = {_clean_url(m) for m in _LINK_PATTERN.findall(markdown)}
     bare = {_clean_url(match.rstrip(",;!?.")) for match in _BARE_URL_PATTERN.findall(markdown)}
+
     return tuple(sorted(bracketed | bare))
 
 
@@ -109,7 +113,13 @@ class DocxParser:
         try:
             with open(path, "rb") as fh:
                 result = mammoth.convert_to_markdown(fh)
-        except (OSError, zipfile.BadZipFile, ValueError, KeyError, DefusedXmlException) as exc:
+        except (
+            OSError,
+            zipfile.BadZipFile,
+            ValueError,
+            KeyError,
+            DefusedXmlException,
+        ) as exc:
             raise UnreadableDocumentError(f"Could not open {path}") from exc
 
         markdown = cast(str, result.value)
@@ -124,4 +134,5 @@ class DocxParser:
             links=_extract_links(markdown),
             pages=(),
         )
+
         return ParsedResume(markdown=markdown, metadata=metadata)

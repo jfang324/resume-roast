@@ -12,7 +12,12 @@ import pymupdf4llm
 
 from resume_roast.utils.extraction._helpers import none_when_blank
 from resume_roast.utils.extraction.errors import UnreadableDocumentError
-from resume_roast.utils.extraction.types import BBox, DocumentMetadata, PageMetadata, ParsedResume
+from resume_roast.utils.extraction.types import (
+    BBox,
+    DocumentMetadata,
+    PageMetadata,
+    ParsedResume,
+)
 
 _TEXT_BLOCK_TYPE = 0
 
@@ -26,6 +31,7 @@ def _page_metadata(page: pymupdf.Page) -> PageMetadata:
         for block in blocks
         if block[6] == _TEXT_BLOCK_TYPE
     )
+
     return PageMetadata(
         width=page.rect.width,
         height=page.rect.height,
@@ -38,6 +44,7 @@ def _page_metadata(page: pymupdf.Page) -> PageMetadata:
 def _page_links(page: pymupdf.Page) -> tuple[str, ...]:
     """Collect the URI targets of one page's links."""
     links = cast(list[dict[str, Any]], page.get_links())
+
     return tuple(link["uri"] for link in links if "uri" in link)
 
 
@@ -48,7 +55,9 @@ def _document_metadata(doc: pymupdf.Document) -> DocumentMetadata:
     for page in doc:
         pages.append(_page_metadata(page))
         links.extend(_page_links(page))
+
     info = cast(dict[str, str | None], doc.metadata or {})
+
     return DocumentMetadata(
         page_count=cast(int, doc.page_count),
         creator=none_when_blank(info.get("creator")),
@@ -73,9 +82,11 @@ class PdfParser:
             doc = pymupdf.open(path)
         except (OSError, RuntimeError, ValueError) as exc:
             raise UnreadableDocumentError(f"Could not open {path}") from exc
+
         with doc:
             if doc.is_encrypted:
                 raise UnreadableDocumentError(f"{path} is encrypted")
             markdown = cast(str, pymupdf4llm.to_markdown(doc))
             metadata = _document_metadata(doc)
+
         return ParsedResume(markdown=markdown, metadata=metadata)

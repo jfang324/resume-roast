@@ -24,7 +24,9 @@ def estimate_cost(usage: Usage, model: str) -> float | None:
     prices = MODEL_PRICING.get(model)
     if prices is None:
         return None
+
     input_price, output_price = prices
     cost = usage.prompt_tokens / _TOKENS_PER_PRICE_UNIT * input_price
     cost += usage.completion_tokens / _TOKENS_PER_PRICE_UNIT * output_price
+
     return cost
