@@ -1,33 +1,30 @@
-"""Evaluate service: build the prompt, drive structured_completion, return the report."""
+"""Evaluate service: extract the resume, drive structured_completion, return the report."""
 
 import time
-from dataclasses import dataclass
+from pathlib import Path
 
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.structured import structured_completion
-from resume_roast.integrations.types import Message, Usage
+from resume_roast.integrations.types import Message
 from resume_roast.prompts.evaluate.builder import build_evaluate_prompt
 from resume_roast.prompts.evaluate.output.parser import RoastReportParser
-from resume_roast.prompts.evaluate.output.schema import RoastReport
-from resume_roast.utils.extraction.types import ParsedResume
-
-
-@dataclass(frozen=True)
-class EvaluateResult:
-    """What `run()` returns: the parsed report plus accounting."""
-
-    report: RoastReport
-    usage: Usage | None
-    latency_seconds: float
+from resume_roast.services.evaluate.types import EvaluateResult
+from resume_roast.utils.extraction.mappings import get_parser
 
 
 def run(
     client: LlmClient,
-    parsed: ParsedResume,
+    path: Path,
     persona: str,
     level: str,
 ) -> EvaluateResult:
-    """Drive the LLM through the evaluate prompt and return the parsed report and metrics."""
+    """Extract the resume at *path*, drive the evaluate prompt, and return the report.
+
+    Raises:
+        ExtractionError: when the document cannot be parsed.
+        ApiError: transport and response failures, per `structured_completion`.
+    """
+    parsed = get_parser(path).parse(path)
     prompt = build_evaluate_prompt(parsed, persona, level)
     messages: list[Message] = [Message(role="system", content=prompt.system)]
     if prompt.user is not None:
