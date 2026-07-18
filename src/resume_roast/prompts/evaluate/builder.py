@@ -1,17 +1,17 @@
 """Builds the evaluate feature's roast prompt from a parsed resume."""
 
-from resume_roast.prompts.evaluate.input import RESUME_INPUT, render_resume_input
+from resume_roast.prompts.evaluate.levels import LEVEL_CONTEXT
 from resume_roast.prompts.evaluate.output.format import (
     JSON_ROAST_FORMAT,
     JSON_ROAST_REMINDER,
     RULES,
 )
+from resume_roast.prompts.evaluate.personas import PERSONA_PROMPTS
+from resume_roast.prompts.evaluate.resume_input import RESUME_INPUT, render_resume_input
+from resume_roast.prompts.evaluate.scoring import EVALUATION_PRIORITIES, SCORE_BANDS
+from resume_roast.prompts.evaluate.structure import RESUME_STRUCTURE
+from resume_roast.prompts.evaluate.types import Prompt
 from resume_roast.prompts.system_prompt.bullets import BULLET_PRINCIPLES
-from resume_roast.prompts.system_prompt.levels import LEVEL_CONTEXT
-from resume_roast.prompts.system_prompt.personas import PERSONA_PROMPTS
-from resume_roast.prompts.system_prompt.scoring import EVALUATION_PRIORITIES, SCORE_BANDS
-from resume_roast.prompts.system_prompt.structure import RESUME_STRUCTURE
-from resume_roast.prompts.types import Prompt
 from resume_roast.utils.extraction.types import ParsedResume
 
 

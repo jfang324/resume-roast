@@ -13,12 +13,7 @@ class Persona:
 
 @dataclass(frozen=True)
 class Prompt:
-    """What every prompt builder returns.
-
-    One-shot features (evaluate) always set ``user``. Chat-style features
-    (refine, generate-block) build only the system message and take their
-    user turns from the live conversation.
-    """
+    """What the evaluate builder returns: the one-shot system and user messages."""
 
     system: str
     user: str | None = None
