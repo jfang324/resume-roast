@@ -1,6 +1,6 @@
 """Reviewer personas, keyed by the ``persona`` setting's allowed values."""
 
-from resume_roast.prompts.types import Persona
+from resume_roast.prompts.evaluate.types import Persona
 
 PERSONA_PROMPTS: dict[str, Persona] = {
     "recruiter": Persona(

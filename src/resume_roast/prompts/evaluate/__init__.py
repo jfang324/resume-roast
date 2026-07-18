@@ -1,1 +1,1 @@
-"""The evaluate feature's prompt: builder, input rendering, and output contract."""
+"""The evaluate feature's prompt: builder, content fragments, and output contract."""

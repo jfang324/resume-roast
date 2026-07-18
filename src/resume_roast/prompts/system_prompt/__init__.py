@@ -1,1 +1,1 @@
-"""Reusable prompt content pieces that form the system message of each feature builder."""
+"""Prompt content pieces shared by multiple feature builders."""
