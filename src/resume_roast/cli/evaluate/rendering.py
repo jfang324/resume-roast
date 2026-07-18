@@ -1,6 +1,6 @@
 """Renders a structured roast report with git-diff-style highlighting."""
 
-from .schema import CategoryReview, Example, RoastReport
+from resume_roast.prompts.evaluate.output.schema import CategoryReview, Example, RoastReport
 
 DIFF_REMOVAL_PREFIX = "  - "
 DIFF_ADDITION_PREFIX = "  + "
