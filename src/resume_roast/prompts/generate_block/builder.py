@@ -5,7 +5,7 @@ builder — the feature passes chat text through untouched, and the block in
 progress lives entirely in the conversation history.
 """
 
-from resume_roast.prompts.system_prompt.bullets import BULLET_PRINCIPLES
+from resume_roast.prompts.bullets import BULLET_PRINCIPLES
 
 _SYSTEM = (
     """\
@@ -76,7 +76,7 @@ would raise it.
 
 
 def build_system() -> str:
-    """Full system prompt: Context / Process / Principles / Block Rating Scale / Rules."""
+    """Full system prompt: Context / Process / Bullet Writing Principles / Block Rating Scale / Rules."""
     return _SYSTEM
 
 

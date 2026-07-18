@@ -1,5 +1,6 @@
 """Refine prompt builders: system prompt sections and per-turn context blocks."""
 
+from resume_roast.prompts.bullets import BULLET_PRINCIPLES
 from resume_roast.prompts.refine.builder import (
     build_chat_message,
     build_first_message,
@@ -7,7 +8,6 @@ from resume_roast.prompts.refine.builder import (
     build_replace_message,
     build_system,
 )
-from resume_roast.prompts.system_prompt.bullets import BULLET_PRINCIPLES
 
 # -- system prompt -----------------------------------------------------------
 
