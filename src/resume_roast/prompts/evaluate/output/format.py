@@ -26,7 +26,7 @@ _CATEGORY_GUIDANCE: dict[str, str] = {
 
 # Indexing by CATEGORY_NAMES makes schema drift fail at import, not at runtime.
 _CATEGORY_SHAPE = ",\n".join(
-    f'    "{name}": {{"score": <n>, "findings": "<...>", "suggestions": [<...>]}}'
+    f'    "{name}": {{"findings": "<...>", "suggestions": [<...>], "score": <n>}}'
     for name in CATEGORY_NAMES
 )
 
@@ -42,22 +42,23 @@ shape below causes the response to be rejected and re-requested,
 wasting tokens and time. Obey the format exactly.
 Every score is an integer from 0 to 10; a 100-point scale is never used.
 
-The exact shape, every field required:
+The exact shape, every field required, written in exactly this order —
+findings before scores, the overall verdict last — so every judgment is
+written after the analysis that supports it:
 
 {{
-  "overall": "<headline verdict, two to four sentences, in your persona's voice>",
-  "overall_score": <n>,
   "categories": {{
 {_CATEGORY_SHAPE}
   }},
   "strengths": ["<what the resume already does well>"],
-  "weaknesses": ["<what hurts it most>"]
+  "weaknesses": ["<what hurts it most>"],
+  "overall": "<headline verdict, two to four sentences, in your persona's voice>",
+  "overall_score": <n>
 }}
 
 Each category value has this shape:
 
 {{
-  "score": <n>,
   "findings": "<your findings for this category>",
   "suggestions": [
     {{
@@ -66,7 +67,8 @@ Each category value has this shape:
         {{"quote": "<resume text this targets, or empty when adding something new>", "rewrite": "<the concrete replacement or addition>"}}
       ]  // zero to three; include an example only when it adds clarity
     }}
-  ]
+  ],
+  "score": <n>
 }}
 
 What each category judges:

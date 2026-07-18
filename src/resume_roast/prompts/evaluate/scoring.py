@@ -8,8 +8,8 @@ is a lens on that question, and the overall score answers it directly — it is
 never an average of category scores.
 
 Categories are not equally weighted: Content carries most of the verdict
-(~60%), Clarity & Readability supports it (~30%) — a clear, scannable
-resume makes the content digestible — and Polish matters least (~10%).
+(~60%), Clarity supports it (~30%) — a clear, scannable resume makes the
+content digestible — and Polish matters least (~10%).
 Strong substance in a plain wrapper beats polish around weak substance."""
 
 SCORE_BANDS = """\

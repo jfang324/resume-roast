@@ -32,7 +32,10 @@ def run(
     ]
 
     started = time.perf_counter()
-    report, usage = structured_completion(client, messages, RoastReportParser().parse)
+    # Greedy decoding: scoring should be as repeatable as the backend allows.
+    report, usage = structured_completion(
+        client, messages, RoastReportParser().parse, temperature=0.0
+    )
 
     return EvaluateResult(
         report=report,

@@ -58,7 +58,7 @@ def _parse(text: str) -> str:
 def test_returns_the_parsed_first_response() -> None:
     client: LlmClient = _ScriptedClient([_completion("fine")])
 
-    result, usage = structured_completion(client, _MESSAGES, _parse)
+    result, usage = structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert result == "parsed:fine"
     assert usage == _USAGE
@@ -67,7 +67,7 @@ def test_returns_the_parsed_first_response() -> None:
 def test_retries_a_malformed_response_with_feedback() -> None:
     client = _ScriptedClient([_completion("bad draft"), _completion("fine")])
 
-    result, _ = structured_completion(client, _MESSAGES, _parse)
+    result, _ = structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert result == "parsed:fine"
     retry_conversation = client.calls[1]
@@ -82,7 +82,7 @@ def test_gives_up_after_the_second_malformed_response() -> None:
     client = _ScriptedClient([_completion("bad one"), _completion("bad two")])
 
     with pytest.raises(MalformedResponseError, match="bad two is unacceptable"):
-        structured_completion(client, _MESSAGES, _parse)
+        structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert len(client.calls) == 2
 
@@ -90,7 +90,7 @@ def test_gives_up_after_the_second_malformed_response() -> None:
 def test_retries_a_truncated_response_as_sent() -> None:
     client = _ScriptedClient([TruncatedResponseError("hit the limit"), _completion("fine")])
 
-    result, _ = structured_completion(client, _MESSAGES, _parse)
+    result, _ = structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert result == "parsed:fine"
     # The retry repeats the request untouched: no feedback, no extra turns.
@@ -104,7 +104,7 @@ def test_gives_up_after_the_second_truncation() -> None:
     )
 
     with pytest.raises(TruncatedResponseError, match="again"):
-        structured_completion(client, _MESSAGES, _parse)
+        structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert len(client.calls) == 2
 
@@ -114,7 +114,7 @@ def test_truncation_does_not_consume_the_parse_retry() -> None:
         [TruncatedResponseError("hit the limit"), _completion("bad draft"), _completion("fine")]
     )
 
-    result, _ = structured_completion(client, _MESSAGES, _parse)
+    result, _ = structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert result == "parsed:fine"
     assert len(client.calls) == 3
@@ -123,7 +123,7 @@ def test_truncation_does_not_consume_the_parse_retry() -> None:
 def test_sums_usage_across_attempts() -> None:
     client = _ScriptedClient([_completion("bad draft"), _completion("fine")])
 
-    _, usage = structured_completion(client, _MESSAGES, _parse)
+    _, usage = structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert usage == Usage(prompt_tokens=200, completion_tokens=100, total_tokens=300)
 
@@ -131,7 +131,7 @@ def test_sums_usage_across_attempts() -> None:
 def test_usage_is_none_when_no_attempt_reported_it() -> None:
     client = _ScriptedClient([_completion("fine", usage=None)])
 
-    _, usage = structured_completion(client, _MESSAGES, _parse)
+    _, usage = structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert usage is None
 
@@ -140,6 +140,6 @@ def test_transport_errors_propagate_untouched() -> None:
     client = _ScriptedClient([TransientError("NVIDIA API is unavailable")])
 
     with pytest.raises(TransientError):
-        structured_completion(client, _MESSAGES, _parse)
+        structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert len(client.calls) == 1
