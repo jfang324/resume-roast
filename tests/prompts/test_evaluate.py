@@ -88,7 +88,10 @@ def test_system_locks_output_to_json(prompt: Prompt) -> None:
     assert "a 100-point scale is never used" in unwrapped
     assert '"overall_score": <n>' in prompt.system
     for name in CATEGORY_NAMES:
-        assert f'"{name}": {{"score": <n>, "findings":' in prompt.system
+        assert (
+            f'"{name}": {{"findings": "<...>", "suggestions": [<...>], "score": <n>}}'
+            in prompt.system
+        )
     assert '"suggestions"' in prompt.system
 
 
@@ -111,6 +114,26 @@ def test_user_contains_document_statistics(prompt: Prompt) -> None:
     assert "- Text coverage: 25% of page area" in prompt.user
     assert "- Images: 1" in prompt.user
     assert "- Links: https://github.com/janedoe" in prompt.user
+
+
+def test_omits_document_statistics_when_the_source_has_no_pages() -> None:
+    metadata = DocumentMetadata(
+        page_count=0,
+        creator=None,
+        producer=None,
+        created=None,
+        modified=None,
+        links=(),
+        pages=(),
+    )
+    built = build_evaluate_prompt(
+        ParsedResume(markdown=_MARKDOWN, metadata=metadata), persona="recruiter", level="mid"
+    )
+
+    # A pageless source (DOCX) must not present zeroed statistics the model
+    # would read as an empty resume.
+    assert "## Document Statistics" not in built.user
+    assert "- Pages: 0" not in built.user
 
 
 def test_every_settings_combination_builds() -> None:

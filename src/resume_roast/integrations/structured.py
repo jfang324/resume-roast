@@ -22,8 +22,13 @@ def structured_completion[T](
     client: LlmClient,
     messages: Sequence[Message],
     parse: Callable[[str], T],
+    *,
+    temperature: float,
 ) -> tuple[T, Usage | None]:
     """Prompt until the response parses, retrying each failure mode within budget.
+
+    ``temperature`` has no default so every caller states its sampling
+    choice; it is forwarded unchanged on every attempt.
 
     A malformed response is retried with the bad reply and the parse error
     appended to the conversation; a truncated response is retried as sent
@@ -44,7 +49,7 @@ def structured_completion[T](
 
     while True:
         try:
-            completion = client.prompt(conversation)
+            completion = client.prompt(conversation, temperature=temperature)
 
         except TruncatedResponseError:
             truncation_attempts += 1

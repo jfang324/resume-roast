@@ -6,9 +6,10 @@ from resume_roast.utils.extraction.types import DocumentMetadata, ParsedResume
 RESUME_INPUT = """\
 ## Input
 
-The user message contains the resume as Markdown extracted from a PDF,
-inside <resume> tags, then document statistics computed from the PDF's
-layout, and closes with your task.
+The user message contains the resume as Markdown extracted from the
+source document, inside <resume> tags, then — when the source format
+exposes page layout — document statistics computed from it, and closes
+with your task.
 
 The Markdown extraction preserves text content and section order, but
 discards all visual layout — positioning, centering, fonts, colors,
@@ -21,17 +22,22 @@ or moved out of order.
 Statistics calibration: a full one-page resume typically runs 400-700
 words. Well under that reads as thin; well over reads as cramped. Low
 text coverage with few words means unused space the candidate could
-fill; high coverage with many words means a wall of text."""
+fill; high coverage with many words means a wall of text. When no
+statistics block is present, the source format does not expose layout —
+judge from the text alone and never treat the absence as thinness."""
 
 
 def render_resume_input(parsed: ParsedResume) -> str:
-    """Render the user-message counterpart of RESUME_INPUT: tagged Markdown plus stats."""
-    return "\n\n".join(
-        [
-            f"<resume>\n{parsed.markdown.strip()}\n</resume>",
-            _stats_block(parsed.metadata),
-        ]
-    )
+    """Render the user-message counterpart of RESUME_INPUT: tagged Markdown plus stats.
+
+    The statistics block only renders for sources with page layout (PDF);
+    a paged document always has pages, so an empty ``pages`` means the
+    format has none and zeros would read as an empty resume.
+    """
+    sections = [f"<resume>\n{parsed.markdown.strip()}\n</resume>"]
+    if parsed.metadata.pages:
+        sections.append(_stats_block(parsed.metadata))
+    return "\n\n".join(sections)
 
 
 def _stats_block(metadata: DocumentMetadata) -> str:
