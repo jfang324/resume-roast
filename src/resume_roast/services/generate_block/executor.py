@@ -34,5 +34,6 @@ class GenerateBlockCommandExecutor(CommandExecutor[GenerateBlockCommand]):
         """Build the ``/generate`` turn."""
         if command is GenerateBlockCommand.GENERATE:
             return SendTurn(build_generate_message(arg))
+
         msg = f"Unhandled command: {command!r}"  # single-member vocabulary
         raise ValueError(msg)

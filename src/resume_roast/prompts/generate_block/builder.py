@@ -96,4 +96,5 @@ def build_generate_message(note: str | None) -> str:
     )
     if note is not None:
         msg += f"\n\nAdditional note: {note}"
+
     return msg
