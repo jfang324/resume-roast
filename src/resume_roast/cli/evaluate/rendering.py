@@ -1,23 +1,46 @@
 """Renders a structured roast report with git-diff-style highlighting."""
 
-from resume_roast.prompts.evaluate.output.schema import CategoryReview, Example, RoastReport
+import typer
+from rich.console import Console
 
-DIFF_REMOVAL_PREFIX = "  - "
-DIFF_ADDITION_PREFIX = "  + "
-"""Line prefixes marking diff hunks; the handler colors lines that start with these."""
+from resume_roast.cli.evaluate.constants import (
+    DIFF_ADDITION_PREFIX,
+    DIFF_REMOVAL_PREFIX,
+    DIFF_STYLES,
+)
+from resume_roast.cli.utils import print_highlighted_lines, summary_line
+from resume_roast.prompts.evaluate.output.schema import (
+    CategoryReview,
+    Example,
+    RoastReport,
+)
+from resume_roast.services.evaluate.types import EvaluateResult
 
 
-def render_report(report: RoastReport) -> str:
+def show_report(console: Console, result: EvaluateResult, model: str) -> None:
+    """Print the rendered report with diff highlighting, then the usage summary."""
+    print_highlighted_lines(_render_report(result.report), console, DIFF_STYLES)
+    typer.echo()
+
+    console.print(summary_line(model, result.usage, result.latency_seconds), style="dim")
+
+
+def _render_report(report: RoastReport) -> str:
     """Render `report` as a plain-text string with diff lines prefixed for ANSI coloring."""
     sections: list[str] = [
-        _section("Overall Assessment", f"{report.overall}\n\nOverall: {report.overall_score}/10"),
+        _section(
+            "Overall Assessment",
+            f"{report.overall}\n\nOverall: {report.overall_score}/10",
+        ),
         _section("What's Good", _bullets(report.strengths)),
         _section("What's Bad", _bullets(report.weaknesses)),
     ]
+
     sections.extend(
         _section(f"{name} — {review.score}/10", _category_body(review))
         for name, review in report.categories.items()
     )
+
     return "\n\n".join(sections)
 
 
@@ -25,9 +48,11 @@ def _category_body(review: CategoryReview) -> str:
     """Render a category's findings, then its suggestions when it has any."""
     if not review.suggestions:
         return review.findings
+
     recommendations = "\n\n".join(
         f"- {s.recommendation}{_examples_block(s.examples)}" for s in review.suggestions
     )
+
     return f"{review.findings}\n\nSuggestions:\n{recommendations}"
 
 
@@ -35,6 +60,7 @@ def _examples_block(examples: tuple[Example, ...]) -> str:
     """Render examples as indented diff hunks."""
     if not examples:
         return ""
+
     return "\n" + "\n".join(_example(e) for e in examples)
 
 
@@ -42,8 +68,10 @@ def _example(example: Example) -> str:
     """Render one example as a diff hunk, prefixing every line so multi-line
     quotes and rewrites color fully, not just their first line."""
     additions = _prefix_lines(example.rewrite, DIFF_ADDITION_PREFIX)
+
     if not example.quote:
         return additions
+
     return f"{_prefix_lines(example.quote, DIFF_REMOVAL_PREFIX)}\n{additions}"
 
 

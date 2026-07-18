@@ -2,12 +2,11 @@
 
 from pathlib import Path
 
-import typer
 from rich.console import Console
 
-from resume_roast.cli.evaluate.constants import DIFF_STYLES, SPINNER_MESSAGES
-from resume_roast.cli.evaluate.rendering import render_report
-from resume_roast.cli.utils import build_client, print_highlighted_lines, spinner, summary_line
+from resume_roast.cli.evaluate.constants import SPINNER_MESSAGES
+from resume_roast.cli.evaluate.rendering import show_report
+from resume_roast.cli.utils import build_client, spinner
 from resume_roast.services.evaluate.service import run
 
 
@@ -19,6 +18,4 @@ def evaluate(path: Path) -> None:
     with spinner(*SPINNER_MESSAGES):
         result = run(client, path, settings.persona, settings.level)
 
-    print_highlighted_lines(render_report(result.report), console, DIFF_STYLES)
-    typer.echo()
-    console.print(summary_line(settings.model, result.usage, result.latency_seconds), style="dim")
+    show_report(console, result, settings.model)
