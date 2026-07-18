@@ -11,7 +11,7 @@ def test_system_has_four_sections() -> None:
 
     assert "## Context" in system
     assert "## Process" in system
-    assert "## Principles" in system
+    assert "## Bullet Writing Principles" in system
     assert "## Rules" in system
 
 
