@@ -1,6 +1,8 @@
 """Tests for the plain-text report rendering."""
 
-from resume_roast.cli.evaluate.rendering import render_report
+from resume_roast.cli.evaluate.rendering import (
+    _render_report,  # pyright: ignore[reportPrivateUsage] — the test seam is the pure renderer
+)
 from resume_roast.prompts.evaluate.output.schema import (
     CATEGORY_NAMES,
     CategoryReview,
@@ -40,7 +42,7 @@ def _report() -> RoastReport:
 
 
 def test_renders_underlined_plaintext_sections() -> None:
-    rendered = render_report(_report())
+    rendered = _render_report(_report())
 
     assert "[Overall Assessment]\n" in rendered
     assert "Overall: 6/10" in rendered
@@ -49,14 +51,14 @@ def test_renders_underlined_plaintext_sections() -> None:
 
 
 def test_renders_every_category_in_order() -> None:
-    rendered = render_report(_report())
+    rendered = _render_report(_report())
 
     positions = [rendered.index(f"[{name} — 5/10]") for name in CATEGORY_NAMES]
     assert positions == sorted(positions)
 
 
 def test_renders_suggestions_under_their_category() -> None:
-    rendered = render_report(_report())
+    rendered = _render_report(_report())
 
     content_start = rendered.index("[Content — 5/10]")
     block = rendered[content_start:]
@@ -94,7 +96,7 @@ def test_prefixes_every_line_of_a_multi_line_quote_and_rewrite() -> None:
         weaknesses=("x",),
     )
 
-    rendered = render_report(report)
+    rendered = _render_report(report)
 
     # Both lines of the quote carry the removal prefix, both lines of the
     # rewrite the addition prefix — no line renders bare.
@@ -122,7 +124,7 @@ def test_renders_a_bare_recommendation_with_no_examples() -> None:
         weaknesses=("x",),
     )
 
-    rendered = render_report(report)
+    rendered = _render_report(report)
 
     assert "Suggestions:\n- Add a LinkedIn URL to the header" in rendered
     # No dangling example indentation under a bare recommendation.
@@ -152,14 +154,14 @@ def test_renders_an_additive_example_without_a_quote() -> None:
         weaknesses=("x",),
     )
 
-    rendered = render_report(report)
+    rendered = _render_report(report)
 
     assert "- Add an Education section\n  + BSc, [University], 2024" in rendered
     assert "  - BSc" not in rendered  # no removal line when there is no quote
 
 
 def test_omits_the_suggestions_label_when_a_category_has_none() -> None:
-    rendered = render_report(_report())
+    rendered = _render_report(_report())
 
     clarity_start = rendered.index("[Clarity — 5/10]")
     polish_start = rendered.index("[Polish — 5/10]")
@@ -169,7 +171,7 @@ def test_omits_the_suggestions_label_when_a_category_has_none() -> None:
 
 
 def test_renders_good_and_bad_bullets_right_after_the_overall_assessment() -> None:
-    rendered = render_report(_report())
+    rendered = _render_report(_report())
 
     assert "[What's Good]\n- Concise single page\n- Strong verbs" in rendered
     assert "[What's Bad]\n- No metrics anywhere" in rendered

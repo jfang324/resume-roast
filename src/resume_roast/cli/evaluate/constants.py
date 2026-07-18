@@ -1,7 +1,5 @@
 """Display constants for the `evaluate` subcommand."""
 
-from resume_roast.cli.evaluate.rendering import DIFF_ADDITION_PREFIX, DIFF_REMOVAL_PREFIX
-
 SPINNER_MESSAGES: list[str] = [
     "roasting your resume...",
     "summoning the resume wizard...",
@@ -11,6 +9,10 @@ SPINNER_MESSAGES: list[str] = [
     "searching for measurable impact...",
     "composing something devastating...",
 ]
+
+DIFF_REMOVAL_PREFIX = "  - "
+DIFF_ADDITION_PREFIX = "  + "
+"""Line prefixes marking diff hunks; `show_report` colors lines that start with these."""
 
 DIFF_STYLES: dict[str, str] = {
     DIFF_REMOVAL_PREFIX: "on #3a0000",
