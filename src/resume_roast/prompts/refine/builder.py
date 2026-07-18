@@ -4,7 +4,7 @@ All builders are pure functions of their inputs; session state (the current
 bullet) lives with the refine service's executor and is passed in explicitly.
 """
 
-from resume_roast.prompts.system_prompt import BULLET_PRINCIPLES
+from resume_roast.prompts.system_prompt.bullets import BULLET_PRINCIPLES
 
 _SYSTEM = (
     """\
