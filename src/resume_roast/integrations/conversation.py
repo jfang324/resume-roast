@@ -86,7 +86,6 @@ class Conversation:
         self,
         client: LlmClient,
         system_prompt: str,
-        *,
         temperature: float,
     ) -> None:
         self._client = client
