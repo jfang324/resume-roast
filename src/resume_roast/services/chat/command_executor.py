@@ -50,14 +50,19 @@ class CommandExecutor[C: Enum](ABC):
         lines = ["Available commands:"]
         for command, spec in self.commands.items():
             usage = f"/{command.value}"
+
             if spec.arg_hint is not None:
                 usage += f" {spec.arg_hint}"
+
             lines.append(f"  {usage:<{_HELP_USAGE_WIDTH}}{spec.description}")
+
         lines.append(f"  {'/exit':<{_HELP_USAGE_WIDTH}}End the session")
         lines.append(f"  {'/help':<{_HELP_USAGE_WIDTH}}Show this message")
         text = "\n".join(lines)
+
         if self.help_epilogue:
             text = f"{text}\n\n{self.help_epilogue}"
+
         return text
 
     @property
@@ -70,18 +75,25 @@ class CommandExecutor[C: Enum](ABC):
         match parsed:
             case None:
                 return Invalid()
+
             case ChatText(text):
                 return self.chat(text)
+
             case Command("exit", None):
                 return EndSession()
+
             case Command("help", None):
                 return ShowHelp(self.help_text)
+
             case Command(name, arg):
                 command = self._member(name)
+
                 if command is None:
                     return Invalid()
+
                 if self.commands[command].policy is ArgPolicy.REQUIRED and arg is None:
                     return Invalid()
+
                 return self.command(command, arg)
 
     def _member(self, name: str) -> C | None:

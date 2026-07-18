@@ -15,7 +15,10 @@ class InputParser:
         """
         if not raw:
             return None
+
         if raw.startswith("/"):
             name, _, arg = raw[1:].partition(" ")
+
             return Command(name, arg.strip() or None)
+
         return ChatText(raw)

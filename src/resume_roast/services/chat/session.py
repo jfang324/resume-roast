@@ -64,18 +64,24 @@ class ChatSession[C: Enum]:
         try:
             if opening is not None:
                 self._exchange(opening)
+
             while True:
                 raw = self._input.get_input().strip()
+
                 match self._executor.execute(self._parser.parse(raw)):
                     case Invalid():
                         self._renderer.show_usage_hint()
+
                     case EndSession():
                         break
+
                     case ShowHelp(text):
                         self._renderer.show_help(text)
+
                     case SendTurn(text, commit):
                         if self._exchange(text) and commit is not None:
                             commit()  # only persist the turn once it lands
+
         except (EOFError, KeyboardInterrupt):
             self._renderer.show_interrupt()
 
@@ -90,13 +96,22 @@ class ChatSession[C: Enum]:
         try:
             reply = self._conversation.send_stream(message)
             self._renderer.show_reply(reply)
+
         except TransientError as exc:
             self._renderer.show_transient_error(exc)
+
             return False
+
         if not reply.exhausted:
             # A renderer that stops early would silently lose the assistant
             # turn — fail loudly instead, this is a programming error.
             msg = "ChatRenderer.show_reply must drain the reply stream to exhaustion."
             raise RuntimeError(msg)
-        self._renderer.show_metrics(reply.usage, reply.finish_reason, time.perf_counter() - started)
+
+        self._renderer.show_metrics(
+            reply.usage,
+            reply.finish_reason,
+            time.perf_counter() - started,
+        )
+
         return True

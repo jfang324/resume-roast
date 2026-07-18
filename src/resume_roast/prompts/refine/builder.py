@@ -78,7 +78,9 @@ def build_generate_message(bullet: str, note: str | None) -> str:
         message += " and the note provided.\n\n"
     else:
         message += ".\n\n"
+
     message += f"<current bullet point>\n{bullet}\n</current bullet point>"
+
     if note is not None:
         message += f"\n\n<note>\n{note}\n</note>"
     message += (
@@ -87,4 +89,5 @@ def build_generate_message(bullet: str, note: str | None) -> str:
         "compared to the current bullet. Do NOT change the current "
         "bullet in your [current bullet point] header."
     )
+
     return message

@@ -39,7 +39,11 @@ class ConsoleRenderer:
         """Print the cut-off notice when truncated, then the metrics line."""
         if finish_reason == "length":
             self._console.print("(reply cut off at the length limit)", style="dim")
-        self._console.print(summary_line(self._model, usage, latency_seconds), style="dim")
+
+        self._console.print(
+            summary_line(self._model, usage, latency_seconds),
+            style="dim",
+        )
 
     def show_transient_error(self, error: TransientError) -> None:
         """Break the reply line and invite a retry."""
