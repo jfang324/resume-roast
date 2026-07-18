@@ -74,3 +74,8 @@ LEVEL_CONTEXT: dict[str, str] = {
         "for those around them."
     ),
 }
+
+
+def render_level(level: str) -> str:
+    """Render the role-level expectations section for `level`."""
+    return f"## Role Level\n\n{LEVEL_CONTEXT[level]}"
