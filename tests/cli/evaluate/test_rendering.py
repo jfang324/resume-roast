@@ -1,7 +1,13 @@
-"""Tests for the plain-text report rendering."""
+"""Tests for the plain-text report rendering and its diff-line highlighting."""
+
+import io
+import re
+
+from rich.console import Console
 
 from resume_roast.cli.evaluate.rendering import (
-    _render_report,  # pyright: ignore[reportPrivateUsage] — the test seam is the pure renderer
+    _print_highlighted_lines,  # pyright: ignore[reportPrivateUsage] — the highlighting seam
+    _render_report,  # pyright: ignore[reportPrivateUsage] — the pure-renderer seam
 )
 from resume_roast.prompts.evaluate.output.schema import (
     CATEGORY_NAMES,
@@ -10,6 +16,43 @@ from resume_roast.prompts.evaluate.output.schema import (
     RoastReport,
     Suggestion,
 )
+
+_STYLES = {"  - ": "on #3a0000", "  + ": "on #003a00"}
+
+
+def _highlighted(text: str, *, terminal: bool, width: int = 20) -> list[str]:
+    buf = io.StringIO()
+    console = Console(
+        file=buf,
+        force_terminal=terminal,
+        width=width,
+        color_system="truecolor" if terminal else None,
+    )
+    _print_highlighted_lines(text, console, _STYLES)
+    return re.sub(r"\x1b\[[0-9;]*m", "", buf.getvalue()).splitlines()
+
+
+def test_highlighted_lines_fill_the_full_terminal_width() -> None:
+    lines = _highlighted("  - short\nplain line\n  + also short", terminal=True)
+
+    # Prefix-matched lines are padded out to the full width; other text is not.
+    assert next(line for line in lines if line.startswith("  - ")) == "  - short".ljust(20)
+    assert next(line for line in lines if line.startswith("  + ")) == "  + also short".ljust(20)
+    assert "plain line" in lines
+
+
+def test_highlighted_lines_stay_plain_off_a_terminal() -> None:
+    lines = _highlighted("  - short\nplain line\n  + also short", terminal=False)
+
+    # No padding (no trailing whitespace) when the output is piped.
+    assert lines == ["  - short", "plain line", "  + also short"]
+
+
+def test_highlighted_lines_keep_bracketed_titles_intact() -> None:
+    lines = _highlighted("[Content — 5/10]", terminal=True)
+
+    # Text, not markup: the brackets are not swallowed as Rich tags.
+    assert lines[0].startswith("[Content — 5/10]")
 
 
 def _review(name: str, *, with_suggestion: bool) -> CategoryReview:

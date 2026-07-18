@@ -1,14 +1,18 @@
 """Renders a structured roast report with git-diff-style highlighting."""
 
+from collections.abc import Mapping
+
 import typer
 from rich.console import Console
+from rich.padding import Padding
+from rich.text import Text
 
 from resume_roast.cli.evaluate.constants import (
     DIFF_ADDITION_PREFIX,
     DIFF_REMOVAL_PREFIX,
     DIFF_STYLES,
 )
-from resume_roast.cli.utils import print_highlighted_lines, summary_line
+from resume_roast.cli.utils import summary_line
 from resume_roast.prompts.evaluate.output.schema import (
     CategoryReview,
     Example,
@@ -19,10 +23,34 @@ from resume_roast.services.evaluate.types import EvaluateResult
 
 def show_report(console: Console, result: EvaluateResult, model: str) -> None:
     """Print the rendered report with diff highlighting, then the usage summary."""
-    print_highlighted_lines(_render_report(result.report), console, DIFF_STYLES)
+    _print_highlighted_lines(_render_report(result.report), console, DIFF_STYLES)
     typer.echo()
 
     console.print(summary_line(model, result.usage, result.latency_seconds), style="dim")
+
+
+def _print_highlighted_lines(
+    text: str,
+    console: Console,
+    styles: Mapping[str, str],
+) -> None:
+    """Print `text`, filling the background of prefix-matched lines to full width.
+
+    `styles` maps a line prefix to a Rich style; a line starting with a prefix
+    is padded out to the terminal width so its background spans the whole row —
+    and every wrapped row — where a bare style colors only the characters.
+    Off a terminal the fill would only add trailing whitespace, so every line
+    prints plain. `Text` (never markup) keeps bracketed titles intact.
+    """
+    for line in text.splitlines():
+        style = next(
+            (s for prefix, s in styles.items() if line.startswith(prefix)),
+            None,
+        )
+        if style is not None and console.is_terminal:
+            console.print(Padding(Text(line), (0, 0), style=style))
+        else:
+            console.print(Text(line), soft_wrap=True)
 
 
 def _render_report(report: RoastReport) -> str:

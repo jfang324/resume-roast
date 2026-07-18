@@ -4,7 +4,7 @@ from collections.abc import Iterable
 
 from rich.console import Console
 
-from resume_roast.cli.utils import USER_PROMPT, stream_to_console, summary_line
+from resume_roast.cli.utils import USER_PROMPT, summary_line
 from resume_roast.integrations.errors import TransientError
 from resume_roast.integrations.types import Usage
 
@@ -30,7 +30,7 @@ class ConsoleRenderer:
     def show_reply(self, chunks: Iterable[str]) -> None:
         """Print the reply label, stream the chunks, and close the line."""
         self._console.print(f"{self._label}{USER_PROMPT}", end="", style="bold")
-        stream_to_console(chunks, self._console)
+        _stream_to_console(chunks, self._console)
         self._console.print()
 
     def show_metrics(
@@ -56,3 +56,8 @@ class ConsoleRenderer:
     def show_interrupt(self) -> None:
         """End the prompt line so the shell resumes cleanly."""
         self._console.print()
+
+
+def _stream_to_console(chunks: Iterable[str], console: Console) -> None:
+    for chunk in chunks:
+        console.print(chunk, end="", markup=False, highlight=False, soft_wrap=True)
