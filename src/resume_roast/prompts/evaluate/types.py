@@ -16,4 +16,4 @@ class Prompt:
     """What the evaluate builder returns: the one-shot system and user messages."""
 
     system: str
-    user: str | None = None
+    user: str
