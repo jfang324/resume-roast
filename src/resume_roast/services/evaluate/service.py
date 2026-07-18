@@ -26,9 +26,10 @@ def run(
     """
     parsed = get_parser(path).parse(path)
     prompt = build_evaluate_prompt(parsed, persona, level)
-    messages: list[Message] = [Message(role="system", content=prompt.system)]
-    if prompt.user is not None:
-        messages.append(Message(role="user", content=prompt.user))
+    messages = [
+        Message(role="system", content=prompt.system),
+        Message(role="user", content=prompt.user),
+    ]
 
     started = time.perf_counter()
     report, usage = structured_completion(client, messages, RoastReportParser().parse)

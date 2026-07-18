@@ -93,7 +93,6 @@ def test_system_locks_output_to_json(prompt: Prompt) -> None:
 
 
 def test_user_message_closes_with_the_output_contract(prompt: Prompt) -> None:
-    assert prompt.user is not None
     unwrapped = " ".join(prompt.user.split())
     assert unwrapped.endswith("in the Output Format section — nothing else.")
     assert "single raw JSON object" in unwrapped
@@ -102,13 +101,11 @@ def test_user_message_closes_with_the_output_contract(prompt: Prompt) -> None:
 
 
 def test_resume_goes_delimited_into_user_not_system(prompt: Prompt) -> None:
-    assert prompt.user is not None
     assert f"<resume>\n{_MARKDOWN}\n</resume>" in prompt.user
     assert _MARKDOWN not in prompt.system
 
 
 def test_user_contains_document_statistics(prompt: Prompt) -> None:
-    assert prompt.user is not None
     assert "- Pages: 1" in prompt.user
     assert "- Average words per page: 20" in prompt.user
     assert "- Text coverage: 25% of page area" in prompt.user
