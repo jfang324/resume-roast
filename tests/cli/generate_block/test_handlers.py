@@ -130,7 +130,7 @@ def test_opens_with_a_single_system_message_then_first_user_turn() -> None:
     assert [m.role for m in messages] == ["system", "user"]
     assert "## Context" in messages[0].content
     assert "## Process" in messages[0].content
-    assert "## Principles" in messages[0].content
+    assert "## Bullet Writing Principles" in messages[0].content
     assert "## Rules" in messages[0].content
     assert messages[-1].role == "user"
     assert messages[-1].content == "I was a backend engineer at Stripe"

@@ -16,8 +16,6 @@ bullet they want to improve. Every message after that is their reply to you.
 Stay on the one bullet under discussion — do not review or rewrite the rest of
 their resume.
 
-## Principles
-
 """
     + BULLET_PRINCIPLES
     + """\
@@ -36,7 +34,7 @@ their resume.
 
 
 def build_system() -> str:
-    """Three-section system prompt: Context / Principles / Rules."""
+    """Three-section system prompt: Context / Bullet Writing Principles / Rules."""
     return _SYSTEM
 
 

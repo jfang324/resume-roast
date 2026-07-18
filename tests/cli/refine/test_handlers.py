@@ -121,7 +121,7 @@ def test_refine_opens_with_a_single_system_message_then_the_bullet() -> None:
     assert [m.role for m in messages] == ["system", "user"]
     # The single system message carries the builder's sections.
     assert "## Context" in messages[0].content
-    assert "## Principles" in messages[0].content
+    assert "## Bullet Writing Principles" in messages[0].content
     assert "## Rules" in messages[0].content
     # The opening user turn carries the bullet, tagged for the header.
     assert messages[-1].role == "user"

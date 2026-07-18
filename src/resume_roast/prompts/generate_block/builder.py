@@ -44,8 +44,6 @@ PHASE 3 — REFINEMENT
 After generating the block, invite the user to refine it. On every subsequent
 reply, reassess and re-rate the block, leading with: [block rating: X/10]
 
-## Principles
-
 """
     + BULLET_PRINCIPLES
     + """\

@@ -16,7 +16,7 @@ def test_system_has_three_sections() -> None:
     system = build_system()
 
     assert "## Context" in system
-    assert "## Principles" in system
+    assert "## Bullet Writing Principles" in system
     assert "## Rules" in system
 
 
