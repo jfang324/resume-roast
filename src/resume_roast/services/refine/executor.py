@@ -41,7 +41,9 @@ class RefineCommandExecutor(CommandExecutor[RefineCommand]):
                 self.current_bullet = arg
 
             return SendTurn(build_replace_message(arg), commit)
+
         if command is RefineCommand.GENERATE:
             return SendTurn(build_generate_message(self.current_bullet, arg))
+
         msg = f"Unhandled command: {command!r}"  # REPLACE without arg is policy-filtered
         raise ValueError(msg)

@@ -33,15 +33,19 @@ class ConversationReply:
         if self._consumed:
             msg = "A ConversationReply can only be iterated once."
             raise RuntimeError(msg)
+
         self._consumed = True
         chunks: list[str] = []
+
         try:
             for chunk in self._stream:
                 chunks.append(chunk)
+
                 yield chunk
         except BaseException:
             self._on_error()
             raise
+
         self._on_complete("".join(chunks))
         self._exhausted = True
 
@@ -78,7 +82,13 @@ class Conversation:
         Sampling temperature applied to every turn.
     """
 
-    def __init__(self, client: LlmClient, system_prompt: str, *, temperature: float) -> None:
+    def __init__(
+        self,
+        client: LlmClient,
+        system_prompt: str,
+        *,
+        temperature: float,
+    ) -> None:
         self._client = client
         self.messages: list[Message] = [Message(role="system", content=system_prompt)]
         self.temperature = temperature
@@ -95,10 +105,14 @@ class Conversation:
         """
         self.messages.append(Message(role="user", content=user_text))
         try:
-            stream = self._client.prompt_stream(self.messages, temperature=self.temperature)
+            stream = self._client.prompt_stream(
+                self.messages,
+                temperature=self.temperature,
+            )
         except BaseException:
             self.messages.pop()
             raise
+
         return ConversationReply(
             stream,
             on_complete=self._record_assistant_turn,
