@@ -3,15 +3,10 @@
 from rich.console import Console
 
 from resume_roast.cli.chat_renderer import ConsoleRenderer
+from resume_roast.cli.generate_block.constants import WELCOME
 from resume_roast.cli.input_provider import ConsoleInputProvider
 from resume_roast.cli.utils import build_client, model_label
 from resume_roast.services.generate_block.service import run
-
-_WELCOME = (
-    "Tell me about a role or project you've worked on. I'll ask questions to gather "
-    "details, then generate a resume block when you type /generate.\n"
-    "Type /help to see available commands."
-)
 
 
 def generate_block() -> None:
@@ -26,5 +21,5 @@ def generate_block() -> None:
     renderer = ConsoleRenderer(console, label, settings.model)
     input_provider = ConsoleInputProvider()
 
-    console.print(_WELCOME)
+    console.print(WELCOME)
     run(client, renderer, input_provider)
