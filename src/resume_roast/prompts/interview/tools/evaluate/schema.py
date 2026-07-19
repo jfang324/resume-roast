@@ -1,16 +1,7 @@
-"""Input/output types for the evaluate tool."""
+"""Output types for the evaluate tool."""
 
 from dataclasses import dataclass, field
 from typing import cast
-
-
-@dataclass(frozen=True)
-class EvaluateInput:
-    original_question: str
-    answer_history: list[str]
-    verify_results: str
-    competency_descriptions: str
-    competency_ids: list[str]
 
 
 @dataclass(frozen=True)

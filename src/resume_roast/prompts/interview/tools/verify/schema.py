@@ -1,4 +1,4 @@
-"""Input/output types for the verify tool."""
+"""Output types for the verify tool."""
 
 from dataclasses import dataclass, field
 from typing import cast
@@ -10,13 +10,6 @@ class ClaimResult:
     probability: float
     evidence: str | None = None
     contradiction: bool = False
-
-
-@dataclass(frozen=True)
-class VerifyInput:
-    claims: list[str]
-    answer: str
-    resume_markdown: str
 
 
 @dataclass(frozen=True)
