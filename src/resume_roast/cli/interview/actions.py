@@ -19,11 +19,6 @@ class VerifyAction:
 
 
 @dataclass(frozen=True)
-class FollowUpAction:
-    name: str = "follow_up"
-
-
-@dataclass(frozen=True)
 class EvaluateAction:
     name: str = "evaluate"
 
@@ -51,13 +46,7 @@ class ParseFailure:
 
 
 type InterviewAction = (
-    VerifyAction
-    | FollowUpAction
-    | EvaluateAction
-    | AskFollowupAction
-    | ConcludeAction
-    | AskAction
-    | ParseFailure
+    VerifyAction | EvaluateAction | AskFollowupAction | ConcludeAction | AskAction | ParseFailure
 )
 
 
@@ -71,8 +60,6 @@ def action_from_dict(raw: dict[str, Any]) -> InterviewAction:
     if name == "verify":
         claims = raw.get("claims", [])
         return VerifyAction(claims=tuple(claims))
-    if name == "follow_up":
-        return FollowUpAction()
     if name == "evaluate":
         return EvaluateAction()
     if name == "ask_followup":

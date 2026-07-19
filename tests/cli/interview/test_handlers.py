@@ -189,6 +189,32 @@ def test_interview_verify_then_evaluate(sample_pdf: Path, monkeypatch: pytest.Mo
 
 
 @pytest.mark.usefixtures("saved_key")
+def test_ask_followup_presents_the_interviewers_question(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The model's own follow-up question reaches the candidate, then the cycle evaluates."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "ask_followup", "question": "What was your specific role?"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+
+    result = runner.invoke(
+        app, ["interview", str(sample_pdf)], input="vague answer\nfollow-up answer\n/exit\n"
+    )
+
+    assert result.exit_code == 0
+    assert "What was your specific role?" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
 def test_interview_early_exit_on_two_critical_failures(
     sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

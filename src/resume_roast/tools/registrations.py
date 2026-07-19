@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from . import evaluate, follow_up, verify
+from . import evaluate, verify
 from .registry import Tool, ToolRegistry, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -40,36 +40,6 @@ def _verify_action(action: dict[str, Any], **context: Any) -> ToolResult:
     except Exception:
         logger.exception("verify tool failed")
         return ToolResult(success=False, data="Verification encountered an error.")
-
-
-def _follow_up_action(action: dict[str, Any], **context: Any) -> ToolResult:
-    client = context["client"]
-    answer_history = context.get("answer_history", [""])
-    original_question = action.get("question", "")
-    verify_summary = action.get("verify_summary", "")
-    competency_gaps = action.get("competency_gaps")
-    answer = answer_history[-1] if answer_history else ""
-    try:
-        output, usage = follow_up.execute(
-            client, original_question, answer, verify_summary, competency_gaps
-        )
-        if output.questions:
-            lines = [f"Follow-up questions ({len(output.questions)}):"]
-            lines.extend(f"  - {q}" for q in output.questions)
-            if output.rationale:
-                lines.append(f"Rationale: {output.rationale}")
-            result = "\n".join(lines)
-        else:
-            result = "No follow-up needed."
-        return ToolResult(
-            success=True,
-            data=result,
-            result_type="follow_up",
-            metadata={"usage": usage, "questions": output.questions},
-        )
-    except Exception:
-        logger.exception("follow_up tool failed")
-        return ToolResult(success=False, data="Follow-up generation encountered an error.")
 
 
 def _evaluate_action(action: dict[str, Any], **context: Any) -> ToolResult:
@@ -132,32 +102,6 @@ def register_all(registry: ToolRegistry) -> None:
             },
             required=["claims"],
             fn=_verify_action,
-        )
-    )
-
-    registry.register(
-        Tool(
-            name="follow_up",
-            description=(
-                "Generate 0-2 follow-up questions based on low-probability claims "
-                "and competency gaps. Call after verify when the answer needs deeper probing."
-            ),
-            parameters={
-                "type": "object",
-                "properties": {
-                    "competency_gaps": {
-                        "type": "string",
-                        "description": "Competency areas with low coverage",
-                    },
-                    "verify_summary": {
-                        "type": "string",
-                        "description": "Results from the verify tool",
-                    },
-                },
-                "required": [],
-            },
-            required=[],
-            fn=_follow_up_action,
         )
     )
 
