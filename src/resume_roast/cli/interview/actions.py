@@ -45,12 +45,6 @@ class AskAction:
 
 
 @dataclass(frozen=True)
-class PlanAction:
-    name: str = "plan"
-    questions: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
 class ParseFailure:
     name: str = "unknown"
     raw_text: str = ""
@@ -63,7 +57,6 @@ type InterviewAction = (
     | AskFollowupAction
     | ConcludeAction
     | AskAction
-    | PlanAction
     | ParseFailure
 )
 
@@ -88,9 +81,6 @@ def action_from_dict(raw: dict[str, Any]) -> InterviewAction:
         return ConcludeAction()
     if name == "ask":
         return AskAction()
-    if name == "plan":
-        questions = raw.get("questions", [])
-        return PlanAction(questions=tuple(questions))
     return ParseFailure(raw_text=str(raw))
 
 

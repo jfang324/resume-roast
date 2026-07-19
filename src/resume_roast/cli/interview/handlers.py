@@ -88,13 +88,6 @@ class QuestionState:
     verify_count: int = 0
 
 
-@dataclass
-class TurnState:
-    """Lifetime = one LLM round-trip inside a question."""
-
-    last_action: dict[str, Any] | None = None
-
-
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 
@@ -433,14 +426,6 @@ def _run_question_cycle(
                     progress,
                 )
 
-            case _:
-                action = _llm_turn(
-                    session,
-                    qs,
-                    f"Unknown action '{action.name}'. Valid: verify, follow_up, evaluate, ask_followup, conclude.",
-                    progress,
-                )
-
 
 def _question_loop(session: InterviewSession) -> None:
     """Ask each base question and process answers."""
@@ -543,7 +528,6 @@ def interview(path: Path) -> None:
         base_questions=[],
         competencies=[c.id for c in COMPETENCIES],
         scores={c.id: 0 for c in COMPETENCIES},
-        max_per_competency=10,
     )
 
     console = Console(highlight=False)
