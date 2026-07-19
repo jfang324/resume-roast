@@ -2,14 +2,14 @@
 
 import logging
 import time
-from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 from rich.console import Console
 
-from resume_roast.cli.interview.input_provider import UserInputProvider, make_input_provider
-from resume_roast.cli.utils import USER_PROMPT, build_client, spinner, summary_line
+from resume_roast.cli.input_provider import ConsoleInputProvider
+from resume_roast.cli.interview.rendering import ConsoleInterviewRenderer
+from resume_roast.cli.utils import build_client
 from resume_roast.integrations.errors import MalformedResponseError
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.types import Message, Usage
@@ -25,12 +25,14 @@ from resume_roast.prompts.interview.output.schema import Verdict
 from resume_roast.prompts.interview.tools.evaluate.builder import render_evaluation_results
 from resume_roast.prompts.interview.tools.evaluate.schema import EvaluateOutput
 from resume_roast.prompts.interview.tools.verify.builder import render_verify_results
+from resume_roast.services.chat.input_provider import InputProvider
 from resume_roast.services.interview.constants import (
     LIMITS,
     MAX_SCORE_PER_QUESTION,
     PLANNING_TEMPERATURE,
     TURN_TEMPERATURE,
 )
+from resume_roast.services.interview.renderer import InterviewRenderer
 from resume_roast.services.interview.tool_calls import (
     AskFollowupCall,
     ConcludeCall,
@@ -41,6 +43,7 @@ from resume_roast.services.interview.tool_calls import (
     VerifyCall,
     parse_tool_call,
 )
+from resume_roast.services.interview.tools.ask_followup import ask_followup
 from resume_roast.services.interview.tools.evaluate import evaluate_answer
 from resume_roast.services.interview.tools.verify import verify_claims
 from resume_roast.services.interview.types import InterviewState, QuestionState
@@ -57,9 +60,8 @@ class InterviewSession:
     """
 
     client: LlmClient
-    console: Console
-    debug: bool
-    input_provider: UserInputProvider
+    renderer: InterviewRenderer
+    input_provider: InputProvider
     messages: list[Message]
     usages: list[Usage]
     state: InterviewState
@@ -79,7 +81,7 @@ def _run_evaluate(
 
     Returns (output_or_None, progress_string).
     """
-    with spinner("evaluating answer..."):
+    with session.renderer.busy("evaluating answer..."):
         try:
             eval_output, usage = evaluate_answer(
                 session.client,
@@ -120,7 +122,7 @@ def _run_evaluate(
 
     session.messages.append(Message(role="user", content=render_evaluation_results(eval_output)))
     qs.verify_results = ""
-    session.console.print("[dim]✓ answer evaluated[/dim]")
+    session.renderer.show_status("answer evaluated", ok=True)
 
     return eval_output, progress
 
@@ -148,7 +150,7 @@ def _llm_turn(
     payload = session.messages
     if progress:
         payload = [*session.messages, Message(role="user", content=progress)]
-    with spinner("thinking..."):
+    with session.renderer.busy("thinking..."):
         completion = session.client.prompt(payload, temperature=TURN_TEMPERATURE)
     if completion.usage is not None:
         session.usages.append(completion.usage)
@@ -161,8 +163,8 @@ def _llm_turn(
 
         return ParseFailure(raw_text=completion.text)
 
-    if call.thought and session.debug:
-        session.console.print(f"[dim]thought: {call.thought}[/dim]")
+    if call.thought:
+        session.renderer.show_thought(call.thought)
 
     return call
 
@@ -223,8 +225,8 @@ def _run_question_cycle(
     qs = QuestionState(index=question_index, question=question)
     progress = carry_progress
 
-    session.console.print(f"\n[bold]Q{question_index + 1}:[/bold] {question}")
-    user_input = session.input_provider.get_input(USER_PROMPT).strip()
+    session.renderer.show_question(question_index, question)
+    user_input = session.input_provider.get_input().strip()
     if user_input.lower() in ("/exit",):
         return False, ""
     qs.answer_history.append(user_input)
@@ -259,7 +261,7 @@ def _run_question_cycle(
                     )
                     continue
                 if claims:
-                    with spinner("checking claims..."):
+                    with session.renderer.busy("checking claims..."):
                         try:
                             output, usage = verify_claims(
                                 session.client,
@@ -276,10 +278,10 @@ def _run_question_cycle(
 
                     if output is not None:
                         text = render_verify_results(output)
-                        session.console.print("[dim]✓ claims checked[/dim]")
+                        session.renderer.show_status("claims checked", ok=True)
                     else:
                         text = "Verification encountered an error."
-                        session.console.print("[dim]✗ verification failed[/dim]")
+                        session.renderer.show_status("verification failed", ok=False)
 
                     qs.verify_results = text
                     call = _llm_turn(session, qs, text, progress)
@@ -299,8 +301,7 @@ def _run_question_cycle(
                 if not q_text:
                     call = _llm_turn(session, qs, "No question provided. Continue.", progress)
                     continue
-                session.console.print(f"\n{q_text}")
-                fb_input = session.input_provider.get_input(USER_PROMPT).strip()
+                fb_input = ask_followup(session.renderer, session.input_provider, q_text)
                 if fb_input.lower() in ("/exit",):
                     return False, progress
                 qs.answer_history.append(fb_input)
@@ -358,7 +359,7 @@ def _verdict_phase(session: InterviewSession, started_at: float) -> None:
     competency_text = _to_competency_text()
     prompt = build_verdict_prompt(normalized, max_per, competency_text)
 
-    with spinner("computing verdict..."):
+    with session.renderer.busy("computing verdict..."):
         completion = session.client.prompt(
             [*session.messages, Message(role="user", content=prompt)],
             temperature=TURN_TEMPERATURE,
@@ -377,59 +378,16 @@ def _verdict_phase(session: InterviewSession, started_at: float) -> None:
                 growth_areas=(),
             )
 
-    _print_report(session.console, verdict, normalized, max_per)
+    session.renderer.show_report(verdict, normalized, max_per)
     total = total_usage(session.usages)
     if total is not None:
         elapsed = time.perf_counter() - (started_at or time.perf_counter())
-        session.console.print(
-            summary_line(session.client.model, total, elapsed),
-            style="dim",
-        )
-
-
-def _print_report(
-    console: Console,
-    verdict: Verdict,
-    scores: Mapping[str, int | float],
-    max_per_comp: int,
-) -> None:
-    """Render the final interview report."""
-    verdict_colors = {"hire": "green", "maybe": "yellow", "dont_hire": "red"}
-
-    console.rule("\nINTERVIEW REPORT")
-    console.print()
-
-    for c in COMPETENCIES:
-        score = scores.get(c.id, 0)
-        bar_len = 50
-        filled = int(bar_len * score / max_per_comp) if max_per_comp > 0 else 0
-        bar = "█" * filled + "░" * (bar_len - filled)
-        console.print(f"{c.label:30} {score:<4}/{max_per_comp:<2}  {bar}")
-
-    console.print()
-    color = verdict_colors.get(verdict.verdict, "white")
-    console.print(f"Overall Rating: [bold]{verdict.overall_rating:.1f}/10[/bold]")
-    console.print(f"Verdict: [bold {color}]{verdict.verdict.upper()}[/bold {color}]")
-    console.print()
-
-    if verdict.strengths:
-        console.print("[bold green]Strengths:[/bold green]")
-        for s in verdict.strengths:
-            console.print(f"  + {s}")
-
-    if verdict.growth_areas:
-        console.print()
-        console.print("[bold yellow]Growth Areas:[/bold yellow]")
-        for g in verdict.growth_areas:
-            console.print(f"  - {g}")
-
-    console.print()
-    console.print(verdict.summary)
+        session.renderer.show_metrics(total, elapsed)
 
 
 def interview(path: Path) -> None:
     """Run an agentic behavioral interview on a PDF or DOCX resume."""
-    client, _ = build_client()
+    client, settings = build_client()
     parsed = get_parser(path).parse(path)
     logger.debug("Parsed resume: %d chars", len(parsed.markdown))
 
@@ -443,35 +401,35 @@ def interview(path: Path) -> None:
         scores={c.id: 0 for c in COMPETENCIES},
     )
 
-    console = Console(highlight=False)
     debug = logging.getLogger().isEnabledFor(logging.DEBUG)
+    renderer = ConsoleInterviewRenderer(
+        Console(highlight=False),
+        settings.model,
+        debug=debug,
+    )
     started_at = 0.0
     session = InterviewSession(
         client=client,
-        console=console,
-        debug=debug,
-        input_provider=make_input_provider(),
+        renderer=renderer,
+        input_provider=ConsoleInputProvider(),
         messages=messages,
         usages=[],
         state=state,
     )
 
     try:
-        with spinner("preparing interview questions..."):
+        with renderer.busy("preparing interview questions..."):
             _plan_phase(session)
 
-        console.print(
-            f"\n[bold]Interview started — {session.state.total_questions} questions planned[/bold]"
-        )
-        console.print("Type your answers when prompted. Enter /exit to end early.\n")
+        renderer.show_start(session.state.total_questions)
 
         started_at = time.perf_counter()
         _question_loop(session)
         _verdict_phase(session, started_at)
 
     except (EOFError, KeyboardInterrupt):
-        console.print()
+        renderer.show_interrupt()
         if session.state.questions_answered > 0:
             _verdict_phase(session, started_at or time.perf_counter())
         else:
-            console.print("Interview aborted before any questions were answered.")
+            renderer.show_abort()
