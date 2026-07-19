@@ -1,1 +1,1 @@
-"""The interview loop's tools: each is one LLM program with a typed result."""
+"""The interview loop's tools: the capabilities the runtime exposes to the model."""
