@@ -3,6 +3,7 @@
 import logging
 
 from resume_roast.integrations.llm_client import LlmClient
+from resume_roast.integrations.structured import structured_completion
 from resume_roast.integrations.types import Message, Usage
 from resume_roast.prompts.interview.tools.verify.builder import SYSTEM, build_user_message
 from resume_roast.prompts.interview.tools.verify.parser import parse_output
@@ -36,8 +37,7 @@ def verify_claims(
     ]
     logger.debug("verify request messages: %s", messages)
 
-    completion = client.prompt(messages, temperature=0.0)
-    output = parse_output(completion.text)
+    output, usage = structured_completion(client, messages, parse_output, temperature=0.0)
     logger.debug("verify result: %s", output)
 
-    return output, completion.usage
+    return output, usage
