@@ -1,8 +1,10 @@
 """Evaluate tool: score the full answer cycle across the competency framework."""
 
 import logging
+from functools import partial
 
 from resume_roast.integrations.llm_client import LlmClient
+from resume_roast.integrations.structured import structured_completion
 from resume_roast.integrations.types import Message, Usage
 from resume_roast.prompts.interview.tools.evaluate.builder import SYSTEM, build_user_message
 from resume_roast.prompts.interview.tools.evaluate.parser import parse_output
@@ -48,8 +50,12 @@ def evaluate_answer(
     ]
     logger.debug("evaluate request messages: %s", messages)
 
-    completion = client.prompt(messages, temperature=0.0)
-    output = parse_output(completion.text, competency_ids)
+    output, usage = structured_completion(
+        client,
+        messages,
+        partial(parse_output, competency_ids=competency_ids),
+        temperature=0.0,
+    )
     logger.debug("evaluate result: %s", output)
 
-    return output, completion.usage
+    return output, usage
