@@ -33,7 +33,11 @@ from resume_roast.prompts.interview.builder import (
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.prompts.interview.output.parser import parse_plan, parse_verdict
 from resume_roast.prompts.interview.output.schema import SessionData, Verdict
-from resume_roast.tools.evaluate.schema import EvaluateOutput
+from resume_roast.prompts.interview.tools.evaluate.builder import render_evaluation_results
+from resume_roast.prompts.interview.tools.evaluate.schema import EvaluateOutput
+from resume_roast.prompts.interview.tools.verify.builder import render_verify_results
+from resume_roast.services.interview.tools.evaluate import evaluate_answer
+from resume_roast.services.interview.tools.verify import verify_claims
 from resume_roast.utils.extraction.mappings import get_parser
 
 logger = logging.getLogger(__name__)
@@ -102,28 +106,20 @@ def _run_evaluate(
 
     Returns (output_or_None, progress_string).
     """
-    from resume_roast.tools import REGISTRY
-
-    call = {
-        "original_question": qs.question,
-        "verify_results": qs.verify_results,
-    }
     with spinner("evaluating answer..."):
-        result = REGISTRY.execute(
-            "evaluate",
-            call,
-            client=session.client,
-            answer_history=qs.answer_history,
-            competency_text=_to_competency_text(),
-            competency_ids=[c.id for c in COMPETENCIES],
-            current_question=qs.question,
-            verify_results=qs.verify_results,
-        )
-    if not result.success:
-        return None, ""
+        try:
+            eval_output, usage = evaluate_answer(
+                session.client,
+                qs.question,
+                qs.answer_history,
+                qs.verify_results,
+                _to_competency_text(),
+                [c.id for c in COMPETENCIES],
+            )
+        except Exception:
+            logger.exception("evaluate tool failed")
 
-    eval_output = result.metadata["eval_output"]
-    usage = result.metadata.get("usage")
+            return None, ""
 
     if usage is not None:
         session.usages.append(usage)
@@ -149,7 +145,7 @@ def _run_evaluate(
         session.data.critical_failures,
     )
 
-    session.messages.append(Message(role="user", content=result.data))
+    session.messages.append(Message(role="user", content=render_evaluation_results(eval_output)))
     qs.verify_results = ""
     session.console.print("[dim]✓ answer evaluated[/dim]")
 
@@ -253,7 +249,6 @@ def _run_question_cycle(
     question = session.data.base_questions[question_index]
     qs = QuestionState(index=question_index, question=question)
     progress = carry_progress
-    competency_text = _to_competency_text()
 
     session.console.print(f"\n[bold]Q{question_index + 1}:[/bold] {question}")
     user_input = session.input_provider.get_input(USER_PROMPT).strip()
@@ -292,22 +287,29 @@ def _run_question_cycle(
                     continue
                 if claims:
                     with spinner("checking claims..."):
-                        from resume_roast.tools import REGISTRY
+                        try:
+                            output, usage = verify_claims(
+                                session.client,
+                                list(claims),
+                                qs.answer_history[-1],
+                                session.data.resume_markdown,
+                            )
+                        except Exception:
+                            logger.exception("verify tool failed")
+                            output, usage = None, None
 
-                        result = REGISTRY.execute(
-                            "verify",
-                            {"call": "verify", "claims": list(claims)},
-                            client=session.client,
-                            resume_md=session.data.resume_markdown,
-                            competency_text=competency_text,
-                            answer_history=qs.answer_history,
-                        )
-                    qs.verify_results = result.data
-                    if result.success:
+                    if usage is not None:
+                        session.usages.append(usage)
+
+                    if output is not None:
+                        text = render_verify_results(output)
                         session.console.print("[dim]✓ claims checked[/dim]")
                     else:
+                        text = "Verification encountered an error."
                         session.console.print("[dim]✗ verification failed[/dim]")
-                    call = _llm_turn(session, qs, result.data, progress)
+
+                    qs.verify_results = text
+                    call = _llm_turn(session, qs, text, progress)
                 else:
                     call = _llm_turn(session, qs, "No claims to verify. Continue.", progress)
 

@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 
 from resume_roast.prompts.interview.competencies import COMPETENCIES
-from resume_roast.tools import REGISTRY
+from resume_roast.prompts.interview.tool_descriptions import TOOL_DESCRIPTIONS
 from resume_roast.utils.extraction.types import ParsedResume
 
 
@@ -12,7 +12,7 @@ def build_interview_system_prompt(parsed: ParsedResume) -> str:
     sections = [
         _ROLE,
         _competency_block(),
-        _tool_descriptions(),
+        TOOL_DESCRIPTIONS,
         _output_format(),
         _rules(),
         _resume_block(parsed),
@@ -105,10 +105,6 @@ def _competency_block() -> str:
     lines = ["## Competency Framework", ""]
     lines.extend(f"- {c.label} ({c.id}): {c.description}" for c in COMPETENCIES)
     return "\n".join(lines)
-
-
-def _tool_descriptions() -> str:
-    return REGISTRY.system_prompt_block()
 
 
 def _output_format() -> str:
