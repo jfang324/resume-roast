@@ -173,7 +173,7 @@ def _llm_turn(
     user_text: str,
     progress: str = "",
 ) -> ToolCall:
-    """Append a user message, prompt with current progress appended, and return the parsed action."""
+    """Append a user message, prompt with current progress appended, and return the parsed tool call."""
     session.messages.append(Message(role="user", content=user_text))
     payload = session.messages
     if progress:
@@ -198,7 +198,7 @@ def _llm_turn(
             return tool_call_from_dict(raw)
         return ParseFailure(raw_text=completion.text)
     except Exception as exc:
-        logger.warning("Failed to parse action: %s", exc)
+        logger.warning("Failed to parse tool call: %s", exc)
         return ParseFailure(raw_text=completion.text)
 
 
@@ -344,7 +344,7 @@ def _run_question_cycle(
                 call = _llm_turn(
                     session,
                     qs,
-                    f"Unknown action '{name}'. Valid: verify, ask_followup, evaluate, conclude.",
+                    f"Unknown tool '{name}'. Valid: verify, ask_followup, evaluate, conclude.",
                     progress,
                 )
 
@@ -364,7 +364,7 @@ def _run_question_cycle(
                 call = _llm_turn(
                     session,
                     qs,
-                    "Invalid response format. Respond with a valid JSON action object.",
+                    "Invalid response format. Respond with a valid JSON tool call.",
                     progress,
                 )
 

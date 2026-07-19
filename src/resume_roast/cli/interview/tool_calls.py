@@ -58,7 +58,7 @@ def tool_call_from_dict(raw: dict[str, Any]) -> ToolCall:
     Raises:
         MalformedResponseError: if the input is not a dict or has no ``action`` key.
     """
-    name = raw.get("action", "")
+    name = raw.get("tool", "")
     if name == "verify":
         claims = raw.get("claims", [])
         return VerifyCall(claims=tuple(claims))
