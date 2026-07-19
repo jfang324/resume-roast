@@ -1,6 +1,6 @@
-"""Typed action model for the interview ReAct loop.
+"""Typed tool-call model for the interview ReAct loop.
 
-Each dataclass represents one action the LLM can emit. Use `action_from_dict`
+Each dataclass represents one tool call the LLM can emit. Use `tool_call_from_dict`
 to parse the raw JSON response into the appropriate subtype, then dispatch with
 ``match/case``.
 """
@@ -13,29 +13,29 @@ from resume_roast.prompts.response_parser import strip_code_fence
 
 
 @dataclass(frozen=True)
-class VerifyAction:
+class VerifyCall:
     name: str = "verify"
     claims: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
-class EvaluateAction:
+class EvaluateCall:
     name: str = "evaluate"
 
 
 @dataclass(frozen=True)
-class AskFollowupAction:
+class AskFollowupCall:
     name: str = "ask_followup"
     question: str = ""
 
 
 @dataclass(frozen=True)
-class ConcludeAction:
+class ConcludeCall:
     name: str = "conclude"
 
 
 @dataclass(frozen=True)
-class UnknownAction:
+class UnknownTool:
     """A well-formed action whose name is not in the loop's vocabulary."""
 
     name: str
@@ -47,18 +47,13 @@ class ParseFailure:
     raw_text: str = ""
 
 
-type InterviewAction = (
-    VerifyAction
-    | EvaluateAction
-    | AskFollowupAction
-    | ConcludeAction
-    | UnknownAction
-    | ParseFailure
+type ToolCall = (
+    VerifyCall | EvaluateCall | AskFollowupCall | ConcludeCall | UnknownTool | ParseFailure
 )
 
 
-def action_from_dict(raw: dict[str, Any]) -> InterviewAction:
-    """Convert a parsed JSON dict into the matching Action subtype.
+def tool_call_from_dict(raw: dict[str, Any]) -> ToolCall:
+    """Convert a parsed JSON dict into the matching ToolCall subtype.
 
     Raises:
         MalformedResponseError: if the input is not a dict or has no ``action`` key.
@@ -66,23 +61,23 @@ def action_from_dict(raw: dict[str, Any]) -> InterviewAction:
     name = raw.get("action", "")
     if name == "verify":
         claims = raw.get("claims", [])
-        return VerifyAction(claims=tuple(claims))
+        return VerifyCall(claims=tuple(claims))
     if name == "evaluate":
-        return EvaluateAction()
+        return EvaluateCall()
     if name == "ask_followup":
-        return AskFollowupAction(question=raw.get("question", ""))
+        return AskFollowupCall(question=raw.get("question", ""))
     if name == "conclude":
-        return ConcludeAction()
+        return ConcludeCall()
     if isinstance(name, str) and name:
-        return UnknownAction(name=name)
+        return UnknownTool(name=name)
 
     return ParseFailure(raw_text=str(raw))
 
 
-def parse_llm_action(text: str) -> InterviewAction:
-    """Parse the full LLM response *text* into a typed :obj:`InterviewAction`.
+def parse_tool_call(text: str) -> ToolCall:
+    """Parse the full LLM response *text* into a typed :obj:`ToolCall`.
 
-    Handles code-fence stripping, JSON decoding, and dict-to-Action conversion.
+    Handles code-fence stripping, JSON decoding, and dict-to-ToolCall conversion.
     Malformed JSON raises :class:`MalformedResponseError` so callers can
     provide retry feedback.
     """
@@ -95,4 +90,4 @@ def parse_llm_action(text: str) -> InterviewAction:
         raise MalformedResponseError(f"response is not valid JSON ({exc})") from exc
     if not isinstance(data, dict):
         raise MalformedResponseError("response must be a JSON object")
-    return action_from_dict(cast("dict[str, Any]", data))
+    return tool_call_from_dict(cast("dict[str, Any]", data))
