@@ -19,39 +19,39 @@ from resume_roast.integrations.errors import MalformedResponseError
 
 class TestToolCallFromDict:
     def test_verify(self) -> None:
-        call = tool_call_from_dict({"action": "verify", "claims": ["c1", "c2"]})
+        call = tool_call_from_dict({"tool": "verify", "claims": ["c1", "c2"]})
         assert call == VerifyCall(claims=("c1", "c2"))
 
     def test_verify_no_claims(self) -> None:
-        call = tool_call_from_dict({"action": "verify"})
+        call = tool_call_from_dict({"tool": "verify"})
         assert call == VerifyCall()
 
     def test_evaluate(self) -> None:
-        call = tool_call_from_dict({"action": "evaluate"})
+        call = tool_call_from_dict({"tool": "evaluate"})
         assert call == EvaluateCall()
 
     def test_ask_followup(self) -> None:
-        call = tool_call_from_dict({"action": "ask_followup", "question": "Tell me more?"})
+        call = tool_call_from_dict({"tool": "ask_followup", "question": "Tell me more?"})
         assert call == AskFollowupCall(question="Tell me more?")
 
     def test_ask_followup_no_question(self) -> None:
-        call = tool_call_from_dict({"action": "ask_followup"})
+        call = tool_call_from_dict({"tool": "ask_followup"})
         assert call == AskFollowupCall()
 
     def test_conclude(self) -> None:
-        call = tool_call_from_dict({"action": "conclude"})
+        call = tool_call_from_dict({"tool": "conclude"})
         assert call == ConcludeCall()
 
     def test_ask_is_not_loop_vocabulary(self) -> None:
-        call = tool_call_from_dict({"action": "ask"})
+        call = tool_call_from_dict({"tool": "ask"})
         assert call == UnknownTool(name="ask")
 
     def test_plan_is_not_loop_vocabulary(self) -> None:
-        call = tool_call_from_dict({"action": "plan", "questions": ["q1", "q2"]})
+        call = tool_call_from_dict({"tool": "plan", "questions": ["q1", "q2"]})
         assert call == UnknownTool(name="plan")
 
     def test_unknown_action_keeps_its_name_for_feedback(self) -> None:
-        call = tool_call_from_dict({"action": "dance"})
+        call = tool_call_from_dict({"tool": "dance"})
         assert call == UnknownTool(name="dance")
 
     def test_missing_action(self) -> None:
@@ -69,16 +69,16 @@ class TestToolCallFromDict:
 
 class TestParseToolCall:
     def test_plain_json(self) -> None:
-        call = parse_tool_call(json.dumps({"action": "evaluate"}))
+        call = parse_tool_call(json.dumps({"tool": "evaluate"}))
         assert call == EvaluateCall()
 
     def test_triple_backtick_json(self) -> None:
-        text = f"```json\n{json.dumps({'action': 'verify', 'claims': ['c1']})}\n```"
+        text = f"```json\n{json.dumps({'tool': 'verify', 'claims': ['c1']})}\n```"
         call = parse_tool_call(text)
         assert call == VerifyCall(claims=("c1",))
 
     def test_backtick_no_lang(self) -> None:
-        text = f"```\n{json.dumps({'action': 'conclude'})}\n```"
+        text = f"```\n{json.dumps({'tool': 'conclude'})}\n```"
         call = parse_tool_call(text)
         assert call == ConcludeCall()
 

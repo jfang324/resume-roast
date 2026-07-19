@@ -115,26 +115,26 @@ def _output_format() -> str:
     return """\
 ## Output Format
 
-Your responses must be JSON objects. The action field determines what happens next.
+Your responses must be JSON objects. The tool field determines what happens next.
 
-Actions:
+Tools:
 - "plan": output base questions for the interview — planning phase only, used
   once before the first question
-  {"action": "plan", "questions": ["Q1", "Q2", "Q3", "Q4"]}
+  {"tool": "plan", "questions": ["Q1", "Q2", "Q3", "Q4"]}
 
 - "verify": check claims in the last answer against the resume
-  {"action": "verify", "claims": ["claim 1", ...]}
+  {"tool": "verify", "claims": ["claim 1", ...]}
 
 - "ask_followup": present a follow-up question to the candidate
-  {"action": "ask_followup", "question": "..."}
+  {"tool": "ask_followup", "question": "..."}
 
 - "evaluate": score the full answer cycle
-  {"action": "evaluate"}
+  {"tool": "evaluate"}
 
 - "conclude": end the interview immediately and move to final verdict
-  {"action": "conclude"}
+  {"tool": "conclude"}
 
-All responses must include a "thought" field explaining your reasoning before choosing the next action."""
+All responses must include a "thought" field explaining your reasoning before choosing the next tool."""
 
 
 def _rules() -> str:

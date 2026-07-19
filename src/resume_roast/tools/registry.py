@@ -69,7 +69,7 @@ class ToolRegistry:
         parts = ["## Available Tools", ""]
         parts.extend(self._tools[name].system_prompt_entry() for name in sorted(self._tools))
         parts.append("")
-        parts.append('Call tools by outputting: {"action": "<tool_name>", ...input fields}')
+        parts.append('Call tools by outputting: {"tool": "<tool_name>", ...input fields}')
         return "\n".join(parts)
 
     @property
