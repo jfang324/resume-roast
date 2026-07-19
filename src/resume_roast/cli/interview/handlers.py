@@ -10,12 +10,12 @@ from typing import Any, cast
 from rich.console import Console
 
 from resume_roast.cli.interview.actions import (
-    AskAction,
     AskFollowupAction,
     ConcludeAction,
     EvaluateAction,
     InterviewAction,
     ParseFailure,
+    UnknownAction,
     VerifyAction,
     action_from_dict,
 )
@@ -340,15 +340,13 @@ def _run_question_cycle(
                     f"[INTERNAL STATUS — follow-up automatically presented]\nQuestion: {q_text}\n\nAnswer: {fb_input}",
                 )
 
-            case AskAction():
-                session.messages.append(
-                    Message(
-                        role="user",
-                        content="[INTERNAL STATUS — the question is already active. Proceeding to evaluate.]",
-                    )
+            case UnknownAction(name=name):
+                action = _llm_turn(
+                    session,
+                    qs,
+                    f"Unknown action '{name}'. Valid: verify, ask_followup, evaluate, conclude.",
+                    progress,
                 )
-                should_continue, progress = _evaluate_and_decide(session, qs)
-                return should_continue, progress
 
             case ConcludeAction():
                 _, progress = _run_evaluate(session, qs)
