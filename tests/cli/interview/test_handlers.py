@@ -215,6 +215,36 @@ def test_ask_followup_presents_the_interviewers_question(
 
 
 @pytest.mark.usefixtures("saved_key")
+def test_unknown_action_gets_named_feedback_not_forced_evaluation(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stray 'ask' mid-cycle is answered with guidance; the cycle continues."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"action": "proceed"}),
+            json.dumps({"action": "ask"}),
+            json.dumps({"action": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="answer one\n/exit\n")
+
+    assert result.exit_code == 0
+    assert "Q2:" in result.output
+    client = _FakeClient.last
+    assert client is not None
+    feedback = [
+        m.content for call in client.calls for m in call if "Unknown action 'ask'" in m.content
+    ]
+    assert feedback  # the runtime corrected the model instead of force-evaluating
+
+
+@pytest.mark.usefixtures("saved_key")
 def test_interview_early_exit_on_two_critical_failures(
     sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

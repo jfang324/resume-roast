@@ -35,8 +35,10 @@ class ConcludeAction:
 
 
 @dataclass(frozen=True)
-class AskAction:
-    name: str = "ask"
+class UnknownAction:
+    """A well-formed action whose name is not in the loop's vocabulary."""
+
+    name: str
 
 
 @dataclass(frozen=True)
@@ -46,7 +48,12 @@ class ParseFailure:
 
 
 type InterviewAction = (
-    VerifyAction | EvaluateAction | AskFollowupAction | ConcludeAction | AskAction | ParseFailure
+    VerifyAction
+    | EvaluateAction
+    | AskFollowupAction
+    | ConcludeAction
+    | UnknownAction
+    | ParseFailure
 )
 
 
@@ -66,8 +73,9 @@ def action_from_dict(raw: dict[str, Any]) -> InterviewAction:
         return AskFollowupAction(question=raw.get("question", ""))
     if name == "conclude":
         return ConcludeAction()
-    if name == "ask":
-        return AskAction()
+    if isinstance(name, str) and name:
+        return UnknownAction(name=name)
+
     return ParseFailure(raw_text=str(raw))
 
 

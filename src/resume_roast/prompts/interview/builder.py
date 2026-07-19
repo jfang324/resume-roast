@@ -118,11 +118,9 @@ def _output_format() -> str:
 Your responses must be JSON objects. The action field determines what happens next.
 
 Actions:
-- "plan": output base questions for the interview
+- "plan": output base questions for the interview — planning phase only, used
+  once before the first question
   {"action": "plan", "questions": ["Q1", "Q2", "Q3", "Q4"]}
-
-- "ask": present the next question to the candidate
-  {"action": "ask"}
 
 - "verify": check claims in the last answer against the resume
   {"action": "verify", "claims": ["claim 1", ...]}

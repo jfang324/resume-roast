@@ -5,11 +5,11 @@ import json
 import pytest
 
 from resume_roast.cli.interview.actions import (
-    AskAction,
     AskFollowupAction,
     ConcludeAction,
     EvaluateAction,
     ParseFailure,
+    UnknownAction,
     VerifyAction,
     action_from_dict,
     parse_llm_action,
@@ -42,17 +42,17 @@ class TestActionFromDict:
         action = action_from_dict({"action": "conclude"})
         assert action == ConcludeAction()
 
-    def test_ask(self) -> None:
+    def test_ask_is_not_loop_vocabulary(self) -> None:
         action = action_from_dict({"action": "ask"})
-        assert action == AskAction()
+        assert action == UnknownAction(name="ask")
 
     def test_plan_is_not_loop_vocabulary(self) -> None:
         action = action_from_dict({"action": "plan", "questions": ["q1", "q2"]})
-        assert isinstance(action, ParseFailure)
+        assert action == UnknownAction(name="plan")
 
-    def test_unknown_action(self) -> None:
+    def test_unknown_action_keeps_its_name_for_feedback(self) -> None:
         action = action_from_dict({"action": "dance"})
-        assert isinstance(action, ParseFailure)
+        assert action == UnknownAction(name="dance")
 
     def test_missing_action(self) -> None:
         action = action_from_dict({"claims": ["c1"]})
