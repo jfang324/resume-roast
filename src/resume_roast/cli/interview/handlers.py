@@ -14,7 +14,6 @@ from resume_roast.cli.interview.actions import (
     AskFollowupAction,
     ConcludeAction,
     EvaluateAction,
-    FollowUpAction,
     InterviewAction,
     ParseFailure,
     VerifyAction,
@@ -89,16 +88,6 @@ class QuestionState:
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
-
-
-def _get_competency_gaps(data: SessionData) -> str | None:
-    if data.questions_answered == 0:
-        return None
-    max_per = data.questions_answered * 10
-    gaps = [cid for cid, score in data.scores.items() if score < max_per * 0.4]
-    if not gaps:
-        return None
-    return f"Low coverage: {', '.join(gaps)}"
 
 
 def _to_competency_text() -> str:
@@ -325,51 +314,6 @@ def _run_question_cycle(
                     action = _llm_turn(session, qs, result.data, progress)
                 else:
                     action = _llm_turn(session, qs, "No claims to verify. Continue.", progress)
-
-            case FollowUpAction():
-                if qs.follow_up_count >= _LIMITS.max_follow_ups_per_cycle:
-                    should_continue, progress = _evaluate_and_decide(session, qs)
-                    return should_continue, progress
-                action_dict: dict[str, Any] = {"action": "follow_up"}
-                action_dict["competency_gaps"] = _get_competency_gaps(session.data)
-                action_dict["question"] = qs.question
-                action_dict["verify_summary"] = qs.verify_results
-                with spinner("preparing follow-up..."):
-                    from resume_roast.tools import REGISTRY
-
-                    result = REGISTRY.execute(
-                        "follow_up",
-                        action_dict,
-                        client=session.client,
-                        resume_md=session.data.resume_markdown,
-                        competency_text=competency_text,
-                        answer_history=qs.answer_history,
-                    )
-                if result.success:
-                    questions = result.metadata.get("questions", [])
-                    if questions:
-                        if len(questions) > 1:
-                            logger.warning(
-                                "Dropping %d extra follow-up question(s) (max 1 per auto-ask)",
-                                len(questions) - 1,
-                            )
-                        q_text = questions[0]
-                        session.console.print(f"\n{q_text}")
-                        fb_input = session.input_provider.get_input(USER_PROMPT).strip()
-                        if fb_input.lower() in ("/exit",):
-                            return False, progress
-                        qs.answer_history.append(fb_input)
-                        qs.follow_up_count += 1
-                        action = _llm_turn(
-                            session,
-                            qs,
-                            f"[INTERNAL STATUS — follow-up automatically presented]\nQuestion: {q_text}\n\nAnswer: {fb_input}",
-                            progress,
-                        )
-                        continue
-                else:
-                    session.console.print("[dim]✗ follow-up failed[/dim]")
-                action = _llm_turn(session, qs, result.data, progress)
 
             case AskFollowupAction(question=q_text):
                 if qs.follow_up_count >= _LIMITS.max_follow_ups_per_cycle:

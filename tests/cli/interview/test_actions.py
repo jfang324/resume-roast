@@ -9,7 +9,6 @@ from resume_roast.cli.interview.actions import (
     AskFollowupAction,
     ConcludeAction,
     EvaluateAction,
-    FollowUpAction,
     ParseFailure,
     VerifyAction,
     action_from_dict,
@@ -30,10 +29,6 @@ class TestActionFromDict:
     def test_evaluate(self) -> None:
         action = action_from_dict({"action": "evaluate"})
         assert action == EvaluateAction()
-
-    def test_follow_up(self) -> None:
-        action = action_from_dict({"action": "follow_up"})
-        assert action == FollowUpAction()
 
     def test_ask_followup(self) -> None:
         action = action_from_dict({"action": "ask_followup", "question": "Tell me more?"})

@@ -127,9 +127,6 @@ Actions:
 - "verify": check claims in the last answer against the resume
   {"action": "verify", "claims": ["claim 1", ...]}
 
-- "follow_up": generate follow-up questions
-  {"action": "follow_up"}
-
 - "ask_followup": present a follow-up question to the candidate
   {"action": "ask_followup", "question": "..."}
 
@@ -147,16 +144,25 @@ def _rules() -> str:
 ## Rules
 
 - Ask one base question at a time. Wait for the answer before proceeding.
-- After each answer, call verify → optionally follow up (max 2) → evaluate.
+- After each answer, call verify → optionally ask follow-ups via ask_followup
+  (max 2 per question) → evaluate.
+- Ask a follow-up ONLY when further probing is genuinely valuable: the answer
+  raised doubt (low-probability or contradicted claims in verify results), it
+  is notably vague or surface-level, a competency area is critically
+  under-covered, or it reveals an approach or decision worth deeper
+  exploration. Otherwise proceed straight to evaluate — never ask a follow-up
+  for the sake of having one.
+- Follow-ups should read like natural, spontaneous questions from a real
+  interviewer. Do not repeat the original question or ask something already
+  answered.
 - Never reveal competencies, scores, or internal evaluation to the candidate.
 - If evaluate returns critical_failure=true and this is the second one, conclude
   immediately — the candidate is not suitable.
 - Treat [INTERNAL STATUS] messages as system state, not candidate input.
 - Questions should feel natural, not like a checklist. Adapt tone to the
   conversation.
-- After calling follow_up, the handler will automatically present the first
-  follow-up question. If a second follow-up is needed, call ask_followup.
-  Never skip from follow_up directly to evaluate or conclude."""
+- After calling ask_followup, the handler presents your question and returns
+  the candidate's answer. Evaluate only once the full answer cycle is complete."""
 
 
 def _resume_block(parsed: ParsedResume) -> str:
