@@ -9,17 +9,17 @@ from typing import Any, cast
 
 from rich.console import Console
 
-from resume_roast.cli.interview.actions import (
-    AskFollowupAction,
-    ConcludeAction,
-    EvaluateAction,
-    InterviewAction,
-    ParseFailure,
-    UnknownAction,
-    VerifyAction,
-    action_from_dict,
-)
 from resume_roast.cli.interview.input_provider import UserInputProvider, make_input_provider
+from resume_roast.cli.interview.tool_calls import (
+    AskFollowupCall,
+    ConcludeCall,
+    EvaluateCall,
+    ParseFailure,
+    ToolCall,
+    UnknownTool,
+    VerifyCall,
+    tool_call_from_dict,
+)
 from resume_roast.cli.utils import USER_PROMPT, build_client, spinner, summary_line
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.types import Message, Usage
@@ -103,14 +103,14 @@ def _run_evaluate(
     """
     from resume_roast.tools import REGISTRY
 
-    action = {
+    call = {
         "original_question": qs.question,
         "verify_results": qs.verify_results,
     }
     with spinner("evaluating answer..."):
         result = REGISTRY.execute(
             "evaluate",
-            action,
+            call,
             client=session.client,
             answer_history=qs.answer_history,
             competency_text=_to_competency_text(),
@@ -172,7 +172,7 @@ def _llm_turn(
     _qs: QuestionState,
     user_text: str,
     progress: str = "",
-) -> InterviewAction:
+) -> ToolCall:
     """Append a user message, prompt with current progress appended, and return the parsed action."""
     session.messages.append(Message(role="user", content=user_text))
     payload = session.messages
@@ -195,7 +195,7 @@ def _llm_turn(
             thought: str | None = raw.get("thought")
             if thought and session.debug:
                 session.console.print(f"[dim]thought: {thought}[/dim]")
-            return action_from_dict(raw)
+            return tool_call_from_dict(raw)
         return ParseFailure(raw_text=completion.text)
     except Exception as exc:
         logger.warning("Failed to parse action: %s", exc)
@@ -265,7 +265,7 @@ def _run_question_cycle(
         return False, ""
     qs.answer_history.append(user_input)
 
-    action = _llm_turn(session, qs, f"Q{question_index + 1}: {question}\n\n{user_input}", progress)
+    call = _llm_turn(session, qs, f"Q{question_index + 1}: {question}\n\n{user_input}", progress)
     turns = 0
 
     while True:
@@ -279,15 +279,15 @@ def _run_question_cycle(
             should_continue, progress = _evaluate_and_decide(session, qs)
             return should_continue, progress
 
-        match action:
-            case EvaluateAction():
+        match call:
+            case EvaluateCall():
                 should_continue, progress = _evaluate_and_decide(session, qs)
                 return should_continue, progress
 
-            case VerifyAction(claims=claims):
+            case VerifyCall(claims=claims):
                 qs.verify_count += 1
                 if qs.verify_count >= _LIMITS.max_verify_per_cycle:
-                    action = _llm_turn(
+                    call = _llm_turn(
                         session,
                         qs,
                         "Claims already verified for this answer. Continue with follow_up, evaluate, or conclude.",
@@ -300,7 +300,7 @@ def _run_question_cycle(
 
                         result = REGISTRY.execute(
                             "verify",
-                            {"action": "verify", "claims": list(claims)},
+                            {"call": "verify", "claims": list(claims)},
                             client=session.client,
                             resume_md=session.data.resume_markdown,
                             competency_text=competency_text,
@@ -311,11 +311,11 @@ def _run_question_cycle(
                         session.console.print("[dim]✓ claims checked[/dim]")
                     else:
                         session.console.print("[dim]✗ verification failed[/dim]")
-                    action = _llm_turn(session, qs, result.data, progress)
+                    call = _llm_turn(session, qs, result.data, progress)
                 else:
-                    action = _llm_turn(session, qs, "No claims to verify. Continue.", progress)
+                    call = _llm_turn(session, qs, "No claims to verify. Continue.", progress)
 
-            case AskFollowupAction(question=q_text):
+            case AskFollowupCall(question=q_text):
                 if qs.follow_up_count >= _LIMITS.max_follow_ups_per_cycle:
                     session.messages.append(
                         Message(
@@ -326,7 +326,7 @@ def _run_question_cycle(
                     should_continue, progress = _evaluate_and_decide(session, qs)
                     return should_continue, progress
                 if not q_text:
-                    action = _llm_turn(session, qs, "No question provided. Continue.", progress)
+                    call = _llm_turn(session, qs, "No question provided. Continue.", progress)
                     continue
                 session.console.print(f"\n{q_text}")
                 fb_input = session.input_provider.get_input(USER_PROMPT).strip()
@@ -334,21 +334,21 @@ def _run_question_cycle(
                     return False, progress
                 qs.answer_history.append(fb_input)
                 qs.follow_up_count += 1
-                action = _llm_turn(
+                call = _llm_turn(
                     session,
                     qs,
                     f"[INTERNAL STATUS — follow-up automatically presented]\nQuestion: {q_text}\n\nAnswer: {fb_input}",
                 )
 
-            case UnknownAction(name=name):
-                action = _llm_turn(
+            case UnknownTool(name=name):
+                call = _llm_turn(
                     session,
                     qs,
                     f"Unknown action '{name}'. Valid: verify, ask_followup, evaluate, conclude.",
                     progress,
                 )
 
-            case ConcludeAction():
+            case ConcludeCall():
                 _, progress = _run_evaluate(session, qs)
                 if _ is None:
                     logger.warning("Evaluate failed on conclude for Q%d", question_index + 1)
@@ -361,7 +361,7 @@ def _run_question_cycle(
                 return False, progress
 
             case ParseFailure():
-                action = _llm_turn(
+                call = _llm_turn(
                     session,
                     qs,
                     "Invalid response format. Respond with a valid JSON action object.",
