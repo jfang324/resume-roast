@@ -3,23 +3,12 @@
 import logging
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
 
 from rich.console import Console
 
 from resume_roast.cli.interview.input_provider import UserInputProvider, make_input_provider
-from resume_roast.cli.interview.tool_calls import (
-    AskFollowupCall,
-    ConcludeCall,
-    EvaluateCall,
-    ParseFailure,
-    ToolCall,
-    UnknownTool,
-    VerifyCall,
-    parse_tool_call,
-)
 from resume_roast.cli.utils import USER_PROMPT, build_client, spinner, summary_line
 from resume_roast.integrations.errors import MalformedResponseError
 from resume_roast.integrations.llm_client import LlmClient
@@ -32,36 +21,32 @@ from resume_roast.prompts.interview.builder import (
 )
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.prompts.interview.output.parser import parse_plan, parse_verdict
-from resume_roast.prompts.interview.output.schema import SessionData, Verdict
+from resume_roast.prompts.interview.output.schema import Verdict
 from resume_roast.prompts.interview.tools.evaluate.builder import render_evaluation_results
 from resume_roast.prompts.interview.tools.evaluate.schema import EvaluateOutput
 from resume_roast.prompts.interview.tools.verify.builder import render_verify_results
+from resume_roast.services.interview.constants import (
+    LIMITS,
+    MAX_SCORE_PER_QUESTION,
+    PLANNING_TEMPERATURE,
+    TURN_TEMPERATURE,
+)
+from resume_roast.services.interview.tool_calls import (
+    AskFollowupCall,
+    ConcludeCall,
+    EvaluateCall,
+    ParseFailure,
+    ToolCall,
+    UnknownTool,
+    VerifyCall,
+    parse_tool_call,
+)
 from resume_roast.services.interview.tools.evaluate import evaluate_answer
 from resume_roast.services.interview.tools.verify import verify_claims
+from resume_roast.services.interview.types import InterviewState, QuestionState
 from resume_roast.utils.extraction.mappings import get_parser
 
 logger = logging.getLogger(__name__)
-
-# ── Limits ──────────────────────────────────────────────────────────────────
-
-
-@dataclass(frozen=True)
-class Limits:
-    """Named numeric bounds the FSM checks; all in one place for discoverability."""
-
-    max_cycle_turns: int = 12
-    """Total LLM turns per question before force-evaluate.
-    After 12 turns the LLM is looping; bail out."""
-    max_verify_per_cycle: int = 2
-    """After 2 verifies the LLM is hallucinating details;
-    force a move to follow_up or evaluate."""
-    max_follow_ups_per_cycle: int = 2
-    """After 2 follow-ups the question is done; evaluate and move on."""
-
-
-_LIMITS = Limits()
-
-# ── Layered state model ────────────────────────────────────────────────────
 
 
 @dataclass(frozen=True)
@@ -77,19 +62,7 @@ class InterviewSession:
     input_provider: UserInputProvider
     messages: list[Message]
     usages: list[Usage]
-    data: SessionData
-
-
-@dataclass
-class QuestionState:
-    """Lifetime = one base question. Reset between questions."""
-
-    index: int
-    question: str
-    answer_history: list[str] = field(default_factory=lambda: cast(list[str], []))
-    verify_results: str = ""
-    follow_up_count: int = 0
-    verify_count: int = 0
+    state: InterviewState
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -125,24 +98,24 @@ def _run_evaluate(
         session.usages.append(usage)
 
     for cid, score in eval_output.scores.items():
-        session.data.scores[cid] = session.data.scores.get(cid, 0) + score
-    session.data.questions_answered += 1
+        session.state.scores[cid] = session.state.scores.get(cid, 0) + score
+    session.state.questions_answered += 1
 
     if eval_output.critical_failure:
-        session.data.critical_failures += 1
+        session.state.critical_failures += 1
 
-    max_per = session.data.questions_answered * 10
+    max_per = session.state.questions_answered * MAX_SCORE_PER_QUESTION
     progress = build_progress_message(
-        session.data.questions_answered,
-        session.data.total_questions,
-        session.data.scores,
+        session.state.questions_answered,
+        session.state.total_questions,
+        session.state.scores,
         max_per,
-        session.data.base_questions,
+        session.state.base_questions,
     )
     logger.debug(
         "Evaluation: scores=%s, critical=%d",
         eval_output.scores,
-        session.data.critical_failures,
+        session.state.critical_failures,
     )
 
     session.messages.append(Message(role="user", content=render_evaluation_results(eval_output)))
@@ -161,7 +134,7 @@ def _evaluate_and_decide(session: InterviewSession, qs: QuestionState) -> tuple[
     if eval_output is None:
         logger.error("Evaluate failed for Q%d, advancing", qs.index + 1)
         return True, ""
-    return session.data.critical_failures < 2, progress
+    return session.state.critical_failures < 2, progress
 
 
 def _llm_turn(
@@ -176,7 +149,7 @@ def _llm_turn(
     if progress:
         payload = [*session.messages, Message(role="user", content=progress)]
     with spinner("thinking..."):
-        completion = session.client.prompt(payload, temperature=0.0)
+        completion = session.client.prompt(payload, temperature=TURN_TEMPERATURE)
     if completion.usage is not None:
         session.usages.append(completion.usage)
     session.messages.append(Message(role="assistant", content=completion.text))
@@ -202,7 +175,7 @@ def _plan_phase(session: InterviewSession) -> None:
         "and background. These should probe the competency areas."
     )
     session.messages.append(Message(role="user", content=msg))
-    completion = session.client.prompt(session.messages, temperature=0.7)
+    completion = session.client.prompt(session.messages, temperature=PLANNING_TEMPERATURE)
     if completion.usage is not None:
         session.usages.append(completion.usage)
     session.messages.append(Message(role="assistant", content=completion.text))
@@ -218,8 +191,8 @@ def _plan_phase(session: InterviewSession) -> None:
             "Give an example of a time you collaborated with people who had different perspectives.",
             "Tell me about a time you had to evaluate trade-offs between different approaches to solve a problem.",
         ]
-    session.data.base_questions = questions
-    session.data.total_questions = len(questions)
+    session.state.base_questions = questions
+    session.state.total_questions = len(questions)
     logger.debug("Planned %d questions: %s", len(questions), questions)
 
     if fallback:
@@ -231,7 +204,7 @@ def _plan_phase(session: InterviewSession) -> None:
     else:
         begin_msg = "Plan received. Begin the interview."
     session.messages.append(Message(role="user", content=begin_msg))
-    completion = session.client.prompt(session.messages, temperature=0.0)
+    completion = session.client.prompt(session.messages, temperature=TURN_TEMPERATURE)
     if completion.usage is not None:
         session.usages.append(completion.usage)
     session.messages.append(Message(role="assistant", content=completion.text))
@@ -246,7 +219,7 @@ def _run_question_cycle(
     Returns:
         (continue?, progress_string).
     """
-    question = session.data.base_questions[question_index]
+    question = session.state.base_questions[question_index]
     qs = QuestionState(index=question_index, question=question)
     progress = carry_progress
 
@@ -261,11 +234,11 @@ def _run_question_cycle(
 
     while True:
         turns += 1
-        if turns > _LIMITS.max_cycle_turns:
+        if turns > LIMITS.max_cycle_turns:
             logger.error(
                 "Q%d exceeded %d turns; forcing evaluation",
                 question_index + 1,
-                _LIMITS.max_cycle_turns,
+                LIMITS.max_cycle_turns,
             )
             should_continue, progress = _evaluate_and_decide(session, qs)
             return should_continue, progress
@@ -277,7 +250,7 @@ def _run_question_cycle(
 
             case VerifyCall(claims=claims):
                 qs.verify_count += 1
-                if qs.verify_count >= _LIMITS.max_verify_per_cycle:
+                if qs.verify_count >= LIMITS.max_verify_per_cycle:
                     call = _llm_turn(
                         session,
                         qs,
@@ -292,7 +265,7 @@ def _run_question_cycle(
                                 session.client,
                                 list(claims),
                                 qs.answer_history[-1],
-                                session.data.resume_markdown,
+                                session.state.resume_markdown,
                             )
                         except Exception:
                             logger.exception("verify tool failed")
@@ -314,7 +287,7 @@ def _run_question_cycle(
                     call = _llm_turn(session, qs, "No claims to verify. Continue.", progress)
 
             case AskFollowupCall(question=q_text):
-                if qs.follow_up_count >= _LIMITS.max_follow_ups_per_cycle:
+                if qs.follow_up_count >= LIMITS.max_follow_ups_per_cycle:
                     session.messages.append(
                         Message(
                             role="user",
@@ -370,8 +343,8 @@ def _run_question_cycle(
 def _question_loop(session: InterviewSession) -> None:
     """Ask each base question and process answers."""
     progress = ""
-    for idx in range(session.data.total_questions):
-        logger.debug("Starting question %d/%d", idx + 1, session.data.total_questions)
+    for idx in range(session.state.total_questions):
+        logger.debug("Starting question %d/%d", idx + 1, session.state.total_questions)
         should_continue, progress = _run_question_cycle(session, idx, progress)
         if not should_continue:
             break
@@ -379,16 +352,16 @@ def _question_loop(session: InterviewSession) -> None:
 
 def _verdict_phase(session: InterviewSession, started_at: float) -> None:
     """Get the final verdict from the LLM and print the report."""
-    q_answered = max(1, session.data.questions_answered)
-    max_per = 10
-    normalized = {cid: round(score / q_answered, 1) for cid, score in session.data.scores.items()}
+    q_answered = max(1, session.state.questions_answered)
+    max_per = MAX_SCORE_PER_QUESTION
+    normalized = {cid: round(score / q_answered, 1) for cid, score in session.state.scores.items()}
     competency_text = _to_competency_text()
     prompt = build_verdict_prompt(normalized, max_per, competency_text)
 
     with spinner("computing verdict..."):
         completion = session.client.prompt(
             [*session.messages, Message(role="user", content=prompt)],
-            temperature=0.0,
+            temperature=TURN_TEMPERATURE,
         )
         if completion.usage is not None:
             session.usages.append(completion.usage)
@@ -463,7 +436,7 @@ def interview(path: Path) -> None:
     system_prompt = build_interview_system_prompt(parsed)
 
     messages: list[Message] = [Message(role="system", content=system_prompt)]
-    data = SessionData(
+    state = InterviewState(
         resume_markdown=parsed.markdown,
         base_questions=[],
         competencies=[c.id for c in COMPETENCIES],
@@ -480,7 +453,7 @@ def interview(path: Path) -> None:
         input_provider=make_input_provider(),
         messages=messages,
         usages=[],
-        data=data,
+        state=state,
     )
 
     try:
@@ -488,7 +461,7 @@ def interview(path: Path) -> None:
             _plan_phase(session)
 
         console.print(
-            f"\n[bold]Interview started — {session.data.total_questions} questions planned[/bold]"
+            f"\n[bold]Interview started — {session.state.total_questions} questions planned[/bold]"
         )
         console.print("Type your answers when prompted. Enter /exit to end early.\n")
 
@@ -498,7 +471,7 @@ def interview(path: Path) -> None:
 
     except (EOFError, KeyboardInterrupt):
         console.print()
-        if session.data.questions_answered > 0:
+        if session.state.questions_answered > 0:
             _verdict_phase(session, started_at or time.perf_counter())
         else:
             console.print("Interview aborted before any questions were answered.")
