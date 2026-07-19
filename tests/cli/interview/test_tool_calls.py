@@ -26,6 +26,14 @@ class TestToolCallFromDict:
         call = tool_call_from_dict({"tool": "verify"})
         assert call == VerifyCall()
 
+    def test_carries_the_thought_alongside_the_call(self) -> None:
+        call = tool_call_from_dict({"tool": "evaluate", "thought": "the cycle is complete"})
+        assert call == EvaluateCall(thought="the cycle is complete")
+
+    def test_blank_thought_normalizes_to_none(self) -> None:
+        call = tool_call_from_dict({"tool": "evaluate", "thought": "  "})
+        assert call == EvaluateCall(thought=None)
+
     def test_evaluate(self) -> None:
         call = tool_call_from_dict({"tool": "evaluate"})
         assert call == EvaluateCall()

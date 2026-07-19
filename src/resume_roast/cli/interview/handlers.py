@@ -5,7 +5,7 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 from rich.console import Console
 
@@ -18,9 +18,10 @@ from resume_roast.cli.interview.tool_calls import (
     ToolCall,
     UnknownTool,
     VerifyCall,
-    tool_call_from_dict,
+    parse_tool_call,
 )
 from resume_roast.cli.utils import USER_PROMPT, build_client, spinner, summary_line
+from resume_roast.integrations.errors import MalformedResponseError
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.types import Message, Usage
 from resume_roast.integrations.usage import total_usage
@@ -183,23 +184,18 @@ def _llm_turn(
     if completion.usage is not None:
         session.usages.append(completion.usage)
     session.messages.append(Message(role="assistant", content=completion.text))
+
     try:
-        import json
-
-        from resume_roast.prompts.response_parser import strip_code_fence as _scf
-
-        cleaned = _scf(completion.text.strip())
-        parsed: object = json.loads(cleaned)
-        if isinstance(parsed, dict):
-            raw = cast("dict[str, Any]", parsed)
-            thought: str | None = raw.get("thought")
-            if thought and session.debug:
-                session.console.print(f"[dim]thought: {thought}[/dim]")
-            return tool_call_from_dict(raw)
-        return ParseFailure(raw_text=completion.text)
-    except Exception as exc:
+        call = parse_tool_call(completion.text)
+    except MalformedResponseError as exc:
         logger.warning("Failed to parse tool call: %s", exc)
+
         return ParseFailure(raw_text=completion.text)
+
+    if call.thought and session.debug:
+        session.console.print(f"[dim]thought: {call.thought}[/dim]")
+
+    return call
 
 
 def _plan_phase(session: InterviewSession) -> None:
