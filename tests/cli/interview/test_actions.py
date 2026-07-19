@@ -11,7 +11,6 @@ from resume_roast.cli.interview.actions import (
     EvaluateAction,
     FollowUpAction,
     ParseFailure,
-    PlanAction,
     VerifyAction,
     action_from_dict,
     parse_llm_action,
@@ -52,13 +51,9 @@ class TestActionFromDict:
         action = action_from_dict({"action": "ask"})
         assert action == AskAction()
 
-    def test_plan(self) -> None:
+    def test_plan_is_not_loop_vocabulary(self) -> None:
         action = action_from_dict({"action": "plan", "questions": ["q1", "q2"]})
-        assert action == PlanAction(questions=("q1", "q2"))
-
-    def test_plan_no_questions(self) -> None:
-        action = action_from_dict({"action": "plan"})
-        assert action == PlanAction()
+        assert isinstance(action, ParseFailure)
 
     def test_unknown_action(self) -> None:
         action = action_from_dict({"action": "dance"})
