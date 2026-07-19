@@ -4,7 +4,8 @@ import json
 
 import pytest
 
-from resume_roast.cli.interview.tool_calls import (
+from resume_roast.integrations.errors import MalformedResponseError
+from resume_roast.services.interview.tool_calls import (
     AskFollowupCall,
     ConcludeCall,
     EvaluateCall,
@@ -14,7 +15,6 @@ from resume_roast.cli.interview.tool_calls import (
     parse_tool_call,
     tool_call_from_dict,
 )
-from resume_roast.integrations.errors import MalformedResponseError
 
 
 class TestToolCallFromDict:
