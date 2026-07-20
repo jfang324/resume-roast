@@ -80,7 +80,7 @@ class RotatingSpinner(Spinner):
     rotate while the caller sits blocked on a slow API call.
     """
 
-    def __init__(self, name: str, messages: Sequence[Text], *, style: str) -> None:
+    def __init__(self, name: str, messages: Sequence[Text], style: str) -> None:
         super().__init__(name, text=messages[0], style=style)
         self._messages = messages
         self._first_render_time: float | None = None

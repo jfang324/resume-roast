@@ -82,4 +82,6 @@ def _append_feedback(
     conversation: list[Message], response_text: str, reason: MalformedResponseError
 ) -> None:
     conversation.append(Message(role="assistant", content=response_text))
-    conversation.append(Message(role="user", content=_FEEDBACK_TEMPLATE.format(reason=reason)))
+    conversation.append(
+        Message(role="user", content=_FEEDBACK_TEMPLATE.format(reason=reason)),
+    )

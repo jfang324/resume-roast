@@ -207,7 +207,9 @@ def run_evaluate(session: InterviewSession, qs: QuestionState) -> tuple[Evaluate
         session.state.critical_failures,
     )
 
-    session.messages.append(Message(role="user", content=render_evaluation_results(eval_output)))
+    session.messages.append(
+        Message(role="user", content=render_evaluation_results(eval_output)),
+    )
     qs.verify_results = ""
     session.renderer.show_status("answer evaluated", ok=True)
 
