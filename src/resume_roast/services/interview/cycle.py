@@ -69,7 +69,6 @@ def run_question_cycle(
                 return _evaluate_and_decide(session, qs)
 
             case VerifyCall(claims=claims):
-                qs.verify_count += 1
                 if qs.verify_count >= LIMITS.max_verify_per_cycle:
                     call = _llm_turn(
                         session,
@@ -90,6 +89,8 @@ def run_question_cycle(
                         except Exception:
                             logger.exception("verify tool failed")
                             output, usage = None, None
+
+                    qs.verify_count += 1
 
                     if usage is not None:
                         session.usages.append(usage)

@@ -16,8 +16,10 @@ class Limits:
     max_cycle_turns: int = 12
     """Total LLM turns per question before force-evaluate.
     After 12 turns the LLM is looping; bail out."""
-    max_verify_per_cycle: int = 2
-    """After 2 verifies the LLM is hallucinating details;
+    max_verify_per_cycle: int = 1
+    """Verify executions allowed per question; further requests are rebuffed
+    without running the tool. One fact-check covers the answer — asking again
+    means the LLM is hallucinating details instead of reading the results, so
     force a move to ask_followup or evaluate."""
     max_follow_ups_per_cycle: int = 2
     """After 2 follow-ups the question is done; evaluate and move on."""
