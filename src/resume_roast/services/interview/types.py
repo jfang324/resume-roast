@@ -20,9 +20,15 @@ class Limits:
     completion it would discard. After 12 turns the LLM is looping; bail out."""
     max_verify_per_cycle: int = 1
     """Verify executions allowed per question; further requests are rebuffed
-    without running the tool. One fact-check covers the answer — asking again
-    means the LLM is hallucinating details instead of reading the results, so
-    force a move to ask_followup or evaluate."""
+    without running the tool. One call fact-checks every claim in an answer,
+    so a second would only ever cover a later answer in the same cycle —
+    and follow-ups probe past what a highlights-style resume can corroborate,
+    where the checks mostly come back as absent evidence rather than support.
+
+    Raising this needs `QuestionState.verify_results` to accumulate first: it
+    holds one rendered block today, so a second result would overwrite the
+    first and the evaluator would score every answer against the last
+    answer's fact-check."""
     max_follow_ups_per_cycle: int = 2
     """After 2 follow-ups the question is done; evaluate and move on."""
 
