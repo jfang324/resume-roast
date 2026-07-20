@@ -61,13 +61,12 @@ def run_question_cycle(
                 question_index + 1,
                 LIMITS.max_cycle_turns,
             )
-            should_continue, progress = _evaluate_and_decide(session, qs)
-            return should_continue, progress
+
+            return _evaluate_and_decide(session, qs)
 
         match call:
             case EvaluateCall():
-                should_continue, progress = _evaluate_and_decide(session, qs)
-                return should_continue, progress
+                return _evaluate_and_decide(session, qs)
 
             case VerifyCall(claims=claims):
                 qs.verify_count += 1
@@ -78,6 +77,7 @@ def run_question_cycle(
                         progress,
                     )
                     continue
+
                 if claims:
                     with session.renderer.busy("checking claims..."):
                         try:
@@ -114,11 +114,13 @@ def run_question_cycle(
                             content=f"[INTERNAL STATUS — max follow-ups reached ({qs.follow_up_count}), ignoring ask_followup]",
                         )
                     )
-                    should_continue, progress = _evaluate_and_decide(session, qs)
-                    return should_continue, progress
+
+                    return _evaluate_and_decide(session, qs)
+
                 if not q_text:
                     call = _llm_turn(session, "No question provided. Continue.", progress)
                     continue
+
                 fb_input = ask_followup(session.renderer, session.input_provider, q_text)
                 if fb_input.lower() in ("/exit",):
                     return False, progress
