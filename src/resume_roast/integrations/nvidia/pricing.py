@@ -5,8 +5,11 @@ from resume_roast.integrations.types import Usage
 MODEL_PRICING: dict[str, tuple[float, float]] = {
     "nvidia/nemotron-3-super-120b-a12b": (0.09, 0.45),
     "deepseek-ai/deepseek-v4-flash": (0.14, 0.28),
+    "deepseek-ai/deepseek-v4-pro": (0.43, 0.87),
     "mistralai/mistral-large-3-675b-instruct-2512": (0.50, 1.50),
     "meta/llama-4-maverick-17b-128e-instruct": (0.15, 0.60),
+    "openai/gpt-oss-120b": (0.15, 0.60),
+    "minimaxai/minimax-m3": (0.30, 1.20),
 }
 """($ per 1M input tokens, $ per 1M output tokens) for every catalog model.
 

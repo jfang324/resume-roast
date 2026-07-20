@@ -8,10 +8,21 @@ _CHOICES_METADATA_KEY = "choices"
 
 _NEMOTRON = "nvidia/nemotron-3-super-120b-a12b"
 _DEEPSEEK_FLASH = "deepseek-ai/deepseek-v4-flash"
+_DEEPSEEK_PRO = "deepseek-ai/deepseek-v4-pro"
 _MISTRAL_LARGE = "mistralai/mistral-large-3-675b-instruct-2512"
 _LLAMA_MAVERICK = "meta/llama-4-maverick-17b-128e-instruct"
+_GPT_OSS_120B = "openai/gpt-oss-120b"
+_MINIMAX_M3 = "minimaxai/minimax-m3"
 
-MODELS: tuple[str, ...] = (_NEMOTRON, _DEEPSEEK_FLASH, _MISTRAL_LARGE, _LLAMA_MAVERICK)
+MODELS: tuple[str, ...] = (
+    _NEMOTRON,
+    _DEEPSEEK_FLASH,
+    _DEEPSEEK_PRO,
+    _MISTRAL_LARGE,
+    _LLAMA_MAVERICK,
+    _GPT_OSS_120B,
+    _MINIMAX_M3,
+)
 PERSONAS: tuple[str, ...] = ("recruiter", "hiring_manager", "senior_engineer")
 LEVELS: tuple[str, ...] = ("intern", "junior", "mid", "senior")
 
