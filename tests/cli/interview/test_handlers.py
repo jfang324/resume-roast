@@ -156,7 +156,6 @@ def test_interview_advances_after_evaluate(
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
             _verdict_json(),
@@ -175,7 +174,6 @@ def test_interview_verify_then_evaluate(sample_pdf: Path, monkeypatch: pytest.Mo
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "verify", "claims": ["claim 1"]}),
             _verify_json(),
             json.dumps({"tool": "evaluate"}),
@@ -198,7 +196,6 @@ def test_ask_followup_presents_the_interviewers_question(
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "ask_followup", "question": "What was your specific role?"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
@@ -224,7 +221,6 @@ def test_unknown_action_gets_named_feedback_not_forced_evaluation(
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "ask"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
@@ -254,10 +250,8 @@ def test_interview_early_exit_on_two_critical_failures(
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(critical_failure=True),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(critical_failure=True),
             _verdict_json(),
@@ -279,16 +273,12 @@ def test_interview_exhaustion_reaches_verdict(
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
             _verdict_json(),
@@ -315,7 +305,6 @@ def test_interview_conclude_ends_and_scores(
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "conclude"}),
             _scores_json(),
             _verdict_json(),
@@ -361,16 +350,12 @@ def test_progress_block_never_accumulates(
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
             _verdict_json(),
@@ -396,11 +381,17 @@ def test_immediate_exit(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(
         _FakeClient,
         "texts",
-        [_plan_json(), json.dumps({"tool": "proceed"}), _verdict_json()],
+        [_plan_json(), _verdict_json()],
     )
     result = runner.invoke(app, ["interview", str(sample_pdf)], input="/exit\n")
     assert result.exit_code == 0
     assert "INTERVIEW REPORT" in result.output
+
+    client = _FakeClient.last
+    assert client is not None
+    # Planning costs exactly one call, and the verdict one more — the plan is
+    # never acknowledged by a round-trip whose reply nobody reads.
+    assert len(client.calls) == 2
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -411,7 +402,6 @@ def test_verify_cap_reached(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "verify", "claims": ["c1"]}),
             _verify_json(),
             json.dumps({"tool": "verify", "claims": ["c2"]}),
@@ -438,7 +428,6 @@ def test_max_cycle_turns_forced_evaluate(sample_pdf: Path, monkeypatch: pytest.M
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             *([json.dumps({"tool": "dance"})] * 13),
             _scores_json(),
             _verdict_json(),
@@ -459,7 +448,6 @@ def test_parse_failure_retry_then_evaluate(
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             "not valid json",
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
@@ -479,7 +467,6 @@ def test_unknown_action_retry(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch)
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "unknown_action_name"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
@@ -499,7 +486,6 @@ def test_long_answer(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
             _verdict_json(),
@@ -519,7 +505,6 @@ def test_empty_answer(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
             _verdict_json(),
@@ -540,12 +525,10 @@ def test_multiple_questions_score_accumulation(
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "verify", "claims": ["c1"]}),
             _verify_json(),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
-            json.dumps({"tool": "proceed"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
             _verdict_json(),
