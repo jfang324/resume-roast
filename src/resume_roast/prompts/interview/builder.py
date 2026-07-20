@@ -56,6 +56,11 @@ def build_progress_message(
     return "\n".join(lines)
 
 
+def render_competency_text() -> str:
+    """One line per competency — id, label, description — as the tools' shared framing."""
+    return "\n".join(f"- {c.id}: {c.label} — {c.description}" for c in COMPETENCIES)
+
+
 def build_verdict_prompt(
     scores: Mapping[str, int | float],
     max_per_comp: int,
