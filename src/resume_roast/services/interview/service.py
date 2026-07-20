@@ -125,11 +125,6 @@ def _plan_phase(session: InterviewSession) -> None:
         begin_msg = "Plan received. Begin the interview."
 
     session.messages.append(Message(role="user", content=begin_msg))
-    completion = session.client.prompt(session.messages, temperature=TURN_TEMPERATURE)
-    if completion.usage is not None:
-        session.usages.append(completion.usage)
-
-    session.messages.append(Message(role="assistant", content=completion.text))
     logger.debug("Post-plan: %d questions planned", len(questions))
 
 
