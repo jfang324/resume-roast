@@ -141,7 +141,7 @@ def run_question_cycle(
                 )
 
             case ConcludeCall():
-                eval_output, progress = run_evaluate(session, qs)
+                eval_output, progress = _run_evaluate(session, qs)
                 if eval_output is None:
                     logger.warning("Evaluate failed on conclude for Q%d", question_index + 1)
 
@@ -162,7 +162,9 @@ def run_question_cycle(
                 )
 
 
-def run_evaluate(session: InterviewSession, qs: QuestionState) -> tuple[EvaluateOutput | None, str]:
+def _run_evaluate(
+    session: InterviewSession, qs: QuestionState
+) -> tuple[EvaluateOutput | None, str]:
     """Run the evaluate tool, accumulate scores, and inject [INTERNAL STATUS].
 
     Returns (output_or_None, progress_string).
@@ -221,7 +223,7 @@ def _evaluate_and_decide(session: InterviewSession, qs: QuestionState) -> tuple[
 
     Returns (continue?, progress_string).
     """
-    eval_output, progress = run_evaluate(session, qs)
+    eval_output, progress = _run_evaluate(session, qs)
     if eval_output is None:
         logger.error("Evaluate failed for Q%d, advancing", qs.index + 1)
 
