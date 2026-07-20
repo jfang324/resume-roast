@@ -3,6 +3,11 @@
 from dataclasses import dataclass, field
 from typing import cast
 
+from resume_roast.integrations.llm_client import LlmClient
+from resume_roast.integrations.types import Message, Usage
+from resume_roast.services.chat.input_provider import InputProvider
+from resume_roast.services.interview.renderer import InterviewRenderer
+
 
 @dataclass(frozen=True)
 class Limits:
@@ -29,6 +34,21 @@ class InterviewState:
     questions_answered: int = 0
     total_questions: int = 0
     critical_failures: int = 0
+
+
+@dataclass(frozen=True)
+class InterviewSession:
+    """Lifetime = whole interview. Once set, never mutated.
+
+    Mutable references (messages, usages) are shared by mutation, not replaced.
+    """
+
+    client: LlmClient
+    renderer: InterviewRenderer
+    input_provider: InputProvider
+    messages: list[Message]
+    usages: list[Usage]
+    state: InterviewState
 
 
 @dataclass
