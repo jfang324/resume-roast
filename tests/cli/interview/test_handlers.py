@@ -395,8 +395,14 @@ def test_immediate_exit(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> No
 
 
 @pytest.mark.usefixtures("saved_key")
-def test_verify_cap_reached(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """3 verify actions in a row hits the cap and forces evaluate."""
+def test_verify_runs_once_then_further_requests_are_rebuffed(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The cap counts executions: one verify runs, the next request is refused.
+
+    The queue holds a single verify result — a second execution would drain it
+    and trip the fake's unexpected-call assertion.
+    """
     monkeypatch.setattr(
         _FakeClient,
         "texts",
@@ -405,11 +411,6 @@ def test_verify_cap_reached(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -
             json.dumps({"tool": "verify", "claims": ["c1"]}),
             _verify_json(),
             json.dumps({"tool": "verify", "claims": ["c2"]}),
-            _verify_json(),
-            json.dumps({"tool": "verify", "claims": ["c3"]}),
-            _verify_json(),
-            json.dumps({"tool": "verify", "claims": ["c4"]}),
-            _verify_json(),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
             _verdict_json(),
@@ -417,6 +418,7 @@ def test_verify_cap_reached(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -
     )
     result = runner.invoke(app, ["interview", str(sample_pdf)], input="my answer\n")
     assert result.exit_code == 0
+    assert result.output.count("claims checked") == 1
     assert "INTERVIEW REPORT" in result.output
 
 
