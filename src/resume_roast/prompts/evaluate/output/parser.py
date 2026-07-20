@@ -36,6 +36,7 @@ def _text(value: Any, label: str) -> str:
     """Require a non-empty string."""
     if not isinstance(value, str) or not value.strip():
         raise MalformedResponseError(f"{label} must be a non-empty string")
+
     return value
 
 
@@ -52,6 +53,7 @@ def _score(value: Any, label: str) -> int:
     """Require an integer score in 0-10 (bool is an int in Python; reject it)."""
     if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 10:
         raise MalformedResponseError(f"{label} is {value!r}; every score is an integer 0-10")
+
     return value
 
 
@@ -59,6 +61,7 @@ def _object(value: Any, label: str) -> dict[str, Any]:
     """Require a JSON object."""
     if not isinstance(value, dict):
         raise MalformedResponseError(f"{label} is missing or not a JSON object")
+
     return cast(dict[str, Any], value)
 
 
@@ -74,6 +77,7 @@ def _categories(data: dict[str, Any]) -> dict[str, CategoryReview]:
             findings=_text(entry.get("findings"), f"{path}.findings"),
             suggestions=_suggestions(entry.get("suggestions"), f"{path}.suggestions"),
         )
+
     return reviews
 
 
@@ -81,6 +85,7 @@ def _string_list(value: Any, label: str) -> tuple[str, ...]:
     """Require a non-empty array of non-empty strings."""
     if not isinstance(value, list) or not value:
         raise MalformedResponseError(f"{label} must be a non-empty array of strings")
+
     return tuple(
         _text(item, f"{label}[{index}]") for index, item in enumerate(cast(list[Any], value))
     )
@@ -94,6 +99,7 @@ def _suggestions(value: Any, label: str) -> tuple[Suggestion, ...]:
     """
     if not isinstance(value, list):
         raise MalformedResponseError(f"{label} must be an array (empty if there is nothing to fix)")
+
     suggestions: list[Suggestion] = []
     for index, item in enumerate(cast(list[Any], value)):
         path = f"{label}[{index}]"
@@ -104,6 +110,7 @@ def _suggestions(value: Any, label: str) -> tuple[Suggestion, ...]:
                 examples=_examples(entry.get("examples"), f"{path}.examples"),
             )
         )
+
     return tuple(suggestions)
 
 
@@ -117,9 +124,11 @@ def _examples(value: Any, label: str) -> tuple[Example, ...]:
         return ()
     if not isinstance(value, list):
         raise MalformedResponseError(f"{label} must be an array")
+
     items = cast(list[Any], value)
     if len(items) > _MAX_EXAMPLES:
         raise MalformedResponseError(f"{label} has {len(items)} items; keep it to at most 3")
+
     examples: list[Example] = []
     for index, item in enumerate(items):
         path = f"{label}[{index}]"
@@ -130,4 +139,5 @@ def _examples(value: Any, label: str) -> tuple[Example, ...]:
                 rewrite=_text(entry.get("rewrite"), f"{path}.rewrite"),
             )
         )
+
     return tuple(examples)

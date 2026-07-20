@@ -19,6 +19,7 @@ def prompt_for_entries(existing: Credentials) -> dict[str, str]:
         entries[spec.field] = typer.prompt(
             _with_current(spec.label, shown), hide_input=True, default="", show_default=False
         )
+
     return entries
 
 
@@ -39,6 +40,7 @@ def prompt_for_selections(existing: Settings) -> dict[str, str | tuple[str, ...]
         typer.echo(spec.label)
         for number, choice in enumerate(spec.choices, start=1):
             typer.echo(f"  {number}. {choice}")
+
         hint = "Selection(s), comma-separated" if spec.many else "Selection"
         current = display_value(getattr(existing, spec.field))
         while True:
@@ -47,11 +49,13 @@ def prompt_for_selections(existing: Settings) -> dict[str, str | tuple[str, ...]
             ).strip()
             if not entry:
                 break
+
             try:
                 selections[spec.field] = parse_selection(spec, entry)
                 break
             except InvalidSelectionError as exc:
                 typer.echo(f"Invalid selection: {exc}")
+
     return selections
 
 
@@ -59,6 +63,7 @@ def confirm_settings(saved: Settings, path: Path) -> None:
     """Echo each setting's saved value."""
     for spec in SETTING_SPECS:
         typer.echo(f"{spec.label}: {display_value(getattr(saved, spec.field))}")
+
     typer.echo(f"Saved to {path}")
 
 

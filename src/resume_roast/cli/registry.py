@@ -46,9 +46,12 @@ def build_subcommand_registry() -> typer.Typer:
     registry.callback()(_configure_logging)
     for handler in TOP_LEVEL_HANDLERS:
         registry.command()(guarded(handler))
+
     for group in SUBCOMMAND_GROUPS:
         group_cli = typer.Typer(no_args_is_help=True, help=group.help)
         for handler in group.handlers:
             group_cli.command()(guarded(handler))
+
         registry.add_typer(group_cli, name=group.name)
+
     return registry

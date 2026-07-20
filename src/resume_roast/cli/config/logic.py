@@ -24,6 +24,7 @@ def apply_entries(existing: Credentials, entries: Mapping[str, str]) -> Credenti
         entered = entries.get(spec.field, "")
         current = getattr(existing, spec.field)
         values[spec.field] = entered.strip() or current
+
     return dataclasses.replace(existing, **values)
 
 
@@ -37,13 +38,17 @@ def parse_selection(spec: SettingSpec, entry: str) -> str | tuple[str, ...]:
     parts = [part.strip() for part in entry.split(",")]
     if not spec.many and len(parts) != 1:
         raise InvalidSelectionError(f"{spec.label} takes exactly one selection")
+
     indexes: list[int] = []
     for part in parts:
         if not part.isdigit() or not 1 <= int(part) <= len(spec.choices):
             raise InvalidSelectionError(f"enter a number between 1 and {len(spec.choices)}")
+
         indexes.append(int(part))
+
     if spec.many:
         return tuple(spec.choices[index - 1] for index in dict.fromkeys(indexes))
+
     return spec.choices[indexes[0] - 1]
 
 

@@ -67,4 +67,5 @@ PERSONA_PROMPTS: dict[str, Persona] = {
 def render_persona(persona: str) -> str:
     """Render the persona's system-prompt section, headed with its display label."""
     selected = PERSONA_PROMPTS[persona]
+
     return f"## Persona: {selected.label}\n\n{selected.prompt}"

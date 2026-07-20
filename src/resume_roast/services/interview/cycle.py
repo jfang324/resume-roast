@@ -124,6 +124,7 @@ def run_question_cycle(
                 fb_input = ask_followup(session.renderer, session.input_provider, q_text)
                 if fb_input.lower() in ("/exit",):
                     return False, progress
+
                 qs.answer_history.append(fb_input)
                 qs.follow_up_count += 1
                 call = _llm_turn(
@@ -143,12 +144,14 @@ def run_question_cycle(
                 eval_output, progress = run_evaluate(session, qs)
                 if eval_output is None:
                     logger.warning("Evaluate failed on conclude for Q%d", question_index + 1)
+
                 session.messages.append(
                     Message(
                         role="user",
                         content="[INTERNAL STATUS — interview concluded by LLM]",
                     )
                 )
+
                 return False, progress
 
             case ParseFailure():
@@ -184,6 +187,7 @@ def run_evaluate(session: InterviewSession, qs: QuestionState) -> tuple[Evaluate
 
     for cid, score in eval_output.scores.items():
         session.state.scores[cid] = session.state.scores.get(cid, 0) + score
+
     session.state.questions_answered += 1
 
     if eval_output.critical_failure:

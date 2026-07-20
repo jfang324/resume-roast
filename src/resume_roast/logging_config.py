@@ -37,6 +37,7 @@ def _rotating_handler(path: Path, level: int) -> RotatingFileHandler:
     )
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter(_FORMAT))
+
     return handler
 
 
@@ -52,6 +53,7 @@ def configure_logging(debug: bool) -> None:
     for handler in _installed:
         root.removeHandler(handler)
         handler.close()
+
     _installed.clear()
 
     root.setLevel(logging.DEBUG if debug else logging.WARNING)

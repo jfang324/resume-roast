@@ -54,6 +54,7 @@ def model_label(model: str) -> str:
     name = model.rsplit("/", 1)[-1]
     if len(name) > _MODEL_LABEL_MAX:
         return f"{name[: _MODEL_LABEL_MAX - 1]}…"
+
     return name
 
 
@@ -65,7 +66,9 @@ def summary_line(model: str, usage: Usage | None, latency_seconds: float) -> str
         cost = estimate_cost(usage, model)
         if cost is not None:
             parts.append(f"~${cost:.4f}")
+
     parts.append(f"{latency_seconds:.1f}s")
+
     return " · ".join(parts)
 
 
@@ -86,8 +89,10 @@ class RotatingSpinner(Spinner):
         """Render the animation frame and message due at `time`."""
         if self._first_render_time is None:
             self._first_render_time = time
+
         elapsed = time - self._first_render_time
         self.text = self._messages[int(elapsed / _MESSAGE_SECONDS) % len(self._messages)]
+
         return super().render(time)
 
 
@@ -101,6 +106,7 @@ def spinner(message: str, *more: str) -> Live:
     """
     texts = [Text(text, style="dim") for text in (message, *more)]
     rotating = RotatingSpinner("dots", texts, style="dim")
+
     return Live(
         rotating,
         console=Console(stderr=True),

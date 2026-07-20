@@ -37,6 +37,7 @@ def render_resume_input(parsed: ParsedResume) -> str:
     sections = [f"<resume>\n{parsed.markdown.strip()}\n</resume>"]
     if parsed.metadata.pages:
         sections.append(_stats_block(parsed.metadata))
+
     return "\n\n".join(sections)
 
 

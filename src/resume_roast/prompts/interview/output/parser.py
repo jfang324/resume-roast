@@ -18,6 +18,7 @@ def _parse_first_json(text: str) -> dict[str, Any]:
         raise MalformedResponseError(f"output is not valid JSON ({exc})") from exc
     if not isinstance(data, dict):
         raise MalformedResponseError("output must be a JSON object")
+
     return cast(dict[str, Any], data)
 
 
@@ -26,14 +27,17 @@ def parse_plan(text: str) -> list[str]:
     raw = data.get("questions")
     if not isinstance(raw, list) or not raw:
         raise MalformedResponseError("plan output must contain a non-empty 'questions' array")
+
     raw_list = cast(list[object], raw)
     questions: list[str] = [
         item.strip() for item in raw_list if isinstance(item, str) and item.strip()
     ]
     if len(questions) < 4:
         raise MalformedResponseError(f"plan must have at least 4 questions, got {len(questions)}")
+
     if len(questions) > 6:
         questions = questions[:6]
+
     return questions
 
 
@@ -69,5 +73,7 @@ def parse_verdict(text: str) -> Verdict:
 def _string_tuple(value: object) -> tuple[str, ...]:
     if not isinstance(value, list):
         return ()
+
     raw_list = cast(list[object], value)
+
     return tuple(item.strip() for item in raw_list if isinstance(item, str) and item.strip())

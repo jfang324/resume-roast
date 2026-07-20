@@ -38,4 +38,5 @@ def build_evaluate_prompt(parsed: ParsedResume, persona: str, level: str) -> Pro
     # the last thing the model reads — a long real resume otherwise pulls it
     # into its generic review-shaped prior.
     user = "\n\n".join([render_resume_input(parsed), JSON_ROAST_REMINDER])
+
     return Prompt(system=system, user=user)

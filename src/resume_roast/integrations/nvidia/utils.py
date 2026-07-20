@@ -29,6 +29,7 @@ def map_error(exc: openai.OpenAIError) -> ApiError:
         # alongside connection/server errors; no downstream catch site can tell
         # a 429 from the rest. This 429 already survived the SDK's own retries.
         logger.error("NVIDIA API rate limit hit: %s", exc)
+
         return TransientError(
             f"NVIDIA API is unavailable ({exc}). Try again in a moment.",
         )

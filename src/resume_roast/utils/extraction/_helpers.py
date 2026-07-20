@@ -9,4 +9,5 @@ def none_when_blank(value: str | None) -> str | None:
     """
     if value is None or not value.strip():
         return None
+
     return value
