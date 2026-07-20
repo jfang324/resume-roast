@@ -28,7 +28,7 @@ class ConsoleInterviewRenderer:
         When False, the model's thoughts are dropped instead of shown.
     """
 
-    def __init__(self, console: Console, model: str, *, debug: bool) -> None:
+    def __init__(self, console: Console, model: str, debug: bool) -> None:
         self._console = console
         self._model = model
         self._debug = debug

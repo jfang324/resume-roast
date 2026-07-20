@@ -26,7 +26,10 @@ def show_report(console: Console, result: EvaluateResult, model: str) -> None:
     _print_highlighted_lines(_render_report(result.report), console, DIFF_STYLES)
     typer.echo()
 
-    console.print(summary_line(model, result.usage, result.latency_seconds), style="dim")
+    console.print(
+        summary_line(model, result.usage, result.latency_seconds),
+        style="dim",
+    )
 
 
 def _print_highlighted_lines(
