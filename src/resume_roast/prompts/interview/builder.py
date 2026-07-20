@@ -21,6 +21,23 @@ def build_interview_system_prompt(parsed: ParsedResume) -> str:
     return "\n\n".join(sections)
 
 
+def build_plan_prompt() -> str:
+    """Build the prompt that opens the session with a tailored question plan.
+
+    Planning runs before the ReAct loop and parses through `parse_plan`, not
+    the loop's tool dispatch, so the shape lives here rather than in the
+    system prompt's tool vocabulary.
+    """
+    return """\
+Generate 4-6 interview questions tailored to this candidate's resume and
+background. These should probe the competency areas.
+
+Return a JSON object:
+{
+  "questions": ["Q1", "Q2", "Q3", "Q4"]
+}"""
+
+
 def build_progress_message(
     answered: int,
     total: int,
@@ -127,10 +144,6 @@ def _output_format() -> str:
 Your responses must be JSON objects. The tool field determines what happens next.
 
 Tools:
-- "plan": output base questions for the interview — planning phase only, used
-  once before the first question
-  {"tool": "plan", "questions": ["Q1", "Q2", "Q3", "Q4"]}
-
 - "verify": check claims in the last answer against the resume
   {"tool": "verify", "claims": ["claim 1", ...]}
 

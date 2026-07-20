@@ -14,6 +14,7 @@ from resume_roast.integrations.types import Message
 from resume_roast.integrations.usage import total_usage
 from resume_roast.prompts.interview.builder import (
     build_interview_system_prompt,
+    build_plan_prompt,
     build_verdict_prompt,
     render_competency_text,
 )
@@ -93,11 +94,7 @@ def run(
 def _plan_phase(session: InterviewSession) -> None:
     """Generate base questions from the LLM. The caller's spinner covers this."""
     logger.debug("Starting planning phase")
-    msg = (
-        "Generate 4-6 interview questions tailored to this candidate's resume "
-        "and background. These should probe the competency areas."
-    )
-    session.messages.append(Message(role="user", content=msg))
+    session.messages.append(Message(role="user", content=build_plan_prompt()))
     completion = session.client.prompt(session.messages, temperature=PLANNING_TEMPERATURE)
     if completion.usage is not None:
         session.usages.append(completion.usage)
