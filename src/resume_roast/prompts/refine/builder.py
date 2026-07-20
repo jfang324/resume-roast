@@ -83,6 +83,7 @@ def build_generate_message(bullet: str, note: str | None) -> str:
 
     if note is not None:
         message += f"\n\n<note>\n{note}\n</note>"
+
     message += (
         "\n\nOutput the candidate bullet on its own line, followed by a "
         "blank line, then a short explanation of what changed and why "

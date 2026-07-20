@@ -55,6 +55,7 @@ def structured_completion[T](
             truncation_attempts += 1
             if truncation_attempts > _MAX_RETRIES:
                 raise
+
             continue
 
         if completion.usage is not None:
@@ -68,6 +69,7 @@ def structured_completion[T](
             _log_malformed(exc, completion.text)
             if parse_attempts > _MAX_RETRIES:
                 raise
+
             _append_feedback(conversation, completion.text, exc)
 
 

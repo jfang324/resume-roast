@@ -86,6 +86,7 @@ class PdfParser:
         with doc:
             if doc.is_encrypted:
                 raise UnreadableDocumentError(f"{path} is encrypted")
+
             markdown = cast(str, pymupdf4llm.to_markdown(doc))
             metadata = _document_metadata(doc)
 

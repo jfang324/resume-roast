@@ -31,6 +31,7 @@ class ApiResponseParser[T](ABC):
             raise MalformedResponseError(f"the response is not valid JSON ({exc})") from exc
         if not isinstance(data, dict):
             raise MalformedResponseError("the response must be a single JSON object")
+
         return self._parse_object(cast(dict[str, Any], data))
 
     @abstractmethod
@@ -42,7 +43,9 @@ def strip_code_fence(text: str) -> str:
     """Drop a surrounding Markdown code fence, a common extraction artifact."""
     if not text.startswith("```"):
         return text
+
     lines = text.splitlines()[1:]
     if lines and lines[-1].strip() == "```":
         lines = lines[:-1]
+
     return "\n".join(lines)

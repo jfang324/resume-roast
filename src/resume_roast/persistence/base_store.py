@@ -43,6 +43,7 @@ class Store[T](ABC):
         """Load and parse the backing file, or return `default()`."""
         if not self.path.exists():
             return self.default()
+
         data = self._read_json()
         try:
             return self._parser.parse(data)
@@ -56,8 +57,10 @@ class Store[T](ABC):
         """
         if self.path.exists():
             return self.load()
+
         value = self.default()
         self.save(value)
+
         return value
 
     def save(self, value: T) -> None:

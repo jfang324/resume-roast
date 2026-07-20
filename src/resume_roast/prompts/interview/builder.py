@@ -17,6 +17,7 @@ def build_interview_system_prompt(parsed: ParsedResume) -> str:
         _rules(),
         _resume_block(parsed),
     ]
+
     return "\n\n".join(sections)
 
 
@@ -38,9 +39,12 @@ def build_progress_message(
         parts: list[str] = []
         if completed:
             parts.append(f"Completed: {', '.join(completed)}")
+
         if remaining:
             parts.append(f"Remaining: {', '.join(remaining)}")
+
         lines.append(f"Questions: {' | '.join(parts)}")
+
     lines.append("Accumulated scores (internal only):")
     low_coverage: list[str] = []
     for cid in sorted(scores):
@@ -48,11 +52,13 @@ def build_progress_message(
         lines.append(f"  {cid}: {score}/{max_per_comp}")
         if score < max_per_comp * 0.4:
             low_coverage.append(cid)
+
     if low_coverage:
         coverage_str = ", ".join(sorted(low_coverage))
         lines.append(
             f"Low coverage: {coverage_str}. Consider probing this area in follow-ups if relevant."
         )
+
     return "\n".join(lines)
 
 
@@ -68,6 +74,7 @@ def build_verdict_prompt(
 ) -> str:
     """Build the prompt that triggers the final verdict."""
     score_lines = "\n".join(f"  {cid}: {scores[cid]}/{max_per_comp}" for cid in sorted(scores))
+
     return f"""\
 The interview is complete. Here are the accumulated scores:
 
@@ -109,6 +116,7 @@ communicates, and behaves — not their resume itself."""
 def _competency_block() -> str:
     lines = ["## Competency Framework", ""]
     lines.extend(f"- {c.label} ({c.id}): {c.description}" for c in COMPETENCIES)
+
     return "\n".join(lines)
 
 
