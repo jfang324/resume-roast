@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Interview mode no longer makes model calls it discards when a question stalls, reducing wasted tokens
+- New models added to the catalog
 
 ## [1.0.2] - 2026-07-20
 
