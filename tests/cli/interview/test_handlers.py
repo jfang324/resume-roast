@@ -424,13 +424,18 @@ def test_verify_runs_once_then_further_requests_are_rebuffed(
 
 @pytest.mark.usefixtures("saved_key")
 def test_max_cycle_turns_forced_evaluate(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """13 unknown actions hit the 12-turn cap and force evaluate."""
+    """12 unknown actions spend the turn budget and force evaluate.
+
+    The queue holds exactly the budget: a 13th interviewer call would drain it
+    and trip the fake's unexpected-call assertion, which is what pins the
+    guard to running before the call rather than after.
+    """
     monkeypatch.setattr(
         _FakeClient,
         "texts",
         [
             _plan_json(),
-            *([json.dumps({"tool": "dance"})] * 13),
+            *([json.dumps({"tool": "dance"})] * 12),
             _scores_json(),
             _verdict_json(),
         ],

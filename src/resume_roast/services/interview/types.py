@@ -14,8 +14,10 @@ class Limits:
     """Named numeric bounds the FSM checks; all in one place for discoverability."""
 
     max_cycle_turns: int = 12
-    """Total LLM turns per question before force-evaluate.
-    After 12 turns the LLM is looping; bail out."""
+    """Interviewer LLM calls allowed per question, counting the first one made
+    after the candidate's answer. Spending the budget forces evaluation, and
+    the check runs before each call so an exhausted cycle never pays for a
+    completion it would discard. After 12 turns the LLM is looping; bail out."""
     max_verify_per_cycle: int = 1
     """Verify executions allowed per question; further requests are rebuffed
     without running the tool. One fact-check covers the answer — asking again
@@ -63,3 +65,4 @@ class QuestionState:
     verify_results: str = ""
     follow_up_count: int = 0
     verify_count: int = 0
+    turns: int = 0

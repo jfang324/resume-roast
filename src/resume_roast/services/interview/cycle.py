@@ -50,20 +50,9 @@ def run_question_cycle(
 
     qs.answer_history.append(user_input)
 
-    call = _llm_turn(session, f"Q{question_index + 1}: {question}\n\n{user_input}", progress)
-    turns = 0
+    call = _llm_turn(session, qs, f"Q{question_index + 1}: {question}\n\n{user_input}", progress)
 
     while True:
-        turns += 1
-        if turns > LIMITS.max_cycle_turns:
-            logger.error(
-                "Q%d exceeded %d turns; forcing evaluation",
-                question_index + 1,
-                LIMITS.max_cycle_turns,
-            )
-
-            return _evaluate_and_decide(session, qs)
-
         match call:
             case EvaluateCall():
                 return _evaluate_and_decide(session, qs)
@@ -72,6 +61,7 @@ def run_question_cycle(
                 if qs.verify_count >= LIMITS.max_verify_per_cycle:
                     call = _llm_turn(
                         session,
+                        qs,
                         "Claims already verified for this answer. Continue with ask_followup, evaluate, or conclude.",
                         progress,
                     )
@@ -103,9 +93,9 @@ def run_question_cycle(
                         session.renderer.show_status("verification failed", ok=False)
 
                     qs.verify_results = text
-                    call = _llm_turn(session, text, progress)
+                    call = _llm_turn(session, qs, text, progress)
                 else:
-                    call = _llm_turn(session, "No claims to verify. Continue.", progress)
+                    call = _llm_turn(session, qs, "No claims to verify. Continue.", progress)
 
             case AskFollowupCall(question=q_text):
                 if qs.follow_up_count >= LIMITS.max_follow_ups_per_cycle:
@@ -119,7 +109,7 @@ def run_question_cycle(
                     return _evaluate_and_decide(session, qs)
 
                 if not q_text:
-                    call = _llm_turn(session, "No question provided. Continue.", progress)
+                    call = _llm_turn(session, qs, "No question provided. Continue.", progress)
                     continue
 
                 fb_input = ask_followup(session.renderer, session.input_provider, q_text)
@@ -130,6 +120,7 @@ def run_question_cycle(
                 qs.follow_up_count += 1
                 call = _llm_turn(
                     session,
+                    qs,
                     f"[INTERNAL STATUS — follow-up automatically presented]\nQuestion: {q_text}\n\nAnswer: {fb_input}",
                     progress,
                 )
@@ -137,6 +128,7 @@ def run_question_cycle(
             case UnknownTool(name=name):
                 call = _llm_turn(
                     session,
+                    qs,
                     f"Unknown tool '{name}'. Valid: verify, ask_followup, evaluate, conclude.",
                     progress,
                 )
@@ -158,6 +150,7 @@ def run_question_cycle(
             case ParseFailure():
                 call = _llm_turn(
                     session,
+                    qs,
                     "Invalid response format. Respond with a valid JSON tool call.",
                     progress,
                 )
@@ -235,10 +228,28 @@ def _evaluate_and_decide(session: InterviewSession, qs: QuestionState) -> tuple[
 
 def _llm_turn(
     session: InterviewSession,
+    qs: QuestionState,
     user_text: str,
-    progress: str = "",
+    progress: str,
 ) -> ToolCall:
-    """Append a user message, prompt with current progress appended, and return the parsed tool call."""
+    """Append a user message, prompt with current progress appended, and return the parsed tool call.
+
+    Spends one of the question's turns. Once the budget is gone this forces
+    evaluation instead, checked before the call so an exhausted cycle never
+    pays for a completion it would only discard. Taking `qs` is what makes
+    the budget unskippable: every path that advances the cycle comes through
+    here, and the type checker rejects a call site that forgets it.
+    """
+    if qs.turns >= LIMITS.max_cycle_turns:
+        logger.error(
+            "Q%d exceeded %d turns; forcing evaluation",
+            qs.index + 1,
+            LIMITS.max_cycle_turns,
+        )
+
+        return EvaluateCall()
+
+    qs.turns += 1
     session.messages.append(Message(role="user", content=user_text))
 
     payload = session.messages
