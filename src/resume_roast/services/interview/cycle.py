@@ -59,7 +59,7 @@ def run_question_cycle(
 
             case VerifyCall(claims=claims):
                 if qs.verify_count >= LIMITS.max_verify_per_cycle:
-                    call = _llm_turn(
+                    call = _steering_turn(
                         session,
                         qs,
                         "Claims already verified for this answer. Continue with ask_followup, evaluate, or conclude.",
@@ -95,7 +95,7 @@ def run_question_cycle(
                     qs.verify_results = text
                     call = _llm_turn(session, qs, text, progress)
                 else:
-                    call = _llm_turn(session, qs, "No claims to verify. Continue.", progress)
+                    call = _steering_turn(session, qs, "No claims to verify. Continue.", progress)
 
             case AskFollowupCall(question=q_text):
                 if qs.follow_up_count >= LIMITS.max_follow_ups_per_cycle:
@@ -109,7 +109,7 @@ def run_question_cycle(
                     return _evaluate_and_decide(session, qs)
 
                 if not q_text:
-                    call = _llm_turn(session, qs, "No question provided. Continue.", progress)
+                    call = _steering_turn(session, qs, "No question provided. Continue.", progress)
                     continue
 
                 fb_input = ask_followup(session.renderer, session.input_provider, q_text)
@@ -126,7 +126,7 @@ def run_question_cycle(
                 )
 
             case UnknownTool(name=name):
-                call = _llm_turn(
+                call = _steering_turn(
                     session,
                     qs,
                     f"Unknown tool '{name}'. Valid: verify, ask_followup, evaluate, conclude.",
@@ -148,7 +148,7 @@ def run_question_cycle(
                 return False, progress
 
             case ParseFailure():
-                call = _llm_turn(
+                call = _steering_turn(
                     session,
                     qs,
                     "Invalid response format. Respond with a valid JSON tool call.",
@@ -232,29 +232,80 @@ def _llm_turn(
     user_text: str,
     progress: str,
 ) -> ToolCall:
-    """Append a user message, prompt with current progress appended, and return the parsed tool call.
+    """Advance the cycle with a message the transcript keeps.
 
-    Spends one of the question's turns. Once the budget is gone this forces
-    evaluation instead, checked before the call so an exhausted cycle never
-    pays for a completion it would only discard. Taking `qs` is what makes
-    the budget unskippable: every path that advances the cycle comes through
-    here, and the type checker rejects a call site that forgets it.
+    For the interview itself — the candidate's words and the observations
+    tools produce. Use `_steering_turn` for anything that only corrects the
+    model.
+
+    Reaching here means the loop accepted the previous answer, which is what
+    retires any pending correction. Acceptance is the right trigger rather
+    than a clean parse: `{"tool": "dance"}` parses fine and is still refused,
+    so clearing on parse would forget a refusal the model is busy repeating.
     """
-    if qs.turns >= LIMITS.max_cycle_turns:
-        logger.error(
-            "Q%d exceeded %d turns; forcing evaluation",
-            qs.index + 1,
-            LIMITS.max_cycle_turns,
-        )
-
+    if _budget_spent(qs):
         return EvaluateCall()
 
-    qs.turns += 1
+    qs.pending.clear()
     session.messages.append(Message(role="user", content=user_text))
 
-    payload = session.messages
+    return _prompt_and_parse(session, qs, progress)
+
+
+def _steering_turn(
+    session: InterviewSession,
+    qs: QuestionState,
+    correction: str,
+    progress: str,
+) -> ToolCall:
+    """Advance the cycle with a correction, leaving no trace once it lands.
+
+    The refused call comes back out of the transcript and joins the
+    correction in `qs.pending`, which rides along in the next payload until
+    the model answers with something the loop accepts. Neither is ever
+    written to the history the verdict reads: steering text is written to be
+    read once, and read ten turns later it is an imperative with no visible
+    referent.
+    """
+    if _budget_spent(qs):
+        return EvaluateCall()
+
+    qs.pending.append(session.messages.pop())
+    qs.pending.append(Message(role="user", content=correction))
+
+    return _prompt_and_parse(session, qs, progress)
+
+
+def _budget_spent(qs: QuestionState) -> bool:
+    """Report whether the question has spent its turn budget, logging when it has."""
+    if qs.turns < LIMITS.max_cycle_turns:
+        return False
+
+    logger.error(
+        "Q%d exceeded %d turns; forcing evaluation",
+        qs.index + 1,
+        LIMITS.max_cycle_turns,
+    )
+
+    return True
+
+
+def _prompt_and_parse(
+    session: InterviewSession,
+    qs: QuestionState,
+    progress: str,
+) -> ToolCall:
+    """Spend one turn on the next decision, replaying any unresolved correction.
+
+    The cycle's only prompt site. Both turn helpers check the budget and land
+    here, so the bound cannot be sidestepped, and both take `qs`, so the type
+    checker rejects a call site that forgets it.
+    """
+    qs.turns += 1
+
+    payload = [*session.messages, *qs.pending]
     if progress:
-        payload = [*session.messages, Message(role="user", content=progress)]
+        payload = [*payload, Message(role="user", content=progress)]
 
     with session.renderer.busy("thinking..."):
         completion = session.client.prompt(payload, temperature=TURN_TEMPERATURE)

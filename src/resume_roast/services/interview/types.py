@@ -72,3 +72,13 @@ class QuestionState:
     follow_up_count: int = 0
     verify_count: int = 0
     turns: int = 0
+
+    pending: list[Message] = field(default_factory=lambda: cast(list[Message], []))
+    """Refused calls and the corrections sent for them, held out of the transcript.
+
+    Replayed in the next payload so the model can see what it got wrong —
+    without it the retry would re-send an identical prompt and, at this
+    cycle's temperature, draw the same refused answer. Accumulates while
+    refusals repeat and empties once the loop accepts a call, so a recovered
+    mistake costs one turn instead of riding every later prompt through to
+    the verdict."""

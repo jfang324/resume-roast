@@ -376,6 +376,85 @@ def test_progress_block_never_accumulates(
 
 
 @pytest.mark.usefixtures("saved_key")
+def test_corrections_replay_during_retry_then_leave_no_trace(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A refused call and its correction ride the retry, then vanish from the history.
+
+    Two rejections back to back: malformed JSON, then an unknown tool. The
+    retry payloads must carry both the refused text and the steering, or the
+    model has no signal to answer differently. Every later payload must be
+    clean of them.
+    """
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            "not valid json",
+            json.dumps({"tool": "dance"}),
+            json.dumps({"tool": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="my answer\n/exit\n")
+
+    assert result.exit_code == 0
+    client = _FakeClient.last
+    assert client is not None
+
+    def carries(messages: list[Message], needle: str) -> bool:
+        return any(needle in m.content for m in messages)
+
+    replayed = [c for c in client.calls if carries(c, "Invalid response format")]
+    assert replayed, "the correction never reached the model"
+    assert carries(replayed[0], "not valid json"), "retry dropped the text being corrected"
+
+    unknown = [c for c in client.calls if carries(c, "Unknown tool 'dance'")]
+    assert unknown, "the unknown-tool correction never reached the model"
+
+    settled = client.calls[-1]
+    for residue in ("not valid json", "Invalid response format", '"dance"', "Unknown tool"):
+        assert not carries(settled, residue), f"{residue!r} persisted into the transcript"
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_repeated_refusals_accumulate_in_the_replay(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A model repeating a refused call sees every prior attempt, not just the last.
+
+    `{"tool": "dance"}` parses cleanly and is still refused, so retiring the
+    replay on a successful parse would hide the repetition from the model.
+    """
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"tool": "dance"}),
+            json.dumps({"tool": "dance"}),
+            json.dumps({"tool": "dance"}),
+            json.dumps({"tool": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="my answer\n/exit\n")
+
+    assert result.exit_code == 0
+    client = _FakeClient.last
+    assert client is not None
+
+    corrections = [sum("Unknown tool 'dance'" in m.content for m in call) for call in client.calls]
+    assert max(corrections) >= 2, "the third attempt did not see the earlier refusals"
+    assert corrections[-1] == 0, "refusals persisted into the verdict payload"
+
+
+@pytest.mark.usefixtures("saved_key")
 def test_immediate_exit(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """/exit on the first question aborts before any LLM turn."""
     monkeypatch.setattr(
