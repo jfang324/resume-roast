@@ -26,7 +26,11 @@ from resume_roast.services.interview.tool_calls import (
 from resume_roast.services.interview.tools.ask_followup import ask_followup
 from resume_roast.services.interview.tools.evaluate import evaluate_answer
 from resume_roast.services.interview.tools.verify import verify_claims
-from resume_roast.services.interview.types import InterviewSession, QuestionState
+from resume_roast.services.interview.types import (
+    InterviewSession,
+    QuestionRecord,
+    QuestionState,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +209,15 @@ def _run_evaluate(
 
     session.messages.append(
         Message(role="user", content=render_evaluation_results(eval_output)),
+    )
+    session.state.records.append(
+        QuestionRecord(
+            index=qs.index,
+            question=qs.question,
+            answer_history=tuple(qs.answer_history),
+            verify_results=qs.verify_results,
+            evaluation=eval_output,
+        )
     )
     qs.verify_results = ""
     session.renderer.show_status("answer evaluated", ok=True)
