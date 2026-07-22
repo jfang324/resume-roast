@@ -59,6 +59,7 @@ class QuestionRecord:
     exchanges: tuple[Exchange, ...]
     verify_results: str
     evaluation: EvaluateOutput
+    thoughts: tuple[str, ...] = ()
 
 
 @dataclass
@@ -113,6 +114,8 @@ class QuestionState:
     index: int
     question: str
     exchanges: list[Exchange] = field(default_factory=lambda: cast(list[Exchange], []))
+    thoughts: list[str] = field(default_factory=lambda: cast(list[str], []))
+    """Every thought the model attached to a call this cycle, accepted or not."""
     verify_results: str = ""
     follow_up_count: int = 0
     verify_count: int = 0

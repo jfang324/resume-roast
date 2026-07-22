@@ -29,6 +29,7 @@ def _record(critical_failure: bool = False) -> QuestionRecord:
         ),
         verify_results='Verify results:\n  - "claim" probability=90.0% (evidence found)',
         evaluation=_evaluation(critical_failure),
+        thoughts=("The claim needs checking.", "Solid answer, evaluate now."),
     )
 
 
@@ -88,6 +89,14 @@ def test_question_section_surfaces_answers_fact_check_and_rationales() -> None:
     assert "Critical failure" not in text
 
 
+def test_thoughts_render_as_a_bulleted_section() -> None:
+    text = build_report_markdown(_result((_record(),)), _MODEL)
+
+    assert "**Interviewer thoughts:**" in text
+    assert "- The claim needs checking." in text
+    assert "- Solid answer, evaluate now." in text
+
+
 def test_critical_failure_line_appears_only_when_set() -> None:
     text = build_report_markdown(_result((_record(critical_failure=True),)), _MODEL)
 
@@ -110,6 +119,7 @@ def test_empty_fact_check_and_feedback_are_omitted() -> None:
 
     assert "## Q2: A second question." in text
     assert "Fact check" not in text
+    assert "Interviewer thoughts" not in text
     assert "**Strengths:** " not in text
     assert "**Gaps:** " not in text
     # No rationale parsed: the score line stands alone.

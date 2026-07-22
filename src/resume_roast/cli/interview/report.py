@@ -78,6 +78,11 @@ def _question_section(record: QuestionRecord) -> str:
         lines.append(record.verify_results)
         lines.append("```")
 
+    if record.thoughts:
+        lines.append("")
+        lines.append("**Interviewer thoughts:**")
+        lines.extend(f"- {thought}" for thought in record.thoughts)
+
     lines.append("")
     lines.append("**Assessment:**")
     for c in COMPETENCIES:

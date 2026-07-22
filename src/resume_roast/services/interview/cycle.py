@@ -218,6 +218,7 @@ def _run_evaluate(
             exchanges=tuple(qs.exchanges),
             verify_results=qs.verify_results,
             evaluation=eval_output,
+            thoughts=tuple(qs.thoughts),
         )
     )
     qs.verify_results = ""
@@ -337,6 +338,7 @@ def _prompt_and_parse(
         return ParseFailure(raw_text=completion.text)
 
     if call.thought:
+        qs.thoughts.append(call.thought)
         session.renderer.show_thought(call.thought)
 
     return call
