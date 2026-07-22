@@ -642,6 +642,7 @@ def test_report_flag_writes_the_markdown_report(
             _plan_json(),
             json.dumps({"tool": "verify", "claims": ["claim 1"]}),
             _verify_json(),
+            json.dumps({"tool": "ask_followup", "question": "What was your role?"}),
             json.dumps({"tool": "evaluate"}),
             _scores_json(),
             _verdict_json(),
@@ -652,7 +653,7 @@ def test_report_flag_writes_the_markdown_report(
     result = runner.invoke(
         app,
         ["interview", str(sample_pdf), "--report", str(report_path)],
-        input="some answer\n/exit\n",
+        input="some answer\nfollow-up answer\n/exit\n",
     )
 
     assert result.exit_code == 0
@@ -661,6 +662,7 @@ def test_report_flag_writes_the_markdown_report(
     assert "Evaluated 1 of 4 questions" in text
     assert "## Q1: Q one?" in text
     assert "1. some answer" in text
+    assert "2. *What was your role?* — follow-up answer" in text
     assert "claim 1" in text
     assert ": solid" in text
     assert "Some summary." in text

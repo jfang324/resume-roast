@@ -4,7 +4,7 @@ from resume_roast.cli.interview.report import build_report_markdown
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.prompts.interview.output.schema import Verdict
 from resume_roast.prompts.interview.tools.evaluate.schema import EvaluateOutput
-from resume_roast.services.interview.types import InterviewResult, QuestionRecord
+from resume_roast.services.interview.types import Exchange, InterviewResult, QuestionRecord
 
 _MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
@@ -23,7 +23,10 @@ def _record(critical_failure: bool = False) -> QuestionRecord:
     return QuestionRecord(
         index=0,
         question="Tell me about ownership.",
-        answer_history=("I owned the migration.", "Specifically the rollout."),
+        exchanges=(
+            Exchange(question="Tell me about ownership.", answer="I owned the migration."),
+            Exchange(question="What exactly did you own?", answer="Specifically the rollout."),
+        ),
         verify_results='Verify results:\n  - "claim" probability=90.0% (evidence found)',
         evaluation=_evaluation(critical_failure),
     )
@@ -75,7 +78,7 @@ def test_question_section_surfaces_answers_fact_check_and_rationales() -> None:
 
     assert "## Q1: Tell me about ownership." in text
     assert "1. I owned the migration." in text
-    assert "2. Specifically the rollout." in text
+    assert "2. *What exactly did you own?* — Specifically the rollout." in text
     assert "probability=90.0%" in text
     for c in COMPETENCIES:
         assert f"- **{c.label}** — 7/10: {c.id} evidence" in text
@@ -95,7 +98,7 @@ def test_empty_fact_check_and_feedback_are_omitted() -> None:
     record = QuestionRecord(
         index=1,
         question="A second question.",
-        answer_history=("Short answer.",),
+        exchanges=(Exchange(question="A second question.", answer="Short answer."),),
         verify_results="",
         evaluation=EvaluateOutput(
             scores={c.id: 5 for c in COMPETENCIES},

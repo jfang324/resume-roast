@@ -63,7 +63,12 @@ def _scores_section(result: InterviewResult) -> str:
 def _question_section(record: QuestionRecord) -> str:
     evaluation = record.evaluation
     lines = [f"## Q{record.index + 1}: {record.question}", "", "**Answers:**"]
-    lines.extend(f"{i + 1}. {answer}" for i, answer in enumerate(record.answer_history))
+    for i, exchange in enumerate(record.exchanges):
+        # The heading already shows the base question; follow-ups carry theirs.
+        if i == 0:
+            lines.append(f"{i + 1}. {exchange.answer}")
+        else:
+            lines.append(f"{i + 1}. *{exchange.question}* — {exchange.answer}")
 
     if record.verify_results:
         lines.append("")
