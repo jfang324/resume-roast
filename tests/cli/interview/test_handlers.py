@@ -643,7 +643,7 @@ def test_report_flag_writes_the_markdown_report(
             json.dumps({"tool": "verify", "claims": ["claim 1"]}),
             _verify_json(),
             json.dumps({"tool": "ask_followup", "question": "What was your role?"}),
-            json.dumps({"tool": "evaluate"}),
+            json.dumps({"tool": "evaluate", "thought": "Answer cycle complete, scoring."}),
             _scores_json(),
             _verdict_json(),
         ],
@@ -663,6 +663,7 @@ def test_report_flag_writes_the_markdown_report(
     assert "## Q1: Q one?" in text
     assert "1. some answer" in text
     assert "2. *What was your role?* — follow-up answer" in text
+    assert "- Answer cycle complete, scoring." in text
     assert "claim 1" in text
     assert ": solid" in text
     assert "Some summary." in text
