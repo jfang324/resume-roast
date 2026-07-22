@@ -55,8 +55,9 @@ def run(
 ) -> InterviewResult | None:
     """Interview the candidate over the resume at *path*, ending in a verdict.
 
-    Returns the verdict-phase result, or None when the session was aborted
-    before any answer was evaluated.
+    Returns the verdict-phase result, or None when the session ended before
+    any answer was evaluated — by /exit, EOF, or interrupt alike — or when
+    the verdict phase itself was interrupted.
 
     Raises:
         ExtractionError: when the document cannot be parsed.
@@ -89,14 +90,20 @@ def run(
         started_at = time.perf_counter()
         _question_loop(session)
 
-        return _verdict_phase(session, started_at)
-
     except (EOFError, KeyboardInterrupt):
         renderer.show_interrupt()
-        if session.state.questions_answered > 0:
-            return _verdict_phase(session, started_at or time.perf_counter())
 
+    # /exit, EOF, and interrupt land here alike: a verdict needs at least one
+    # evaluated answer, whatever way the questions ended.
+    if session.state.questions_answered == 0:
         renderer.show_abort()
+
+        return None
+
+    try:
+        return _verdict_phase(session, started_at or time.perf_counter())
+    except (EOFError, KeyboardInterrupt):
+        renderer.show_interrupt()
 
         return None
 
