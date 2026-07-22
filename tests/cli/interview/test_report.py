@@ -1,5 +1,7 @@
 """Tests for the interview Markdown report builder."""
 
+from dataclasses import replace
+
 from resume_roast.cli.interview.report import build_report_markdown
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.prompts.interview.output.schema import Verdict
@@ -87,6 +89,27 @@ def test_question_section_surfaces_answers_fact_check_and_rationales() -> None:
     assert "**Strengths:** Concrete metrics" in text
     assert "**Gaps:** No trade-offs" in text
     assert "Critical failure" not in text
+
+
+def test_scores_table_marks_a_missing_competency_na() -> None:
+    result = _result(())
+    scores = dict(result.scores)
+    missing = COMPETENCIES[0]
+    del scores[missing.id]
+
+    text = build_report_markdown(replace(result, scores=scores), _MODEL)
+
+    assert f"| {missing.label} | n/a |" in text
+    assert f"| {COMPETENCIES[1].label} | 6.5/10 |" in text
+
+
+def test_fact_check_fence_outgrows_backticks_in_the_content() -> None:
+    record = replace(_record(), verify_results='Verify results:\n  - "```code```" checked')
+
+    text = build_report_markdown(_result((record,)), _MODEL)
+
+    assert "````\nVerify results:" in text
+    assert text.count("````") == 2
 
 
 def test_thoughts_render_as_a_bulleted_section() -> None:
