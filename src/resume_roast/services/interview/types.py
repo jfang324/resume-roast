@@ -5,6 +5,7 @@ from typing import cast
 
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.types import Message, Usage
+from resume_roast.prompts.interview.output.schema import Verdict
 from resume_roast.prompts.interview.tools.evaluate.schema import EvaluateOutput
 from resume_roast.services.chat.input_provider import InputProvider
 from resume_roast.services.interview.renderer import InterviewRenderer
@@ -76,6 +77,22 @@ class InterviewSession:
     messages: list[Message]
     usages: list[Usage]
     state: InterviewState
+
+
+@dataclass(frozen=True)
+class InterviewResult:
+    """Lifetime = after the interview: everything the verdict phase produced.
+
+    `scores` are per-question averages out of `max_score`. Records number
+    `questions_answered`, which can trail `total_questions` when the interview
+    ends early or an evaluation fails."""
+
+    verdict: Verdict
+    scores: dict[str, float]
+    max_score: int
+    records: tuple[QuestionRecord, ...]
+    questions_answered: int
+    total_questions: int
 
 
 @dataclass
