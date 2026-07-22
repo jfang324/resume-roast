@@ -29,7 +29,11 @@ from resume_roast.services.interview.constants import (
 )
 from resume_roast.services.interview.cycle import run_question_cycle
 from resume_roast.services.interview.renderer import InterviewRenderer
-from resume_roast.services.interview.types import InterviewSession, InterviewState
+from resume_roast.services.interview.types import (
+    InterviewResult,
+    InterviewSession,
+    InterviewState,
+)
 from resume_roast.utils.extraction.mappings import get_parser
 
 logger = logging.getLogger(__name__)
@@ -48,8 +52,11 @@ def run(
     path: Path,
     renderer: InterviewRenderer,
     input_provider: InputProvider,
-) -> None:
+) -> InterviewResult | None:
     """Interview the candidate over the resume at *path*, ending in a verdict.
+
+    Returns the verdict-phase result, or None when the session was aborted
+    before any answer was evaluated.
 
     Raises:
         ExtractionError: when the document cannot be parsed.
@@ -81,14 +88,17 @@ def run(
 
         started_at = time.perf_counter()
         _question_loop(session)
-        _verdict_phase(session, started_at)
+
+        return _verdict_phase(session, started_at)
 
     except (EOFError, KeyboardInterrupt):
         renderer.show_interrupt()
         if session.state.questions_answered > 0:
-            _verdict_phase(session, started_at or time.perf_counter())
-        else:
-            renderer.show_abort()
+            return _verdict_phase(session, started_at or time.perf_counter())
+
+        renderer.show_abort()
+
+        return None
 
 
 def _plan_phase(session: InterviewSession) -> None:
@@ -135,7 +145,7 @@ def _question_loop(session: InterviewSession) -> None:
             break
 
 
-def _verdict_phase(session: InterviewSession, started_at: float) -> None:
+def _verdict_phase(session: InterviewSession, started_at: float) -> InterviewResult:
     """Get the final verdict from the LLM and render the report."""
     q_answered = max(1, session.state.questions_answered)
     max_per = MAX_SCORE_PER_QUESTION
@@ -167,3 +177,12 @@ def _verdict_phase(session: InterviewSession, started_at: float) -> None:
     if total is not None:
         elapsed = time.perf_counter() - (started_at or time.perf_counter())
         session.renderer.show_metrics(total, elapsed)
+
+    return InterviewResult(
+        verdict=verdict,
+        scores=normalized,
+        max_score=max_per,
+        records=tuple(session.state.records),
+        questions_answered=session.state.questions_answered,
+        total_questions=session.state.total_questions,
+    )
