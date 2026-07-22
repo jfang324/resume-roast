@@ -101,14 +101,17 @@ Competency framework:
 {competencies}
 
 Based on these scores and the interview as a whole, provide a final verdict.
+Write the assessment first and let the decision follow from it: the summary,
+strengths, and growth areas come before the verdict and rating, so the
+hire decision and the number reflect the reasoning above them.
 
-Return a JSON object:
+Return a JSON object with the fields in exactly this order:
 {{
-  "verdict": "hire" | "maybe" | "dont_hire",
-  "overall_rating": <float, 1.0-10.0>,
   "summary": "<2-4 sentence assessment>",
   "strengths": ["strength 1", ...],
-  "growth_areas": ["area 1", ...]
+  "growth_areas": ["area 1", ...],
+  "verdict": "hire" | "maybe" | "dont_hire",
+  "overall_rating": <float, 1.0-10.0>
 }}"""
 
 
