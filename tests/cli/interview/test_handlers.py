@@ -40,10 +40,10 @@ def _plan_json() -> str:
 def _scores_json(critical_failure: bool = False) -> str:
     return json.dumps(
         {
-            "scores": {c.id: 7 for c in COMPETENCIES},
-            "critical_failure": critical_failure,
             "strengths": [],
             "gaps": [],
+            "assessment": {c.id: {"rationale": "solid", "score": 7} for c in COMPETENCIES},
+            "critical_failure": critical_failure,
         }
     )
 
