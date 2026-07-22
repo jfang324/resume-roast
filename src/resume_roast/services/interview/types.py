@@ -5,6 +5,7 @@ from typing import cast
 
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.types import Message, Usage
+from resume_roast.prompts.interview.tools.evaluate.schema import EvaluateOutput
 from resume_roast.services.chat.input_provider import InputProvider
 from resume_roast.services.interview.renderer import InterviewRenderer
 
@@ -33,6 +34,21 @@ class Limits:
     """After 2 follow-ups the question is done; evaluate and move on."""
 
 
+@dataclass(frozen=True)
+class QuestionRecord:
+    """Lifetime = whole interview: one answered question's evaluation evidence.
+
+    Captured when evaluate succeeds — a question whose evaluation failed
+    leaves no record, so an interview can hold fewer records than questions
+    asked."""
+
+    index: int
+    question: str
+    answer_history: tuple[str, ...]
+    verify_results: str
+    evaluation: EvaluateOutput
+
+
 @dataclass
 class InterviewState:
     """Lifetime = whole interview: the accumulated scores and question plan."""
@@ -44,6 +60,7 @@ class InterviewState:
     questions_answered: int = 0
     total_questions: int = 0
     critical_failures: int = 0
+    records: list[QuestionRecord] = field(default_factory=lambda: cast(list[QuestionRecord], []))
 
 
 @dataclass(frozen=True)
