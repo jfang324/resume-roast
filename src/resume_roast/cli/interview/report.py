@@ -1,5 +1,7 @@
 """Builds the Markdown document the --report flag writes after an interview."""
 
+import re
+
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.services.interview.types import InterviewResult, QuestionRecord
 
@@ -53,11 +55,25 @@ def _scores_section(result: InterviewResult) -> str:
         "| Competency | Score |",
         "| --- | --- |",
     ]
-    lines.extend(
-        f"| {c.label} | {result.scores.get(c.id, 0)}/{result.max_score} |" for c in COMPETENCIES
-    )
+    for c in COMPETENCIES:
+        score = result.scores.get(c.id)
+        # A missing competency is an upstream bug; "n/a" surfaces it where a
+        # defaulted 0 would pass for a genuine bottom score.
+        cell = f"{score}/{result.max_score}" if score is not None else "n/a"
+        lines.append(f"| {c.label} | {cell} |")
 
     return "\n".join(lines)
+
+
+def _fence_for(text: str) -> str:
+    """Pick a code fence longer than any backtick run inside *text*.
+
+    Verify results quote claim text drawn from candidate answers, which can
+    itself contain ``` and would otherwise terminate the block early."""
+    runs = re.findall(r"`+", text)
+    longest = max((len(run) for run in runs), default=0)
+
+    return "`" * max(3, longest + 1)
 
 
 def _question_section(record: QuestionRecord) -> str:
@@ -71,12 +87,13 @@ def _question_section(record: QuestionRecord) -> str:
             lines.append(f"{i + 1}. *{exchange.question}* — {exchange.answer}")
 
     if record.verify_results:
+        fence = _fence_for(record.verify_results)
         lines.append("")
         lines.append("**Fact check:**")
         lines.append("")
-        lines.append("```")
+        lines.append(fence)
         lines.append(record.verify_results)
-        lines.append("```")
+        lines.append(fence)
 
     if record.thoughts:
         lines.append("")
