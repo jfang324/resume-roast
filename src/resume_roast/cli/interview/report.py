@@ -1,6 +1,7 @@
 """Builds the Markdown document the --report flag writes after an interview."""
 
 import re
+from collections.abc import Sequence
 
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.services.interview.types import InterviewResult, QuestionRecord
@@ -35,17 +36,18 @@ def _header(result: InterviewResult, model: str) -> str:
 def _verdict_section(result: InterviewResult) -> str:
     verdict = result.verdict
     lines = ["## Verdict", "", verdict.summary]
-    if verdict.strengths:
-        lines.append("")
-        lines.append("**Strengths:**")
-        lines.extend(f"- {s}" for s in verdict.strengths)
-
-    if verdict.growth_areas:
-        lines.append("")
-        lines.append("**Growth areas:**")
-        lines.extend(f"- {g}" for g in verdict.growth_areas)
+    lines.extend(_bulleted("Strengths", verdict.strengths))
+    lines.extend(_bulleted("Growth areas", verdict.growth_areas))
 
     return "\n".join(lines)
+
+
+def _bulleted(title: str, items: Sequence[str]) -> list[str]:
+    """Render a titled bullet list as report lines; nothing when there are no items."""
+    if not items:
+        return []
+
+    return ["", f"**{title}:**", *(f"- {item}" for item in items)]
 
 
 def _scores_section(result: InterviewResult) -> str:
@@ -80,8 +82,9 @@ def _question_section(record: QuestionRecord) -> str:
     evaluation = record.evaluation
     lines = [f"## Q{record.index + 1}: {record.question}", "", "**Answers:**"]
     for i, exchange in enumerate(record.exchanges):
-        # The heading already shows the base question; follow-ups carry theirs.
-        if i == 0:
+        # The heading already shows the base question; only a differing
+        # (follow-up) question earns an inline repeat.
+        if exchange.question == record.question:
             lines.append(f"{i + 1}. {exchange.answer}")
         else:
             lines.append(f"{i + 1}. *{exchange.question}* — {exchange.answer}")
@@ -95,10 +98,7 @@ def _question_section(record: QuestionRecord) -> str:
         lines.append(record.verify_results)
         lines.append(fence)
 
-    if record.thoughts:
-        lines.append("")
-        lines.append("**Interviewer thoughts:**")
-        lines.extend(f"- {thought}" for thought in record.thoughts)
+    lines.extend(_bulleted("Interviewer thoughts", record.thoughts))
 
     lines.append("")
     lines.append("**Assessment:**")
