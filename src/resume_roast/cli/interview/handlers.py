@@ -22,6 +22,9 @@ def interview(
     ),
 ) -> None:
     """Run an agentic behavioral interview on a PDF or DOCX resume."""
+    if report is not None:
+        _reject_unwritable(report)
+
     client, settings = build_client()
     debug = logging.getLogger().isEnabledFor(logging.DEBUG)
     console = Console(highlight=False)
@@ -42,5 +45,25 @@ def interview(
 
         return
 
-    report.write_text(build_report_markdown(result, settings.model), encoding="utf-8")
+    try:
+        report.write_text(build_report_markdown(result, settings.model), encoding="utf-8")
+    except OSError as exc:
+        typer.echo(f"Error: could not write report: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
     console.print(f"Report written to {report}")
+
+
+def _reject_unwritable(report: Path) -> None:
+    """Refuse a report path that cannot receive the file, before any API spend.
+
+    The write happens only after the whole interview has run; a typo'd
+    directory discovered then would cost the session's entire output.
+    """
+    if report.is_dir():
+        typer.echo(f"Error: report path is a directory: {report}", err=True)
+        raise typer.Exit(code=1)
+
+    if not report.parent.is_dir():
+        typer.echo(f"Error: report directory does not exist: {report.parent}", err=True)
+        raise typer.Exit(code=1)
