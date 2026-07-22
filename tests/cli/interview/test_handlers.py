@@ -320,15 +320,18 @@ def test_interview_conclude_ends_and_scores(
 def test_interview_turn_cap_prevents_hang(
     sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Prose that never produces a valid action hits the turn cap instead of hanging."""
+    """Prose that never produces a valid action hits the turn cap instead of hanging.
+
+    The capped question's forced evaluation also gets garbage, so nothing is
+    evaluated and the session ends as an abort — cleanly, with no verdict
+    fabricated from zero answers.
+    """
     monkeypatch.setattr(
         _FakeClient,
         "texts",
         [
             _plan_json(),
             *([json.dumps({"tool": "proceed"})] * 14),
-            _scores_json(),
-            _verdict_json(),
         ],
     )
     result = runner.invoke(
@@ -337,7 +340,7 @@ def test_interview_turn_cap_prevents_hang(
         input="some answer\n/exit\n",
     )
     assert result.exit_code == 0
-    assert "INTERVIEW REPORT" in result.output
+    assert "aborted" in result.output
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -456,21 +459,22 @@ def test_repeated_refusals_accumulate_in_the_replay(
 
 @pytest.mark.usefixtures("saved_key")
 def test_immediate_exit(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """/exit on the first question aborts before any LLM turn."""
+    """/exit on the first question aborts: no verdict is fabricated from zero answers."""
     monkeypatch.setattr(
         _FakeClient,
         "texts",
-        [_plan_json(), _verdict_json()],
+        [_plan_json()],
     )
     result = runner.invoke(app, ["interview", str(sample_pdf)], input="/exit\n")
     assert result.exit_code == 0
-    assert "INTERVIEW REPORT" in result.output
+    assert "INTERVIEW REPORT" not in result.output
+    assert "aborted" in result.output
 
     client = _FakeClient.last
     assert client is not None
-    # Planning costs exactly one call, and the verdict one more — the plan is
-    # never acknowledged by a round-trip whose reply nobody reads.
-    assert len(client.calls) == 2
+    # Planning costs exactly one call; with nothing evaluated there is no
+    # verdict call to spend a second one on.
+    assert len(client.calls) == 1
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -670,17 +674,18 @@ def test_report_flag_writes_the_markdown_report(
 
 
 @pytest.mark.usefixtures("saved_key")
+@pytest.mark.parametrize("user_input", ["", "/exit\n"], ids=["eof", "exit-command"])
 def test_report_flag_aborted_interview_writes_nothing(
-    sample_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    sample_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, user_input: str
 ) -> None:
-    """An abort before any evaluated answer produces no report file."""
+    """Ending with zero evaluated answers — EOF or /exit — produces no report file."""
     monkeypatch.setattr(_FakeClient, "texts", [_plan_json()])
     report_path = tmp_path / "report.md"
 
     result = runner.invoke(
         app,
         ["interview", str(sample_pdf), "--report", str(report_path)],
-        input="",
+        input=user_input,
     )
 
     assert result.exit_code == 0
