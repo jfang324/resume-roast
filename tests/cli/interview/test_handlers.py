@@ -691,3 +691,22 @@ def test_report_flag_aborted_interview_writes_nothing(
     assert result.exit_code == 0
     assert not report_path.exists()
     assert "report not written" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_report_flag_rejects_a_missing_directory_before_any_api_call(
+    sample_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A typo'd report directory fails immediately, not after the interview."""
+    monkeypatch.setattr(_FakeClient, "texts", [])
+    report_path = tmp_path / "no_such_dir" / "report.md"
+
+    result = runner.invoke(
+        app,
+        ["interview", str(sample_pdf), "--report", str(report_path)],
+        input="",
+    )
+
+    assert result.exit_code == 1
+    assert "report directory does not exist" in result.output
+    assert _FakeClient.last is None, "the interview ran despite an unwritable report path"
