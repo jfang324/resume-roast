@@ -27,6 +27,7 @@ from resume_roast.services.interview.tools.ask_followup import ask_followup
 from resume_roast.services.interview.tools.evaluate import evaluate_answer
 from resume_roast.services.interview.tools.verify import verify_claims
 from resume_roast.services.interview.types import (
+    Exchange,
     InterviewSession,
     QuestionRecord,
     QuestionState,
@@ -52,7 +53,7 @@ def run_question_cycle(
     if user_input.lower() in ("/exit",):
         return False, ""
 
-    qs.answer_history.append(user_input)
+    qs.exchanges.append(Exchange(question=question, answer=user_input))
 
     call = _llm_turn(session, qs, f"Q{question_index + 1}: {question}\n\n{user_input}", progress)
 
@@ -77,7 +78,7 @@ def run_question_cycle(
                             output, usage = verify_claims(
                                 session.client,
                                 list(claims),
-                                qs.answer_history[-1],
+                                qs.exchanges[-1].answer,
                                 session.state.resume_markdown,
                             )
                         except Exception:
@@ -120,7 +121,7 @@ def run_question_cycle(
                 if fb_input.lower() in ("/exit",):
                     return False, progress
 
-                qs.answer_history.append(fb_input)
+                qs.exchanges.append(Exchange(question=q_text, answer=fb_input))
                 qs.follow_up_count += 1
                 call = _llm_turn(
                     session,
@@ -172,7 +173,7 @@ def _run_evaluate(
             eval_output, usage = evaluate_answer(
                 session.client,
                 qs.question,
-                qs.answer_history,
+                [e.answer for e in qs.exchanges],
                 qs.verify_results,
                 render_competency_text(),
                 session.state.competencies,
@@ -214,7 +215,7 @@ def _run_evaluate(
         QuestionRecord(
             index=qs.index,
             question=qs.question,
-            answer_history=tuple(qs.answer_history),
+            exchanges=tuple(qs.exchanges),
             verify_results=qs.verify_results,
             evaluation=eval_output,
         )

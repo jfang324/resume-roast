@@ -36,6 +36,17 @@ class Limits:
 
 
 @dataclass(frozen=True)
+class Exchange:
+    """One question put to the candidate and the answer it drew.
+
+    The first exchange of a cycle carries the base question; later ones
+    carry the interviewer's follow-ups."""
+
+    question: str
+    answer: str
+
+
+@dataclass(frozen=True)
 class QuestionRecord:
     """Lifetime = whole interview: one answered question's evaluation evidence.
 
@@ -45,7 +56,7 @@ class QuestionRecord:
 
     index: int
     question: str
-    answer_history: tuple[str, ...]
+    exchanges: tuple[Exchange, ...]
     verify_results: str
     evaluation: EvaluateOutput
 
@@ -101,7 +112,7 @@ class QuestionState:
 
     index: int
     question: str
-    answer_history: list[str] = field(default_factory=lambda: cast(list[str], []))
+    exchanges: list[Exchange] = field(default_factory=lambda: cast(list[Exchange], []))
     verify_results: str = ""
     follow_up_count: int = 0
     verify_count: int = 0
