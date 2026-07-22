@@ -628,3 +628,58 @@ def test_multiple_questions_score_accumulation(
     assert result.exit_code == 0
     assert "INTERVIEW REPORT" in result.output
     assert "14" in result.output or "7.0" in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_report_flag_writes_the_markdown_report(
+    sample_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--report writes a file carrying the verdict and per-question evidence."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"tool": "verify", "claims": ["claim 1"]}),
+            _verify_json(),
+            json.dumps({"tool": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+    report_path = tmp_path / "report.md"
+
+    result = runner.invoke(
+        app,
+        ["interview", str(sample_pdf), "--report", str(report_path)],
+        input="some answer\n/exit\n",
+    )
+
+    assert result.exit_code == 0
+    text = report_path.read_text(encoding="utf-8")
+    assert "# Interview Report" in text
+    assert "Evaluated 1 of 4 questions" in text
+    assert "## Q1: Q one?" in text
+    assert "1. some answer" in text
+    assert "claim 1" in text
+    assert ": solid" in text
+    assert "Some summary." in text
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_report_flag_aborted_interview_writes_nothing(
+    sample_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An abort before any evaluated answer produces no report file."""
+    monkeypatch.setattr(_FakeClient, "texts", [_plan_json()])
+    report_path = tmp_path / "report.md"
+
+    result = runner.invoke(
+        app,
+        ["interview", str(sample_pdf), "--report", str(report_path)],
+        input="",
+    )
+
+    assert result.exit_code == 0
+    assert not report_path.exists()
+    assert "report not written" in result.output
