@@ -39,6 +39,44 @@ class ApiResponseParser[T](ABC):
         """Validate the decoded JSON object against the feature's schema."""
 
 
+def parse_first_json_object(text: str, label: str = "output") -> dict[str, Any]:
+    """Parse the first JSON object in `text`, tolerating trailing data.
+
+    The tolerant counterpart to `ApiResponseParser.parse` for responses where
+    the model may append prose after the object. ``label`` names the response
+    in error messages, which retry loops send back to the model as feedback.
+
+    Raises:
+        MalformedResponseError: when `text` holds no leading JSON object.
+    """
+    cleaned = strip_code_fence(text.strip())
+    try:
+        data, _ = json.JSONDecoder().raw_decode(cleaned)
+    except json.JSONDecodeError as exc:
+        raise MalformedResponseError(f"{label} is not valid JSON ({exc})") from exc
+
+    if not isinstance(data, dict):
+        raise MalformedResponseError(f"{label} must be a JSON object")
+
+    return cast("dict[str, Any]", data)
+
+
+def string_list(value: object) -> list[str]:
+    """Keep the non-blank strings of a JSON array; anything else is dropped.
+
+    The lenient reading shared by parsers whose list fields are optional
+    color, not contract — a malformed item loses itself, not the response.
+    """
+    if not isinstance(value, list):
+        return []
+
+    return [
+        item.strip()
+        for item in cast("list[object]", value)
+        if isinstance(item, str) and item.strip()
+    ]
+
+
 def strip_code_fence(text: str) -> str:
     """Drop a surrounding Markdown code fence, a common extraction artifact."""
     if not text.startswith("```"):

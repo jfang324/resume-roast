@@ -35,6 +35,14 @@ def test_parses_a_full_claim() -> None:
     assert result.contradiction is False
 
 
+def test_tolerates_prose_after_the_json_object() -> None:
+    text = _dumps([_claim()]) + "\n\nThe claims are well supported overall."
+
+    output = parse_output(text)
+
+    assert len(output.claims) == 1
+
+
 def test_rejects_non_json() -> None:
     with pytest.raises(MalformedResponseError, match="not valid JSON"):
         parse_output("The claims all check out.")
