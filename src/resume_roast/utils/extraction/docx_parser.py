@@ -55,28 +55,33 @@ def _core_properties(xml_bytes: bytes) -> dict[str, str]:
     return found
 
 
-def _read_core_properties(path: Path) -> dict[str, str]:
-    """Load `docProps/core.xml` from the docx zip; missing part means no props."""
+def _read_part_properties(zf: zipfile.ZipFile, part: str) -> dict[str, str]:
+    """Parse one docProps part from an open zip; a missing or bad part means no props."""
     try:
-        with zipfile.ZipFile(path) as zf, zf.open(DOCX_OPC_CORE_PROPERTIES) as fh:
+        with zf.open(part) as fh:
             return _core_properties(fh.read())
 
     except (KeyError, OSError, zipfile.BadZipFile, DefusedXmlException):
         return {}
 
 
-def _read_app_properties(path: Path) -> dict[str, str]:
-    """Load `docProps/app.xml` from the docx zip; missing part means no props.
+def _read_doc_properties(path: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Load the core and app docProps parts through one zip handle.
 
-    Currently the only field we surface is `<Application>`, the DOCX
-    equivalent of PDF's producer string.
+    Returns ``(core, app)``; an unreadable archive means no props at all,
+    while each part still fails independently — a missing `core.xml` must
+    not cost the `app.xml` next to it. From `app.xml` the only field we
+    surface is `<Application>`, the DOCX equivalent of PDF's producer.
     """
     try:
-        with zipfile.ZipFile(path) as zf, zf.open(DOCX_OPC_APP_PROPERTIES) as fh:
-            return _core_properties(fh.read())
+        with zipfile.ZipFile(path) as zf:
+            return (
+                _read_part_properties(zf, DOCX_OPC_CORE_PROPERTIES),
+                _read_part_properties(zf, DOCX_OPC_APP_PROPERTIES),
+            )
 
-    except (KeyError, OSError, zipfile.BadZipFile, DefusedXmlException):
-        return {}
+    except (OSError, zipfile.BadZipFile):
+        return {}, {}
 
 
 def _clean_url(url: str) -> str:
@@ -123,8 +128,7 @@ class DocxParser:
             raise UnreadableDocumentError(f"Could not open {path}") from exc
 
         markdown = cast(str, result.value)
-        core_props = _read_core_properties(path)
-        app_props = _read_app_properties(path)
+        core_props, app_props = _read_doc_properties(path)
         metadata = DocumentMetadata(
             page_count=0,
             creator=none_when_blank(core_props.get("creator")),

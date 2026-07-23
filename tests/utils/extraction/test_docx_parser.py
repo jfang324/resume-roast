@@ -104,7 +104,7 @@ def test_missing_core_xml_part_yields_none_creator(tmp_path: Path) -> None:
     full = tmp_path / "full.docx"
     document.save(full)
     # Re-pack the zip without `docProps/core.xml`; mammoth only needs the body
-    # part so this is enough to exercise `_read_core_properties`'s missing-part
+    # part so this is enough to exercise `_read_part_properties`'s missing-part
     # branch while leaving the rest of the document intact.
     with zipfile.ZipFile(full, "r") as src, zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as dst:
         for name in src.namelist():
