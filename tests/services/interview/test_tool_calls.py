@@ -26,6 +26,18 @@ class TestToolCallFromDict:
         call = tool_call_from_dict({"tool": "verify"})
         assert call == VerifyCall()
 
+    def test_verify_null_claims_is_a_parse_failure(self) -> None:
+        call = tool_call_from_dict({"tool": "verify", "claims": None})
+        assert isinstance(call, ParseFailure)
+
+    def test_verify_string_claims_is_a_parse_failure(self) -> None:
+        call = tool_call_from_dict({"tool": "verify", "claims": "one claim"})
+        assert isinstance(call, ParseFailure)
+
+    def test_verify_non_string_claim_item_is_a_parse_failure(self) -> None:
+        call = tool_call_from_dict({"tool": "verify", "claims": ["ok", 5]})
+        assert isinstance(call, ParseFailure)
+
     def test_carries_the_thought_alongside_the_call(self) -> None:
         call = tool_call_from_dict({"tool": "evaluate", "thought": "the cycle is complete"})
         assert call == EvaluateCall(thought="the cycle is complete")
@@ -45,6 +57,10 @@ class TestToolCallFromDict:
     def test_ask_followup_no_question(self) -> None:
         call = tool_call_from_dict({"tool": "ask_followup"})
         assert call == AskFollowupCall()
+
+    def test_ask_followup_non_string_question_is_a_parse_failure(self) -> None:
+        call = tool_call_from_dict({"tool": "ask_followup", "question": {"text": "?"}})
+        assert isinstance(call, ParseFailure)
 
     def test_conclude(self) -> None:
         call = tool_call_from_dict({"tool": "conclude"})
