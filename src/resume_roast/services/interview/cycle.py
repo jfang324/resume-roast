@@ -55,7 +55,12 @@ def run_question_cycle(
 
     qs.exchanges.append(Exchange(question=question, answer=user_input))
 
-    call = _llm_turn(session, qs, f"Q{question_index + 1}: {question}\n\n{user_input}", progress)
+    call = _llm_turn(
+        session,
+        qs,
+        f"Q{question_index + 1}: {question}\n\n<answer>\n{user_input}\n</answer>",
+        progress,
+    )
 
     while True:
         match call:
@@ -130,7 +135,7 @@ def run_question_cycle(
                 call = _llm_turn(
                     session,
                     qs,
-                    f"[INTERNAL STATUS — follow-up automatically presented]\nQuestion: {q_text}\n\nAnswer: {fb_input}",
+                    f"[INTERNAL STATUS — follow-up automatically presented]\nQuestion: {q_text}\n\n<answer>\n{fb_input}\n</answer>",
                     progress,
                 )
 
