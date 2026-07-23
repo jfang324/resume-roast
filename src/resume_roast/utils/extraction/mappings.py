@@ -5,6 +5,7 @@ table and the implementations evolve together.
 """
 
 import os
+from pathlib import Path
 
 from resume_roast.utils.extraction.document_parser import DocumentParser
 from resume_roast.utils.extraction.docx_parser import DocxParser
@@ -23,13 +24,9 @@ def get_parser(path: str | os.PathLike[str]) -> DocumentParser:
     Raises:
         UnreadableDocumentError: if no parser is registered.
     """
-    from pathlib import Path
-
-    suffix = Path(path).suffix.lower()
-    parser = PARSERS.get(suffix)
+    suffix = Path(path).suffix
+    parser = PARSERS.get(suffix.lower())
     if parser is None:
-        raise UnreadableDocumentError(
-            f"Unsupported file type: {Path(path).suffix or '(no extension)'}"
-        )
+        raise UnreadableDocumentError(f"Unsupported file type: {suffix or '(no extension)'}")
 
     return parser
