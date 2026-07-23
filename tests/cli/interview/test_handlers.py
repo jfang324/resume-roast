@@ -13,6 +13,7 @@ import pytest
 from typer.testing import CliRunner
 
 from resume_roast.cli.registry import build_subcommand_registry
+from resume_roast.integrations.errors import AuthenticationError
 from resume_roast.integrations.types import Completion, Message, Usage
 from resume_roast.persistence.credentials.store import CredentialsStore
 from resume_roast.persistence.credentials.types import Credentials
@@ -76,9 +77,13 @@ def _verify_json() -> str:
 
 
 class _FakeClient:
-    """Stands in for NvidiaClient; answers prompt() from a queue of texts."""
+    """Stands in for NvidiaClient; answers prompt() from a queue of texts.
 
-    texts: ClassVar[list[str]] = []
+    An exception in the queue is raised in its turn instead of returned,
+    staging a failure partway through a session.
+    """
+
+    texts: ClassVar[list[str | Exception]] = []
     usage: ClassVar[Usage | None] = None
     error: ClassVar[Exception | None] = None
     last: ClassVar["_FakeClient | None"] = None
@@ -103,6 +108,9 @@ class _FakeClient:
         if not queue:
             raise AssertionError("Unexpected extra LLM call")
         text = queue.pop(0)
+        if isinstance(text, Exception):
+            raise text
+
         return Completion(text=text, usage=type(self).usage, finish_reason="stop")
 
 
@@ -261,6 +269,32 @@ def test_interview_early_exit_on_two_critical_failures(
     assert result.exit_code == 0
     assert "INTERVIEW REPORT" in result.output
     assert "Q3:" not in result.output
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_rejected_key_mid_interview_ends_the_session(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AuthenticationError inside a tool call ends the run at the error boundary.
+
+    Swallowed with the rest, it would keep the interview running: every
+    remaining question asked, none of them scored.
+    """
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"tool": "evaluate"}),
+            AuthenticationError("NVIDIA API rejected the key"),
+        ],
+    )
+
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="answer one\n")
+
+    assert result.exit_code == 1
+    assert "rejected the key" in result.output
+    assert "Q2:" not in result.output
 
 
 @pytest.mark.usefixtures("saved_key")

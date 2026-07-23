@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Interview mode no longer makes model calls it discards when a question stalls, reducing wasted tokens
 - New models added to the catalog
+- Interview sessions no longer crash on malformed model responses
+- A rejected API key now ends an interview immediately
 
 ## [1.0.2] - 2026-07-20
 
