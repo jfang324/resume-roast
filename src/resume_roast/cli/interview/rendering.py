@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from contextlib import AbstractContextManager
 
 from rich.console import Console
+from rich.markup import escape
 
 from resume_roast.cli.utils import spinner, summary_line
 from resume_roast.integrations.types import Usage
@@ -46,11 +47,11 @@ class ConsoleInterviewRenderer:
 
     def show_question(self, index: int, question: str) -> None:
         """Present base question number ``index`` (0-based) to the candidate."""
-        self._console.print(f"\n[bold]Q{index + 1}:[/bold] {question}")
+        self._console.print(f"\n[bold]Q{index + 1}:[/bold] {escape(question)}")
 
     def show_follow_up(self, question: str) -> None:
         """Present a follow-up question to the candidate."""
-        self._console.print(f"\n{question}")
+        self._console.print(f"\n{escape(question)}")
 
     def show_status(self, message: str, *, ok: bool) -> None:
         """Report a tool step's outcome as transient chrome."""
@@ -60,7 +61,7 @@ class ConsoleInterviewRenderer:
     def show_thought(self, thought: str) -> None:
         """Surface the model's reasoning in debug runs; drop it otherwise."""
         if self._debug:
-            self._console.print(f"[dim]thought: {thought}[/dim]")
+            self._console.print(f"[dim]thought: {escape(thought)}[/dim]")
 
     def show_report(self, verdict: Verdict, scores: Mapping[str, float], max_per_comp: int) -> None:
         """Render the final interview report."""
@@ -82,16 +83,16 @@ class ConsoleInterviewRenderer:
         if verdict.strengths:
             self._console.print("[bold green]Strengths:[/bold green]")
             for s in verdict.strengths:
-                self._console.print(f"  + {s}")
+                self._console.print(f"  + {escape(s)}")
 
         if verdict.growth_areas:
             self._console.print()
             self._console.print("[bold yellow]Growth Areas:[/bold yellow]")
             for g in verdict.growth_areas:
-                self._console.print(f"  - {g}")
+                self._console.print(f"  - {escape(g)}")
 
         self._console.print()
-        self._console.print(verdict.summary)
+        self._console.print(escape(verdict.summary))
 
     def show_metrics(self, usage: Usage, latency_seconds: float) -> None:
         """Print the metrics footprint of the whole session."""
