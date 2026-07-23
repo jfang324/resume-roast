@@ -2,7 +2,7 @@
 
 import logging
 
-from resume_roast.integrations.errors import MalformedResponseError
+from resume_roast.integrations.errors import AuthenticationError, MalformedResponseError
 from resume_roast.integrations.types import Message
 from resume_roast.prompts.interview.builder import build_progress_message, render_competency_text
 from resume_roast.prompts.interview.tools.evaluate.builder import render_evaluation_results
@@ -81,6 +81,10 @@ def run_question_cycle(
                                 qs.exchanges[-1].answer,
                                 session.state.resume_markdown,
                             )
+                        except AuthenticationError:
+                            # A rejected key fails every later call the same
+                            # way; end the session at the error boundary.
+                            raise
                         except Exception:
                             logger.exception("verify tool failed")
                             output, usage = None, None
@@ -178,6 +182,10 @@ def _run_evaluate(
                 render_competency_text(),
                 session.state.competencies,
             )
+        except AuthenticationError:
+            # A rejected key fails every later call the same way; end the
+            # session at the error boundary.
+            raise
         except Exception:
             logger.exception("evaluate tool failed")
 
