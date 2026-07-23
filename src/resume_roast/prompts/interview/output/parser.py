@@ -1,37 +1,19 @@
 """JSON parsing for interview outputs: base questions plan, verdict."""
 
-import json
-from typing import Any, cast
+from typing import cast
 
 from resume_roast.integrations.errors import MalformedResponseError
 from resume_roast.prompts.interview.output.schema import Verdict
-from resume_roast.prompts.response_parser import strip_code_fence
-
-
-def _parse_first_json(text: str) -> dict[str, Any]:
-    """Parse the first JSON object from text, ignoring any trailing data."""
-    cleaned = strip_code_fence(text.strip())
-    try:
-        decoder = json.JSONDecoder()
-        data, _ = decoder.raw_decode(cleaned)
-    except json.JSONDecodeError as exc:
-        raise MalformedResponseError(f"output is not valid JSON ({exc})") from exc
-    if not isinstance(data, dict):
-        raise MalformedResponseError("output must be a JSON object")
-
-    return cast(dict[str, Any], data)
+from resume_roast.prompts.response_parser import parse_first_json_object, string_list
 
 
 def parse_plan(text: str) -> list[str]:
-    data = _parse_first_json(text)
+    data = parse_first_json_object(text)
     raw = data.get("questions")
     if not isinstance(raw, list) or not raw:
         raise MalformedResponseError("plan output must contain a non-empty 'questions' array")
 
-    raw_list = cast(list[object], raw)
-    questions: list[str] = [
-        item.strip() for item in raw_list if isinstance(item, str) and item.strip()
-    ]
+    questions = string_list(cast("list[object]", raw))
     if len(questions) < 4:
         raise MalformedResponseError(f"plan must have at least 4 questions, got {len(questions)}")
 
@@ -42,7 +24,7 @@ def parse_plan(text: str) -> list[str]:
 
 
 def parse_verdict(text: str) -> Verdict:
-    data = _parse_first_json(text)
+    data = parse_first_json_object(text)
 
     verdict = data.get("verdict")
     if verdict not in ("hire", "maybe", "dont_hire"):
@@ -58,8 +40,8 @@ def parse_verdict(text: str) -> Verdict:
     if not isinstance(summary, str) or not summary.strip():
         raise MalformedResponseError("summary must be a non-empty string")
 
-    strengths = _string_tuple(data.get("strengths"))
-    growth_areas = _string_tuple(data.get("growth_areas"))
+    strengths = tuple(string_list(data.get("strengths")))
+    growth_areas = tuple(string_list(data.get("growth_areas")))
 
     return Verdict(
         verdict=verdict,
@@ -68,12 +50,3 @@ def parse_verdict(text: str) -> Verdict:
         strengths=strengths,
         growth_areas=growth_areas,
     )
-
-
-def _string_tuple(value: object) -> tuple[str, ...]:
-    if not isinstance(value, list):
-        return ()
-
-    raw_list = cast(list[object], value)
-
-    return tuple(item.strip() for item in raw_list if isinstance(item, str) and item.strip())

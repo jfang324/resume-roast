@@ -1,11 +1,10 @@
 """Output parsing for the verify tool."""
 
-import json
 from typing import Any, cast
 
 from resume_roast.integrations.errors import MalformedResponseError
 from resume_roast.prompts.interview.tools.verify.schema import ClaimResult, VerifyOutput
-from resume_roast.prompts.response_parser import strip_code_fence
+from resume_roast.prompts.response_parser import parse_first_json_object
 
 
 def parse_output(text: str) -> VerifyOutput:
@@ -14,17 +13,7 @@ def parse_output(text: str) -> VerifyOutput:
     Raises:
         MalformedResponseError: on invalid JSON or a claim that breaks the schema.
     """
-    cleaned = strip_code_fence(text.strip())
-    try:
-        decoder = json.JSONDecoder()
-        data, _ = decoder.raw_decode(cleaned)
-    except json.JSONDecodeError as exc:
-        raise MalformedResponseError(f"verify output is not valid JSON ({exc})") from exc
-
-    if not isinstance(data, dict):
-        raise MalformedResponseError("verify output must be a JSON object")
-
-    data = cast(dict[str, Any], data)
+    data = parse_first_json_object(text, "verify output")
     raw_claims = data.get("claims")
     if not isinstance(raw_claims, list):
         raise MalformedResponseError("verify output must contain a 'claims' array")
