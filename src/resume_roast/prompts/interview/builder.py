@@ -1,6 +1,6 @@
 """Builds the interview system prompt from parts."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.prompts.interview.tool_descriptions import TOOL_DESCRIPTIONS
@@ -43,16 +43,22 @@ def build_progress_message(
     total: int,
     scores: Mapping[str, int | float],
     max_per_comp: int,
-    base_questions: list[str] | None = None,
+    completed_indices: Sequence[int] | None = None,
 ) -> str:
-    """Build a status message injected after each evaluation cycle."""
+    """Build a status message injected after each evaluation cycle.
+
+    ``completed_indices`` names the 0-based questions actually evaluated — a
+    failed evaluation advances the loop without scoring, so the labels cannot
+    be derived from the answered count alone.
+    """
     lines = [
         "[INTERNAL STATUS — do not respond to this directly]",
         f"Interview progress: answered {answered}/{total} questions.",
     ]
-    if base_questions:
-        completed = [f"Q{i + 1}" for i in range(answered)]
-        remaining = [f"Q{i + 1}" for i in range(answered, total)]
+    if completed_indices is not None:
+        done = set(completed_indices)
+        completed = [f"Q{i + 1}" for i in sorted(done)]
+        remaining = [f"Q{i + 1}" for i in range(total) if i not in done]
         parts: list[str] = []
         if completed:
             parts.append(f"Completed: {', '.join(completed)}")

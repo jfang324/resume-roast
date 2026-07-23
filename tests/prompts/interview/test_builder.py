@@ -5,6 +5,7 @@ import re
 from resume_roast.prompts.interview.builder import (
     build_interview_system_prompt,
     build_plan_prompt,
+    build_progress_message,
     build_verdict_prompt,
 )
 from resume_roast.utils.extraction.types import DocumentMetadata, ParsedResume
@@ -39,6 +40,21 @@ def test_system_prompt_advertises_exactly_the_loop_vocabulary() -> None:
 def test_plan_prompt_carries_the_output_shape() -> None:
     """Planning parses through parse_plan, so its shape must live in its own prompt."""
     assert "questions" in build_plan_prompt()
+
+
+def test_progress_message_labels_questions_from_the_evaluated_indices() -> None:
+    """A failed evaluation advances the loop without scoring, so the labels
+    must come from what was actually evaluated, not the answered count."""
+    message = build_progress_message(
+        2,
+        4,
+        {"ownership": 12},
+        max_per_comp=20,
+        completed_indices=[0, 2],  # Q2's evaluation failed; Q3 was scored
+    )
+
+    assert "Completed: Q1, Q3" in message
+    assert "Remaining: Q2, Q4" in message
 
 
 def test_verdict_prompt_asks_for_the_decision_after_the_assessment() -> None:

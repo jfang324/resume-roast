@@ -60,7 +60,7 @@ def run_question_cycle(
     while True:
         match call:
             case EvaluateCall():
-                return _evaluate_and_decide(session, qs)
+                return _evaluate_and_decide(session, qs, progress)
 
             case VerifyCall(claims=claims):
                 if qs.verify_count >= LIMITS.max_verify_per_cycle:
@@ -115,7 +115,7 @@ def run_question_cycle(
                         )
                     )
 
-                    return _evaluate_and_decide(session, qs)
+                    return _evaluate_and_decide(session, qs, progress)
 
                 if not q_text:
                     call = _steering_turn(session, qs, "No question provided. Continue.", progress)
@@ -202,14 +202,6 @@ def _run_evaluate(
     if eval_output.critical_failure:
         session.state.critical_failures += 1
 
-    max_per = session.state.questions_answered * MAX_SCORE_PER_QUESTION
-    progress = build_progress_message(
-        session.state.questions_answered,
-        session.state.total_questions,
-        session.state.scores,
-        max_per,
-        session.state.base_questions,
-    )
     logger.debug(
         "Evaluation: scores=%s, critical=%d",
         eval_output.scores,
@@ -230,21 +222,33 @@ def _run_evaluate(
         )
     )
     qs.verify_results = ""
+
+    max_per = session.state.questions_answered * MAX_SCORE_PER_QUESTION
+    progress = build_progress_message(
+        session.state.questions_answered,
+        session.state.total_questions,
+        session.state.scores,
+        max_per,
+        [record.index for record in session.state.records],
+    )
     session.renderer.show_status("answer evaluated", ok=True)
 
     return eval_output, progress
 
 
-def _evaluate_and_decide(session: InterviewSession, qs: QuestionState) -> tuple[bool, str]:
+def _evaluate_and_decide(
+    session: InterviewSession, qs: QuestionState, carry_progress: str
+) -> tuple[bool, str]:
     """Evaluate the answer cycle and decide whether the interview continues.
 
-    Returns (continue?, progress_string).
+    Returns (continue?, progress_string). A failed evaluation changes no
+    state, so the carried progress is still accurate and rides on.
     """
     eval_output, progress = _run_evaluate(session, qs)
     if eval_output is None:
         logger.error("Evaluate failed for Q%d, advancing", qs.index + 1)
 
-        return True, ""
+        return True, carry_progress
 
     return session.state.critical_failures < 2, progress
 
