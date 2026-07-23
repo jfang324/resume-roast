@@ -29,15 +29,19 @@ def parse_output(text: str) -> VerifyOutput:
     if not isinstance(raw_claims, list):
         raise MalformedResponseError("verify output must contain a 'claims' array")
 
-    raw_list = cast(list[dict[str, Any]], raw_claims)
+    raw_list = cast(list[object], raw_claims)
     results: list[ClaimResult] = []
-    for i, item in enumerate(raw_list):
+    for i, entry in enumerate(raw_list):
+        if not isinstance(entry, dict):
+            raise MalformedResponseError(f"claims[{i}] must be a JSON object")
+
+        item = cast(dict[str, Any], entry)
         text = item.get("text", "")
         if not isinstance(text, str) or not text.strip():  # pyright: ignore[reportUnnecessaryIsInstance]
             raise MalformedResponseError(f"claims[{i}].text must be a non-empty string")
 
         prob = item.get("probability", 0.5)
-        if not isinstance(prob, (int, float)) or not 0.0 <= prob <= 1.0:
+        if isinstance(prob, bool) or not isinstance(prob, (int, float)) or not 0.0 <= prob <= 1.0:
             raise MalformedResponseError(f"claims[{i}].probability must be a number 0.0-1.0")
 
         evidence = item.get("evidence")
