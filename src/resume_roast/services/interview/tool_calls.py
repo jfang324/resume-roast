@@ -69,14 +69,22 @@ def tool_call_from_dict(raw: dict[str, Any]) -> ToolCall:
     name = raw.get("tool", "")
     if name == "verify":
         claims = raw.get("claims", [])
+        if not isinstance(claims, list) or not all(
+            isinstance(claim, str) for claim in cast("list[object]", claims)
+        ):
+            return ParseFailure(raw_text=str(raw), thought=thought)
 
-        return VerifyCall(claims=tuple(claims), thought=thought)
+        return VerifyCall(claims=tuple(cast("list[str]", claims)), thought=thought)
 
     if name == "evaluate":
         return EvaluateCall(thought=thought)
 
     if name == "ask_followup":
-        return AskFollowupCall(question=raw.get("question", ""), thought=thought)
+        question = raw.get("question", "")
+        if not isinstance(question, str):
+            return ParseFailure(raw_text=str(raw), thought=thought)
+
+        return AskFollowupCall(question=question, thought=thought)
 
     if name == "conclude":
         return ConcludeCall(thought=thought)
