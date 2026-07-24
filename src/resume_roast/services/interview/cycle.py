@@ -255,7 +255,7 @@ def _evaluate_and_decide(
 
         return True, carry_progress
 
-    return session.state.critical_failures < 2, progress
+    return session.state.critical_failures < LIMITS.max_critical_failures, progress
 
 
 def _llm_turn(
