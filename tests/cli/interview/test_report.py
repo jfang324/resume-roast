@@ -1,8 +1,10 @@
 """Tests for the interview Markdown report builder."""
 
 from dataclasses import replace
+from datetime import datetime
+from pathlib import Path
 
-from resume_roast.cli.interview.report import build_report_markdown
+from resume_roast.cli.interview.report import build_report_markdown, report_filename
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.prompts.interview.output.schema import Verdict
 from resume_roast.prompts.interview.tools.evaluate.schema import EvaluateOutput
@@ -50,6 +52,18 @@ def _result(records: tuple[QuestionRecord, ...]) -> InterviewResult:
         questions_answered=len(records),
         total_questions=4,
     )
+
+
+def test_report_filename_pairs_timestamp_with_resume_stem() -> None:
+    name = report_filename(Path("/resumes/Jane Doe.pdf"), datetime(2026, 7, 23, 14, 25, 30))
+
+    assert name == "20260723-142530-Jane Doe.md"
+
+
+def test_report_filename_falls_back_when_the_path_has_no_stem() -> None:
+    name = report_filename(Path("."), datetime(2026, 7, 23, 14, 25, 30))
+
+    assert name == "20260723-142530-resume.md"
 
 
 def test_header_carries_model_verdict_and_progress() -> None:

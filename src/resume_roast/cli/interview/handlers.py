@@ -1,6 +1,7 @@
 """`interview` command: bare handler function, wired by the registry."""
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import typer
@@ -8,22 +9,28 @@ from rich.console import Console
 
 from resume_roast.cli.input_provider import ConsoleInputProvider
 from resume_roast.cli.interview.rendering import ConsoleInterviewRenderer
-from resume_roast.cli.interview.report import build_report_markdown
-from resume_roast.cli.utils import build_client
+from resume_roast.cli.interview.report import (
+    REPORTS_DIRNAME,
+    build_report_markdown,
+    report_filename,
+)
+from resume_roast.cli.utils import build_client, storage_dir
 from resume_roast.services.interview.service import run
 
 
 def interview(
     path: Path,
-    report: Path | None = typer.Option(
-        None,
+    report: bool = typer.Option(
+        False,
         "--report",
-        help="Write a detailed Markdown report of the interview to this file.",
+        help="Save a Markdown report of the interview under "
+        "~/.resume-roast/interview-reports/, named by timestamp and resume.",
     ),
 ) -> None:
     """Run an agentic behavioral interview on a PDF or DOCX resume."""
-    if report is not None:
-        _reject_unwritable(report)
+    reports_dir = storage_dir() / REPORTS_DIRNAME
+    if report:
+        _ensure_reports_dir(reports_dir)
 
     client, settings = build_client()
     debug = logging.getLogger().isEnabledFor(logging.DEBUG)
@@ -37,7 +44,7 @@ def interview(
 
     result = run(client, path, renderer, input_provider)
 
-    if report is None:
+    if not report:
         return
 
     if result is None:
@@ -45,25 +52,25 @@ def interview(
 
         return
 
+    destination = reports_dir / report_filename(path, datetime.now())
     try:
-        report.write_text(build_report_markdown(result, settings.model), encoding="utf-8")
+        destination.write_text(build_report_markdown(result, settings.model), encoding="utf-8")
     except OSError as exc:
         typer.echo(f"Error: could not write report: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
-    console.print(f"Report written to {report}")
+    console.print(f"Report written to {destination}")
 
 
-def _reject_unwritable(report: Path) -> None:
-    """Refuse a report path that cannot receive the file, before any API spend.
+def _ensure_reports_dir(reports_dir: Path) -> None:
+    """Create the reports directory before any API spend.
 
-    The write happens only after the whole interview has run; a typo'd
-    directory discovered then would cost the session's entire output.
+    The report is written only after the whole interview has run; a directory
+    that can't be created, discovered then, would cost the session's entire
+    output. Fail here, before the first token, instead.
     """
-    if report.is_dir():
-        typer.echo(f"Error: report path is a directory: {report}", err=True)
-        raise typer.Exit(code=1)
-
-    if not report.parent.is_dir():
-        typer.echo(f"Error: report directory does not exist: {report.parent}", err=True)
-        raise typer.Exit(code=1)
+    try:
+        reports_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        typer.echo(f"Error: could not create report directory: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
