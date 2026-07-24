@@ -2,11 +2,28 @@
 
 import re
 from collections.abc import Sequence
+from datetime import datetime
+from pathlib import Path
 
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 from resume_roast.services.interview.types import InterviewResult, QuestionRecord
 
+REPORTS_DIRNAME = "interview-reports"
+"""Subdirectory of the storage dir where --report drops its files."""
+
 _VERDICT_LABELS = {"hire": "Hire", "maybe": "Maybe", "dont_hire": "Don't hire"}
+
+
+def report_filename(resume_path: Path, when: datetime) -> str:
+    """Name a report file from the timestamp and source resume.
+
+    Timestamp-first (e.g. ``20260723-142530-resume.md``) so a directory of
+    reports sorts chronologically; the resume stem tells overlapping runs
+    apart. Falls back to ``resume`` when the path carries no usable stem.
+    """
+    stem = resume_path.stem or "resume"
+
+    return f"{when:%Y%m%d-%H%M%S}-{stem}.md"
 
 
 def build_report_markdown(result: InterviewResult, model: str) -> str:

@@ -119,6 +119,7 @@ def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Path:
     monkeypatch.setattr("resume_roast.cli.utils.storage_dir", lambda: tmp_path)
+    monkeypatch.setattr("resume_roast.cli.interview.handlers.storage_dir", lambda: tmp_path)
     return tmp_path
 
 
@@ -672,7 +673,7 @@ def test_multiple_questions_score_accumulation(
 def test_report_flag_writes_the_markdown_report(
     sample_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """--report writes a file carrying the verdict and per-question evidence."""
+    """--report drops a timestamped file carrying the verdict and evidence."""
     monkeypatch.setattr(
         _FakeClient,
         "texts",
@@ -686,16 +687,21 @@ def test_report_flag_writes_the_markdown_report(
             _verdict_json(),
         ],
     )
-    report_path = tmp_path / "report.md"
 
     result = runner.invoke(
         app,
-        ["interview", str(sample_pdf), "--report", str(report_path)],
+        ["interview", str(sample_pdf), "--report"],
         input="some answer\nfollow-up answer\n/exit\n",
     )
 
     assert result.exit_code == 0
-    text = report_path.read_text(encoding="utf-8")
+    reports = list((tmp_path / "interview-reports").glob("*.md"))
+    assert len(reports) == 1
+    # The source resume's stem tags the file so concurrent runs stay distinct.
+    assert reports[0].name.endswith("-sample.md")
+    assert "Report written to" in result.output
+
+    text = reports[0].read_text(encoding="utf-8")
     assert "# Interview Report" in text
     assert "Evaluated 1 of 4 questions" in text
     assert "## Q1: Q one?" in text
@@ -714,33 +720,37 @@ def test_report_flag_aborted_interview_writes_nothing(
 ) -> None:
     """Ending with zero evaluated answers — EOF or /exit — produces no report file."""
     monkeypatch.setattr(_FakeClient, "texts", [_plan_json()])
-    report_path = tmp_path / "report.md"
 
     result = runner.invoke(
         app,
-        ["interview", str(sample_pdf), "--report", str(report_path)],
+        ["interview", str(sample_pdf), "--report"],
         input=user_input,
     )
 
     assert result.exit_code == 0
-    assert not report_path.exists()
+    assert not list((tmp_path / "interview-reports").glob("*.md"))
     assert "report not written" in result.output
 
 
 @pytest.mark.usefixtures("saved_key")
-def test_report_flag_rejects_a_missing_directory_before_any_api_call(
+def test_report_flag_uncreatable_directory_fails_before_any_api_call(
     sample_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A typo'd report directory fails immediately, not after the interview."""
+    """An unusable reports directory fails immediately, not after the interview.
+
+    A plain file sitting where the directory belongs makes mkdir raise; the
+    guard must run before the first token so a full session isn't spent only
+    to have nowhere to write the report.
+    """
     monkeypatch.setattr(_FakeClient, "texts", [])
-    report_path = tmp_path / "no_such_dir" / "report.md"
+    (tmp_path / "interview-reports").write_text("not a directory", encoding="utf-8")
 
     result = runner.invoke(
         app,
-        ["interview", str(sample_pdf), "--report", str(report_path)],
+        ["interview", str(sample_pdf), "--report"],
         input="",
     )
 
     assert result.exit_code == 1
-    assert "report directory does not exist" in result.output
-    assert _FakeClient.last is None, "the interview ran despite an unwritable report path"
+    assert "could not create report directory" in result.output
+    assert _FakeClient.last is None, "the interview ran despite an unwritable reports directory"
