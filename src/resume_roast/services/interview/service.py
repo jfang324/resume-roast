@@ -121,7 +121,6 @@ def _plan_phase(session: InterviewSession) -> None:
     logger.debug("Starting planning phase")
     session.messages.append(Message(role="user", content=build_plan_prompt()))
 
-    fallback = False
     try:
         questions, usage = structured_completion(
             session.client, session.messages, parse_plan, temperature=PLANNING_TEMPERATURE
@@ -137,23 +136,25 @@ def _plan_phase(session: InterviewSession) -> None:
         session.messages.append(
             Message(role="assistant", content=json.dumps({"questions": questions}))
         )
-    except (MalformedResponseError, TruncatedResponseError):
+        begin_msg = "Plan received. Begin the interview."
+
+    except (MalformedResponseError, TruncatedResponseError) as exc:
         logger.exception("Failed to parse plan, using fallback questions")
+
+        # Bill the failed (and retried) attempts even though the plan was unusable.
+        if exc.usage is not None:
+            session.usages.append(exc.usage)
+
         questions = _FALLBACK_QUESTIONS
-        fallback = True
-
-    session.state.base_questions = questions
-    session.state.total_questions = len(questions)
-    logger.debug("Planned %d questions: %s", len(questions), questions)
-
-    if fallback:
         begin_msg = (
             "Plan parsing failed. Using these fallback questions:\n"
             + "\n".join(f"- {q}" for q in questions)
             + "\n\nPlan received. Begin the interview."
         )
-    else:
-        begin_msg = "Plan received. Begin the interview."
+
+    session.state.base_questions = questions
+    session.state.total_questions = len(questions)
+    logger.debug("Planned %d questions: %s", len(questions), questions)
 
     session.messages.append(Message(role="user", content=begin_msg))
     logger.debug("Post-plan: %d questions planned", len(questions))
@@ -184,8 +185,13 @@ def _verdict_phase(session: InterviewSession, started_at: float) -> InterviewRes
             )
             if usage is not None:
                 session.usages.append(usage)
-        except (MalformedResponseError, TruncatedResponseError):
+        except (MalformedResponseError, TruncatedResponseError) as exc:
             logger.exception("Failed to parse verdict, using fallback")
+
+            # Bill the failed (and retried) attempts even though the verdict was unusable.
+            if exc.usage is not None:
+                session.usages.append(exc.usage)
+
             verdict = Verdict(
                 verdict="maybe",
                 overall_rating=5.0,

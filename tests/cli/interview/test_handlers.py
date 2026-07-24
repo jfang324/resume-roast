@@ -718,6 +718,8 @@ def test_plan_parse_failure_exhausts_retries_then_falls_back(
 
     assert result.exit_code == 0
     assert "took ownership" in result.output  # the fallback opener
+    # Both discarded plan attempts are still billed (5 calls * 2,000), not dropped.
+    assert "10,000 input tokens" in result.output
 
 
 @pytest.mark.usefixtures("saved_key")
@@ -775,6 +777,8 @@ def test_verdict_parse_failure_exhausts_retries_then_falls_back(
     assert result.exit_code == 0
     assert "INTERVIEW REPORT" in result.output
     assert "parsing error" in result.output  # the fallback verdict's summary
+    # Both discarded verdict attempts are still billed (5 calls * 2,000), not dropped.
+    assert "10,000 input tokens" in result.output
 
 
 @pytest.mark.usefixtures("saved_key")
