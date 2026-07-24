@@ -33,6 +33,10 @@ class Limits:
     answer's fact-check."""
     max_follow_ups_per_cycle: int = 2
     """After 2 follow-ups the question is done; evaluate and move on."""
+    max_critical_failures: int = 2
+    """Critical-failure evaluations that end the interview early. Two strikes:
+    one may be an off day, a second is a pattern not worth spending the
+    remaining questions on."""
 
 
 @dataclass(frozen=True)
