@@ -81,10 +81,12 @@ def test_retries_a_malformed_response_with_feedback() -> None:
 def test_gives_up_after_the_second_malformed_response() -> None:
     client = _ScriptedClient([_completion("bad one"), _completion("bad two")])
 
-    with pytest.raises(MalformedResponseError, match="bad two is unacceptable"):
+    with pytest.raises(MalformedResponseError, match="bad two is unacceptable") as exc_info:
         structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert len(client.calls) == 2
+    # Both billed attempts stay accounted for so a caller that falls back can bill them.
+    assert exc_info.value.usage == Usage(prompt_tokens=200, completion_tokens=100, total_tokens=300)
 
 
 def test_retries_a_truncated_response_as_sent() -> None:
@@ -103,10 +105,28 @@ def test_gives_up_after_the_second_truncation() -> None:
         [TruncatedResponseError("hit the limit"), TruncatedResponseError("again")]
     )
 
-    with pytest.raises(TruncatedResponseError, match="again"):
+    with pytest.raises(TruncatedResponseError, match="again") as exc_info:
         structured_completion(client, _MESSAGES, _parse, temperature=0.0)
 
     assert len(client.calls) == 2
+    # Neither truncation returned a completion, so there is nothing to bill.
+    assert exc_info.value.usage is None
+
+
+def test_a_truncation_give_up_still_bills_an_earlier_parsed_attempt() -> None:
+    client = _ScriptedClient(
+        [
+            _completion("bad draft"),  # billed, then malformed -> parse retry
+            TruncatedResponseError("hit the limit"),  # truncation retry
+            TruncatedResponseError("again"),  # truncation budget spent -> give up
+        ]
+    )
+
+    with pytest.raises(TruncatedResponseError, match="again") as exc_info:
+        structured_completion(client, _MESSAGES, _parse, temperature=0.0)
+
+    # The malformed first attempt reported usage before the retries truncated.
+    assert exc_info.value.usage == _USAGE
 
 
 def test_truncation_does_not_consume_the_parse_retry() -> None:

@@ -1,8 +1,18 @@
 """Errors raised by API clients, split by what the user can do about them."""
 
+from resume_roast.integrations.types import Usage
+
 
 class ApiError(Exception):
     """Base for all API failures."""
+
+    usage: Usage | None = None
+    """Tokens billed before this failure, when a retry loop tracked them.
+
+    ``structured_completion`` sets this before it gives up, so a caller that
+    catches the error and falls back can still record the cost of the
+    attempts that were made. None when nothing tracked usage.
+    """
 
 
 class AuthenticationError(ApiError):

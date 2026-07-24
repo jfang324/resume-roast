@@ -34,12 +34,15 @@ def structured_completion[T](
     appended to the conversation; a truncated response is retried as sent
     (re-asking with feedback just truncates again), on a separate budget so
     truncation never consumes the parse retry. Usage is summed across every
-    attempt that returned, so cost reporting stays honest.
+    attempt that returned, so cost reporting stays honest — on success it is
+    returned, and when the retry budget is spent it is set on the raised
+    error's ``usage`` so a caller that falls back can still bill for it.
 
     Raises:
         ApiError: transport errors from the client propagate untouched;
             `TruncatedResponseError` or `MalformedResponseError` once the
-            retry budget for that failure mode is exhausted.
+            retry budget for that failure mode is exhausted, each carrying the
+            usage accumulated before it gave up on its ``usage`` attribute.
     """
     conversation = list(messages)
     usages: list[Usage] = []
@@ -51,9 +54,10 @@ def structured_completion[T](
         try:
             completion = client.prompt(conversation, temperature=temperature)
 
-        except TruncatedResponseError:
+        except TruncatedResponseError as exc:
             truncation_attempts += 1
             if truncation_attempts > _MAX_RETRIES:
+                exc.usage = total_usage(usages)
                 raise
 
             continue
@@ -68,6 +72,7 @@ def structured_completion[T](
             parse_attempts += 1
             _log_malformed(exc, completion.text)
             if parse_attempts > _MAX_RETRIES:
+                exc.usage = total_usage(usages)
                 raise
 
             _append_feedback(conversation, completion.text, exc)
