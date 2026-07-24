@@ -670,6 +670,114 @@ def test_multiple_questions_score_accumulation(
 
 
 @pytest.mark.usefixtures("saved_key")
+def test_plan_parse_failure_retries_then_uses_the_planned_questions(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A malformed plan is retried; the recovered plan drives the interview.
+
+    The retry must reach a valid plan before the fallback questions do, so the
+    interview asks "Q one?" (planned) rather than the fixed fallback opener.
+    """
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            "not valid json",  # plan attempt 1 -> malformed, retried with feedback
+            _plan_json(),  # plan retry -> parses
+            json.dumps({"tool": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="answer one\n/exit\n")
+
+    assert result.exit_code == 0
+    assert "Q one?" in result.output
+    assert "took ownership" not in result.output  # the fallback opener never appeared
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_plan_parse_failure_exhausts_retries_then_falls_back(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two malformed plans exhaust the retry budget; fallback questions take over."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            "not valid json",  # plan attempt 1
+            "still not valid",  # plan retry -> budget spent, fall back
+            json.dumps({"tool": "evaluate"}),
+            _scores_json(),
+            _verdict_json(),
+        ],
+    )
+
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="answer one\n/exit\n")
+
+    assert result.exit_code == 0
+    assert "took ownership" in result.output  # the fallback opener
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_verdict_parse_failure_retries_then_uses_the_recovered_verdict(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A malformed verdict is retried; the recovered verdict reaches the report."""
+    good_verdict = json.dumps(
+        {
+            "verdict": "hire",
+            "overall_rating": 8.0,
+            "summary": "Strong candidate.",
+            "strengths": [],
+            "growth_areas": [],
+        }
+    )
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"tool": "conclude"}),
+            _scores_json(),
+            "not a verdict",  # verdict attempt 1 -> malformed, retried
+            good_verdict,  # verdict retry -> parses
+        ],
+    )
+
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="only answer\n")
+
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+    assert "8.0" in result.output  # the recovered rating, not the fallback's 5.0
+
+
+@pytest.mark.usefixtures("saved_key")
+def test_verdict_parse_failure_exhausts_retries_then_falls_back(
+    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two malformed verdicts exhaust the budget; the report still renders."""
+    monkeypatch.setattr(
+        _FakeClient,
+        "texts",
+        [
+            _plan_json(),
+            json.dumps({"tool": "conclude"}),
+            _scores_json(),
+            "not a verdict",  # verdict attempt 1
+            "still not a verdict",  # verdict retry -> budget spent, fall back
+        ],
+    )
+
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="only answer\n")
+
+    assert result.exit_code == 0
+    assert "INTERVIEW REPORT" in result.output
+    assert "parsing error" in result.output  # the fallback verdict's summary
+
+
+@pytest.mark.usefixtures("saved_key")
 def test_report_flag_writes_the_markdown_report(
     sample_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

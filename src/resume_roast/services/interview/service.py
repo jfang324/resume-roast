@@ -5,11 +5,14 @@ display, `run()` owns the orchestration — the plan phase, the per-question
 ReAct cycles, and the closing verdict.
 """
 
+import json
 import logging
 import time
 from pathlib import Path
 
+from resume_roast.integrations.errors import MalformedResponseError, TruncatedResponseError
 from resume_roast.integrations.llm_client import LlmClient
+from resume_roast.integrations.structured import structured_completion
 from resume_roast.integrations.types import Message
 from resume_roast.integrations.usage import total_usage
 from resume_roast.prompts.interview.builder import (
@@ -109,21 +112,35 @@ def run(
 
 
 def _plan_phase(session: InterviewSession) -> None:
-    """Generate base questions from the LLM. The caller's spinner covers this."""
+    """Generate base questions from the LLM. The caller's spinner covers this.
+
+    A malformed plan is retried once with feedback before the fallback
+    questions take over; transport and auth failures propagate, ending the
+    session, since retrying won't help.
+    """
     logger.debug("Starting planning phase")
     session.messages.append(Message(role="user", content=build_plan_prompt()))
-    completion = session.client.prompt(session.messages, temperature=PLANNING_TEMPERATURE)
-    if completion.usage is not None:
-        session.usages.append(completion.usage)
 
-    session.messages.append(Message(role="assistant", content=completion.text))
-
-    fallback = None
+    fallback = False
     try:
-        questions = parse_plan(completion.text)
-    except Exception:
+        questions, usage = structured_completion(
+            session.client, session.messages, parse_plan, temperature=PLANNING_TEMPERATURE
+        )
+        if usage is not None:
+            session.usages.append(usage)
+
+        # structured_completion hides the raw reply, so record the accepted plan
+        # as the canonical JSON the model was asked to emit — the rest of the
+        # interview reads the transcript, not the questions list. Only on the
+        # success path: synthesizing one on fallback would show the model a
+        # valid plan it never sent, right before being told its plan failed.
+        session.messages.append(
+            Message(role="assistant", content=json.dumps({"questions": questions}))
+        )
+    except (MalformedResponseError, TruncatedResponseError):
         logger.exception("Failed to parse plan, using fallback questions")
-        fallback = questions = _FALLBACK_QUESTIONS
+        questions = _FALLBACK_QUESTIONS
+        fallback = True
 
     session.state.base_questions = questions
     session.state.total_questions = len(questions)
@@ -159,17 +176,15 @@ def _verdict_phase(session: InterviewSession, started_at: float) -> InterviewRes
     normalized = {cid: round(score / q_answered, 1) for cid, score in session.state.scores.items()}
     prompt = build_verdict_prompt(normalized, max_per, render_competency_text())
 
+    verdict_messages = [*session.messages, Message(role="user", content=prompt)]
     with session.renderer.busy("computing verdict..."):
-        completion = session.client.prompt(
-            [*session.messages, Message(role="user", content=prompt)],
-            temperature=TURN_TEMPERATURE,
-        )
-        if completion.usage is not None:
-            session.usages.append(completion.usage)
-
         try:
-            verdict = parse_verdict(completion.text)
-        except Exception:
+            verdict, usage = structured_completion(
+                session.client, verdict_messages, parse_verdict, temperature=TURN_TEMPERATURE
+            )
+            if usage is not None:
+                session.usages.append(usage)
+        except (MalformedResponseError, TruncatedResponseError):
             logger.exception("Failed to parse verdict, using fallback")
             verdict = Verdict(
                 verdict="maybe",
