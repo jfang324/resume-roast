@@ -14,8 +14,6 @@ from resume_roast.utils.extraction.docx_parser import DocxParser
 from resume_roast.utils.extraction.errors import UnreadableDocumentError
 from resume_roast.utils.extraction.types import ParsedResume
 
-_LINK_URI = "https://github.com/janedoe"
-
 
 def _build_sample_document() -> Document:
     """Build an in-memory DOCX resume with the fields the parser tests against."""
@@ -24,7 +22,7 @@ def _build_sample_document() -> Document:
     document.add_heading("Experience", level=2)
     document.add_paragraph("Roasted resumes at Acme Corp")
     document.add_heading("Education", level=2)
-    document.add_paragraph(f"Portfolio: {_LINK_URI}")
+    document.add_paragraph("BS Computer Science, State University")
     document.core_properties.author = "unit-test"
     return document
 
@@ -73,8 +71,8 @@ def test_metadata_extracts_creator_and_records_dates(parsed: ParsedResume) -> No
     assert isinstance(metadata.modified, str) and "T" in metadata.modified
 
 
-def test_metadata_collects_links(parsed: ParsedResume) -> None:
-    assert (_LINK_URI,) == parsed.metadata.links
+def test_metadata_leaves_links_empty(parsed: ParsedResume) -> None:
+    assert parsed.metadata.links == ()
 
 
 def test_blank_core_field_normalizes_to_none(tmp_path: Path) -> None:

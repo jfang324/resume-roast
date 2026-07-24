@@ -1,15 +1,13 @@
 """DOCX -> `ParsedResume` extraction built on mammoth."""
 
-# DOCX has no fixed page geometry, so `DocumentMetadata.pages` stays empty.
-# Mammoth converts hyperlinks to bare URL strings, so we mine the resulting
-# Markdown for both `[text](url)` and standalone URLs instead of inspecting
-# the underlying relationships part.
+# DOCX has no fixed page geometry, so `DocumentMetadata.pages` stays empty,
+# and with no page-layout statistics block for the prompt to carry them, the
+# document's hyperlinks would go unused — so they are left unextracted.
 #
 # Mammoth ships without a full type stub; the values we use are narrowed
 # explicitly below.
 # pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownVariableType=false
 
-import re
 import zipfile
 from pathlib import Path
 from typing import cast
@@ -21,15 +19,6 @@ from defusedxml.ElementTree import fromstring
 from resume_roast.utils.extraction._helpers import none_when_blank
 from resume_roast.utils.extraction.errors import UnreadableDocumentError
 from resume_roast.utils.extraction.types import DocumentMetadata, ParsedResume
-
-_LINK_PATTERN = re.compile(r"\[(?:[^\]]*)\]\(([^)\s]+)\)")
-"""Markdown link form: captured group is the URL."""
-
-_BARE_URL_PATTERN = re.compile(r"https?://[^\s)<>]+")
-"""Bare URL form, possibly with mammoth's trailing backslash-escapes."""
-
-_MAMMOTH_ESCAPED_PUNCT = re.compile(r"\\([\W_])")
-"""A backslash before any char `re` considers non-word/underscore (mammoth's escape)."""
 
 # OPC part paths from ECMA-376 (the Office Open XML standard, also
 # ISO/IEC 29500-1). Every conforming .docx is a zip archive holding
@@ -84,19 +73,6 @@ def _read_doc_properties(path: Path) -> tuple[dict[str, str], dict[str, str]]:
         return {}, {}
 
 
-def _clean_url(url: str) -> str:
-    """Unescape mammoth's backslash-escaped URL punctuation."""
-    return _MAMMOTH_ESCAPED_PUNCT.sub(r"\1", url)
-
-
-def _extract_links(markdown: str) -> tuple[str, ...]:
-    """Mine the rendered Markdown for hyperlinks written by mammoth."""
-    bracketed = {_clean_url(m) for m in _LINK_PATTERN.findall(markdown)}
-    bare = {_clean_url(match.rstrip(",;!?.")) for match in _BARE_URL_PATTERN.findall(markdown)}
-
-    return tuple(sorted(bracketed | bare))
-
-
 class DocxParser:
     """Implements `DocumentParser` for DOCX files.
 
@@ -135,7 +111,7 @@ class DocxParser:
             producer=none_when_blank(app_props.get("Application")),
             created=none_when_blank(core_props.get("created")),
             modified=none_when_blank(core_props.get("modified")),
-            links=_extract_links(markdown),
+            links=(),
             pages=(),
         )
 
