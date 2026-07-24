@@ -57,6 +57,21 @@ Configuration is stored in `~/.resume-roast/`.
 
 ## Usage
 
+### Commands
+
+| Command                       | Arguments & options                    | Description                                                            |
+| ----------------------------- | -------------------------------------- | --------------------------------------------------------------------- |
+| `evaluate <path>`             | `<path>` — PDF or DOCX resume          | Roast a resume: scores, strengths/weaknesses, and rewrite suggestions |
+| `interview <path>`            | `<path>` — PDF or DOCX resume<br>`--report` — save a Markdown report to `~/.resume-roast/interview-reports/` | Run an agentic behavioral interview and score the answers |
+| `refine <bullet>`             | `<bullet>` — the bullet text to coach  | Coach a single resume bullet through a back-and-forth chat             |
+| `generate-block`              | *(none)*                               | Interview you about a role or project, then generate a resume block    |
+| `config credentials`          | *(none)*                               | Set the API key for each provider                                     |
+| `config settings`             | *(none)*                               | Choose the model, persona, and seniority level                        |
+| `show credentials`            | *(none)*                               | Print saved API keys, masked                                          |
+| `show settings`               | *(none)*                               | Print the current model, persona, and level                          |
+
+`--debug` is available on every command; it writes full debug logs (including raw prompts and responses containing resume content) to `~/.resume-roast/logs/debug.log`.
+
 ### Evaluate a Resume
 
 ```sh
@@ -102,7 +117,11 @@ Opens an interactive chat. The LLM interviews you about a role or project, askin
 resume-roast interview path/to/resume.pdf
 ```
 
-Starts an agentic behavioral interview. The LLM generates questions tailored to your resume, asks them one at a time, fact-checks your answers against the resume, and probes deeper with follow-ups when needed. After all questions, produces a competency report with per-category scores, strengths, and growth areas. Available commands:
+Starts an agentic behavioral interview. The LLM generates questions tailored to your resume, asks them one at a time, fact-checks your answers against the resume, and probes deeper with follow-ups when needed. After all questions, produces a competency report with per-category scores, strengths, and growth areas.
+
+Pass `--report` to also save a detailed Markdown copy — verdict, per-question evidence, and fact-checks — under `~/.resume-roast/interview-reports/`. The file is named by timestamp and resume (e.g. `20260723-142530-resume.md`), so repeated runs accumulate without overwriting. Nothing is written if the interview ends before any answer is scored.
+
+Available commands:
 
 | Command        | Action                       |
 | -------------- | ---------------------------- |
