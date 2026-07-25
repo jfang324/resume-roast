@@ -68,9 +68,14 @@ class QuestionRecord:
 
 @dataclass
 class InterviewState:
-    """Lifetime = whole interview: the accumulated scores and question plan."""
+    """Lifetime = whole interview: the accumulated scores and question plan.
+
+    ``resume_markdown`` and ``level`` are set-once inputs the tools read on
+    every cycle, carried here rather than threaded through each call.
+    """
 
     resume_markdown: str
+    level: str
     base_questions: list[str]
     competencies: list[str]
     scores: dict[str, int]

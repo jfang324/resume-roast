@@ -1,8 +1,9 @@
 """Builds the evaluate tool's prompt text and its model-facing result rendering."""
 
+from resume_roast.prompts.interview.levels import render_level
 from resume_roast.prompts.interview.tools.evaluate.schema import EvaluateOutput
 
-SYSTEM = """\
+_INTRO = """\
 You are an interview evaluator. Score the candidate's answer across the
 defined competency framework.
 
@@ -15,8 +16,14 @@ the JSON fields in the same order:
 1. State the answer's overall strengths, then its gaps.
 2. For each competency, write a rationale citing specific evidence from the
    answer, THEN assign that competency's score based on the rationale.
-3. Decide critical_failure last, informed by everything above.
+3. Decide critical_failure last, informed by everything above."""
 
+_CALIBRATION = """\
+Score against what this level can plausibly demonstrate: the bands below are
+relative to it, not absolute. A strong intern answer and a strong senior
+answer both earn 7-8. Never mark missing seniority as a missing competency."""
+
+_SCORING = """\
 For each competency, assign a score of 1-10:
 - 1-3: Poor — the answer does not demonstrate this competency
 - 4-6: Adequate — some evidence but lacks depth or clarity
@@ -46,6 +53,18 @@ Return a JSON object with EXACTLY this structure, with fields in this order:
 
 Within each competency object the rationale MUST come before the score.
 You MUST assess ALL competencies. Do not omit any."""
+
+
+def build_system(level: str) -> str:
+    """Full evaluator prompt, calibrated to the candidate's role level.
+
+    The level block sits directly above the score bands so the bands are read
+    in its light. The competency descriptions are written for an established
+    IC, so an intern scored against them unqualified loses points for
+    seniority they were never expected to have.
+    """
+    return "\n\n".join([_INTRO, render_level(level), _CALIBRATION, _SCORING])
+
 
 EVALUATE_DESCRIPTION = """\
 ## Tool: evaluate

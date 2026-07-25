@@ -42,7 +42,7 @@ def interview(
     )
     input_provider = ConsoleInputProvider()
 
-    result = run(client, path, renderer, input_provider)
+    result = run(client, path, settings.level, renderer, input_provider)
 
     if not report:
         return

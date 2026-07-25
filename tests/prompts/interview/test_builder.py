@@ -30,7 +30,7 @@ def _parsed() -> ParsedResume:
 
 def test_system_prompt_advertises_exactly_the_loop_vocabulary() -> None:
     """A tool the prompt offers but dispatch rejects wastes a turn on UnknownTool."""
-    prompt = build_interview_system_prompt(_parsed())
+    prompt = build_interview_system_prompt(_parsed(), "mid")
 
     advertised = set(re.findall(r'"tool":\s*"(\w+)"', prompt))
 

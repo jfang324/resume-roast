@@ -181,6 +181,7 @@ def _run_evaluate(
         try:
             eval_output, usage = evaluate_answer(
                 session.client,
+                session.state.level,
                 qs.question,
                 [e.answer for e in qs.exchanges],
                 qs.verify_results,

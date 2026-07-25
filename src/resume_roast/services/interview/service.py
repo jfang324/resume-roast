@@ -53,10 +53,14 @@ _FALLBACK_QUESTIONS = [
 def run(
     client: LlmClient,
     path: Path,
+    level: str,
     renderer: InterviewRenderer,
     input_provider: InputProvider,
 ) -> InterviewResult | None:
     """Interview the candidate over the resume at *path*, ending in a verdict.
+
+    ``level`` calibrates both the questions asked and the scoring applied to
+    the answers.
 
     Returns the verdict-phase result, or None when the session ended before
     any answer was evaluated — by /exit, EOF, or interrupt alike — or when
@@ -73,10 +77,11 @@ def run(
         client=client,
         renderer=renderer,
         input_provider=input_provider,
-        messages=[Message(role="system", content=build_interview_system_prompt(parsed))],
+        messages=[Message(role="system", content=build_interview_system_prompt(parsed, level))],
         usages=[],
         state=InterviewState(
             resume_markdown=parsed.markdown,
+            level=level,
             base_questions=[],
             competencies=[c.id for c in COMPETENCIES],
             scores={c.id: 0 for c in COMPETENCIES},
