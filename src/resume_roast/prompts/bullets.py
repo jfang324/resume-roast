@@ -6,6 +6,7 @@ BULLET_PRINCIPLES = """\
 - Every bullet must describe an accomplishment, not a routine task or job description — the resume is not the job description
 - One sentence per bullet, short enough to read at a glance; judge length by word count, not by rendered lines
 - Quantify with specific numbers, percentages, or metrics, placed early in the bullet
+- Scale is quantification too: throughput, user or record counts, data volume, latency, team size, and frequency are real numbers when no before/after improvement was ever measured
 - Use digits, not spelled-out numbers (8, not eight)
 - Start with a strong action verb: past tense for past roles, present tense for a role the candidate still holds
 - Center the engineering skill, not the tool: what was designed, decided, and solved, with the software as supporting detail

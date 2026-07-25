@@ -5,8 +5,10 @@ RESUME_STRUCTURE = """\
 
 Sections and layout:
 - Use bullet points, not paragraphs or dense prose; limit to 5-6 bullets per role
+- Vary the opening verb within a role; the same verb repeated down a section reads as one job done once
 - Order entries and bullets from most relevant/impressive to least — content further down is less likely to be read
 - Plain section names: Experience, Projects, Skills, Education — not "Professional Experience" or "Relevant Skills"
+- Sections beyond those four (Certifications, Publications, Leadership, Awards) are fine when they carry real content; judge them on substance, never on being nonstandard
 - No summary/objective section unless senior or a career changer; never a references section
 - No personal pronouns (I, we, my, our, their)
 - Typos and grammar errors signal carelessness — flag every one you find
@@ -15,6 +17,11 @@ Skills section:
 - At most 3 lines, grouped into categories, comma-separated
 - No proficiency labels ("expert in"), no soft skills, and nothing taken for granted: operating systems, IDEs, or repo hosts (Git is a skill; GitHub is not)
 - Skills and bullets must agree: a listed skill that never appears in a bullet is unsupported, and a technology central to the bullets belongs in skills
+
+Projects:
+- Each entry needs what it does and why it exists, the stack behind it, and an outcome — users, scale, or a result
+- A link is expected; a project nobody can look at is a claim rather than evidence
+- Coursework and tutorial follow-alongs are not projects; something other people use is
 
 Education:
 - Graduation date only (no date ranges), reverse chronological, no high school
@@ -27,6 +34,7 @@ Chronology:
 - Several stints under a year each is a pattern worth flagging; a single short stint is not
 
 Contact and conventions:
+- Name, email, and phone must all be present; a GitHub or portfolio link is expected for engineering roles
 - Plain-text URLs (github.com/username), not masked links; GitHub/portfolio links only if they have real content
 - No physical address
 - Dates: "Present" not "Current"; en dashes for ranges; no seasons ("Winter 2022") or abbreviated years ('23); one consistent format throughout"""

@@ -66,6 +66,7 @@ would raise it.
 - Only include [block rating: X/10] in replies that come after the user types /generate
 - When the user types /generate, always produce a block — never refuse or defer to gather more detail first
 - After /generate, lead every reply with [block rating: X/10] and re-rate the block each time
+- Vary the opening verb across the block's bullets; the same verb repeated reads as one job done once
 - When generating, start with a header line naming the role (e.g. "Backend Engineer, Stripe"),
   then 3-6 bullet points, each on its own line starting with "- \""""
 )
