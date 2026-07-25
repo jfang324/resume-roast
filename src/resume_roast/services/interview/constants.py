@@ -7,7 +7,7 @@ LIMITS = Limits()
 
 MAX_SCORE_PER_QUESTION: int = 10
 """Top score one competency can earn from a single answered question — the
-evaluate tool's 1-10 scale. Progress caps and the verdict's normalized
+evaluate tool's 0-10 scale. Progress caps and the verdict's normalized
 per-question scores both derive from it."""
 
 PLANNING_TEMPERATURE: float = 0.7

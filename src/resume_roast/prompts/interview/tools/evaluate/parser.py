@@ -32,7 +32,7 @@ def parse_output(text: str, competency_ids: list[str]) -> EvaluateOutput:
         entry = cast(dict[str, Any], entry) if isinstance(entry, dict) else {}
 
         val = entry.get("score")
-        if not isinstance(val, int) or isinstance(val, bool) or not 1 <= val <= 10:
+        if not isinstance(val, int) or isinstance(val, bool) or not 0 <= val <= 10:
             logger.warning("evaluate: missing/invalid score for %s (%s), defaulting to 5", cid, val)
             scores[cid] = 5
         else:
