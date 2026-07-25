@@ -13,14 +13,16 @@ _CATEGORY_GUIDANCE: dict[str, str] = {
         "looking for. Ambiguous wording, vague responsibilities without context, and "
         "missing details that force the reader to guess hurt clarity. So does poor "
         "information architecture — ungrouped skills, inconsistent headings, buried "
-        "contact info, or sections that appear in unexpected places. A clear resume "
-        "answers obvious questions before they are asked and puts the right information "
-        "where the reader expects it"
+        "contact info, or sections that appear in unexpected places. So does length: "
+        "a resume running past what its level warrants buries what matters in what "
+        "does not. A clear resume answers obvious questions before they are asked and "
+        "puts the right information where the reader expects it"
     ),
     "Polish": (
         "surface professionalism that survives text extraction — typos, grammar "
         "errors, inconsistent tense or capitalization, inconsistent date formats, "
-        "missing periods, and length. Not visual layout, which you cannot see"
+        "and missing periods. Not visual layout, which you cannot see, and not "
+        "length, which belongs to Clarity"
     ),
 }
 
