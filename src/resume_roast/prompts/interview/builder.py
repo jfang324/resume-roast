@@ -143,10 +143,8 @@ communicates, and behaves — not their resume itself."""
 
 
 def _competency_block() -> str:
-    lines = ["## Competency Framework", ""]
-    lines.extend(f"- {c.label} ({c.id}): {c.description}" for c in COMPETENCIES)
-
-    return "\n".join(lines)
+    """Head the shared competency rendering; the tools read the same text."""
+    return f"## Competency Framework\n\n{render_competency_text()}"
 
 
 def _output_format() -> str:
