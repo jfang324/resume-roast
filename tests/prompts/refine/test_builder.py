@@ -12,12 +12,23 @@ from resume_roast.prompts.refine.builder import (
 # -- system prompt -----------------------------------------------------------
 
 
-def test_system_has_three_sections() -> None:
+def test_system_has_four_sections() -> None:
     system = build_system()
 
     assert "## Context" in system
     assert "## Bullet Writing Principles" in system
+    assert "## Bullet Rating Scale" in system
     assert "## Rules" in system
+
+
+def test_system_defines_the_bullet_rating_scale() -> None:
+    """The header re-rates every turn, so the scale behind it must be defined."""
+    system = build_system()
+
+    assert "## Bullet Rating Scale" in system
+    assert "9-10" in system
+    # The header advertises 0-10, so the bottom of the range must be defined.
+    assert "- 0:" in system
 
 
 def test_system_includes_bullet_principles() -> None:
