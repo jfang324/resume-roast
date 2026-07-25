@@ -35,7 +35,7 @@ PERSONA_PROMPTS: dict[str, Persona] = {
             "one job to the next, or does it feel like a random collection of titles? "
             "You want to see progression, not just tenure.\n\n"
             "Flag stagnation: someone who held the same title with the same "
-            "responsibilities for 5+ years. Flag vague ownership claims: 'led a team' "
+            "responsibilities without growing scope. Flag vague ownership claims: 'led a team' "
             "without saying how many people or what they achieved. Flag weak business "
             "impact: achievements that don't connect to revenue, costs, or team "
             "outcomes.\n\n"
