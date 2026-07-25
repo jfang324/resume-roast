@@ -128,7 +128,7 @@ Return a JSON object with the fields in exactly this order:
   "strengths": ["strength 1", ...],
   "growth_areas": ["area 1", ...],
   "verdict": "hire" | "maybe" | "dont_hire",
-  "overall_rating": <float, 1.0-10.0>
+  "overall_rating": <float, 0.0-10.0>
 }}"""
 
 
