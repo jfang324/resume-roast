@@ -31,7 +31,7 @@ def test_scoring_is_calibrated_before_the_bands_are_read() -> None:
     system = build_system("intern")
 
     assert "Internship candidate" in system
-    assert system.index("Internship candidate") < system.index("assign a score of 1-10")
+    assert system.index("Internship candidate") < system.index("assign an integer score")
 
 
 def test_every_level_builds_a_calibrated_prompt() -> None:

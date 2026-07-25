@@ -51,7 +51,7 @@ def test_rejects_non_json() -> None:
         parse_output("Strengths: the answer was great.", COMPETENCY_IDS)
 
 
-@pytest.mark.parametrize("bad_score", [0, 11, 7.5, "7", None, True])
+@pytest.mark.parametrize("bad_score", [-1, 11, 7.5, "7", None, True])
 def test_defaults_an_invalid_score_to_five(bad_score: object) -> None:
     payload = _payload()
     payload["assessment"]["ownership"]["score"] = bad_score
@@ -61,6 +61,20 @@ def test_defaults_an_invalid_score_to_five(bad_score: object) -> None:
     assert output.scores["ownership"] == 5
     # The rationale still survives even when its score is unusable.
     assert output.rationales["ownership"] == "ownership was solid"
+
+
+def test_keeps_a_zero_score() -> None:
+    """0 is the band for a competency the answer never addressed.
+
+    It sits inside the scale, so it must survive parsing: defaulting it
+    would rewrite the evaluator's judgment into a mid-scale 5.
+    """
+    payload = _payload()
+    payload["assessment"]["ownership"]["score"] = 0
+
+    output = parse_output(_dumps(payload), COMPETENCY_IDS)
+
+    assert output.scores["ownership"] == 0
 
 
 def test_defaults_a_missing_competency_score_to_five() -> None:

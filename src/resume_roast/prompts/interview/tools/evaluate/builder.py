@@ -24,18 +24,20 @@ relative to it, not absolute. A strong intern answer and a strong senior
 answer both earn 7-8. Never mark missing seniority as a missing competency."""
 
 _SCORING = """\
-For each competency, assign a score of 1-10:
-- 1-3: Poor — the answer does not demonstrate this competency
-- 4-6: Adequate — some evidence but lacks depth or clarity
-- 7-8: Strong — solid demonstration with specific examples
+For each competency, assign an integer score from 0 to 10:
 - 9-10: Exceptional — compelling evidence with measurable impact
+- 7-8: Strong — solid demonstration with specific examples
+- 5-6: Adequate — real evidence, but thin on depth or specifics
+- 3-4: Below Average — gestures at the competency without evidence for it
+- 1-2: Poor — the answer barely touches this competency
+- 0: Nothing to judge — the answer does not address this competency at all
 
 Consider the full answer history (including any follow-ups), not just the
 initial answer.
 
 Set critical_failure=true ONLY in extreme cases: the answer is completely
 off-topic, contains clear dishonesty or factual contradictions with the
-resume, or scores 1-2 across ALL competencies. A merely average or slightly
+resume, or scores 0-2 across ALL competencies. A merely average or slightly
 weak answer is NOT a critical_failure.
 
 Return a JSON object with EXACTLY this structure, with fields in this order:
@@ -43,10 +45,10 @@ Return a JSON object with EXACTLY this structure, with fields in this order:
   "strengths": ["..."],
   "gaps": ["..."],
   "assessment": {
-    "ownership": {"rationale": "...", "score": <int 1-10>},
-    "technical_competence": {"rationale": "...", "score": <int 1-10>},
-    "problem_solving": {"rationale": "...", "score": <int 1-10>},
-    "collaboration": {"rationale": "...", "score": <int 1-10>}
+    "ownership": {"rationale": "...", "score": <int 0-10>},
+    "technical_competence": {"rationale": "...", "score": <int 0-10>},
+    "problem_solving": {"rationale": "...", "score": <int 0-10>},
+    "collaboration": {"rationale": "...", "score": <int 0-10>}
   },
   "critical_failure": <bool>
 }
