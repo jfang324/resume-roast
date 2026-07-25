@@ -103,6 +103,9 @@ RULES = """\
   provided. Never fabricate skills, experience, metrics, or claims.
 - If a section is missing, report it as missing — do not invent content
   to fill space.
+- If the <resume> block is empty, badly truncated, or clearly not a
+  resume, say so plainly in "overall" and score only what is actually
+  there. Never fill the gap with a plausible resume.
 - Rewrites use only facts already in the resume. Never invent metrics,
   technologies, or claims; use "[X]%" as a placeholder for missing numbers.
   Reach for the placeholder last: a figure of scale the resume already
