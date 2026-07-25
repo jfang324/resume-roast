@@ -33,8 +33,11 @@ def parse_verdict(text: str) -> Verdict:
         )
 
     rating = data.get("overall_rating")
-    if not isinstance(rating, (int, float)) or not 1.0 <= rating <= 10.0:
-        raise MalformedResponseError(f"overall_rating must be a number 1.0-10.0, got {rating!r}")
+    if isinstance(rating, bool) or not isinstance(rating, (int, float)):
+        raise MalformedResponseError(f"overall_rating must be a number 0.0-10.0, got {rating!r}")
+
+    if not 0.0 <= rating <= 10.0:
+        raise MalformedResponseError(f"overall_rating must be a number 0.0-10.0, got {rating!r}")
 
     summary = data.get("summary", "")
     if not isinstance(summary, str) or not summary.strip():
