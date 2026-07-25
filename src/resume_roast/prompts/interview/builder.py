@@ -3,18 +3,24 @@
 from collections.abc import Mapping, Sequence
 
 from resume_roast.prompts.interview.competencies import COMPETENCIES
+from resume_roast.prompts.interview.levels import render_level
 from resume_roast.prompts.interview.tool_descriptions import TOOL_DESCRIPTIONS
 from resume_roast.utils.extraction.types import ParsedResume
 
 
-def build_interview_system_prompt(parsed: ParsedResume) -> str:
-    """Assemble the full system prompt for the interview session."""
+def build_interview_system_prompt(parsed: ParsedResume, level: str) -> str:
+    """Assemble the full system prompt for the interview session.
+
+    ``level`` sits with the competency framework it qualifies, so questions
+    are pitched at what the candidate could plausibly have done.
+    """
     # The rules close the prompt, after the resume — untrusted candidate text
     # never sits in the final, highest-recency position, and the loop's
     # contract is the last thing the model reads before the first question.
     sections = [
         _ROLE,
         _competency_block(),
+        render_level(level),
         TOOL_DESCRIPTIONS,
         _output_format(),
         _resume_block(parsed),
@@ -33,7 +39,9 @@ def build_plan_prompt() -> str:
     """
     return """\
 Generate 4-6 interview questions tailored to this candidate's resume and
-background. These should probe the competency areas.
+background. These should probe the competency areas, pitched at the
+Candidate Level above — ask about work someone at that level could
+plausibly have done.
 
 Return a JSON object:
 {

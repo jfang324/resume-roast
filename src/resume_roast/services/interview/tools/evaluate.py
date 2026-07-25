@@ -6,7 +6,7 @@ from functools import partial
 from resume_roast.integrations.llm_client import LlmClient
 from resume_roast.integrations.structured import structured_completion
 from resume_roast.integrations.types import Message, Usage
-from resume_roast.prompts.interview.tools.evaluate.builder import SYSTEM, build_user_message
+from resume_roast.prompts.interview.tools.evaluate.builder import build_system, build_user_message
 from resume_roast.prompts.interview.tools.evaluate.parser import parse_output
 from resume_roast.prompts.interview.tools.evaluate.schema import EvaluateOutput
 
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 def evaluate_answer(
     client: LlmClient,
+    level: str,
     original_question: str,
     answer_history: list[str],
     verify_results: str,
@@ -23,10 +24,15 @@ def evaluate_answer(
 ) -> tuple[EvaluateOutput, Usage | None]:
     """Score the answer cycle against every competency, one LLM call.
 
+    ``level`` calibrates the scoring: the competency descriptions describe an
+    established IC, so the bands mean different things across the levels.
+
     Raises:
         ValueError: when a required input is empty.
         ApiError: transport and response failures, including malformed output.
     """
+    if not level.strip():
+        raise ValueError("level cannot be empty")
     if not original_question.strip():
         raise ValueError("original_question cannot be empty")
     if not answer_history:
@@ -37,7 +43,7 @@ def evaluate_answer(
         raise ValueError("competency_ids cannot be empty")
 
     messages = [
-        Message(role="system", content=SYSTEM),
+        Message(role="system", content=build_system(level)),
         Message(
             role="user",
             content=build_user_message(
