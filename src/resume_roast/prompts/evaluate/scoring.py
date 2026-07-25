@@ -1,15 +1,19 @@
-"""Scoring calibration: what is being judged, and the 1-10 bands to judge it on."""
+"""Scoring calibration: what is being judged, and the 0-10 bands to judge it on."""
 
 EVALUATION_PRIORITIES = """\
 ## What You Are Evaluating
 
 A resume has one job: convey competence for the target level. Every category
 is a lens on that question, and the overall score answers it directly — it is
-never an average of category scores.
+never an average of category scores. Reach it as a judgment: ask what the
+resume conveys as a whole, then check the number you land on against the
+category scores. Where they disagree sharply, the category scores are usually
+the ones worth revisiting.
 
 Categories are not equally weighted: Content carries most of the verdict
 (~60%), Clarity supports it (~30%) — a clear, scannable resume makes the
-content digestible — and Polish matters least (~10%).
+content digestible — and Polish matters least (~10%). These weights say how
+much each lens moves the verdict; they are not a formula to compute it with.
 Strong substance in a plain wrapper beats polish around weak substance."""
 
 SCORE_BANDS = """\
@@ -22,6 +26,11 @@ The bands below are calibration, not hard thresholds:
 - 5-6: Adequate — duties mixed with accomplishments, occasional metrics, some vague language
 - 3-4: Below Average — mostly task descriptions, few metrics, weak verbs or walls of text
 - 1-2: Poor — vague throughout, no quantification, missing sections
+- 0: Nothing usable — the category has no content to judge
+
+Where the Role Level section states its own score calibration, that
+calibration governs: the bands here describe the general shape of each band,
+not the bar this candidate is held to.
 
 The guidance below is calibration, not a checklist: score each issue by what
 it actually costs the reader, not by counting rule matches. Numeric

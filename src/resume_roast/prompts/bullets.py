@@ -7,7 +7,7 @@ BULLET_PRINCIPLES = """\
 - One sentence per bullet, short enough to read at a glance; judge length by word count, not by rendered lines
 - Quantify with specific numbers, percentages, or metrics, placed early in the bullet
 - Use digits, not spelled-out numbers (8, not eight)
-- Start with a strong past-tense action verb
+- Start with a strong action verb: past tense for past roles, present tense for a role the candidate still holds
 - Center the engineering skill, not the tool: what was designed, decided, and solved, with the software as supporting detail
 - Avoid sub-bullets; they clutter more than they clarify
 - Replace weak verbs: assisted, helped, participated, used, worked on
