@@ -4,7 +4,7 @@ All builders are pure functions of their inputs; session state (the current
 bullet) lives with the refine service's executor and is passed in explicitly.
 """
 
-from resume_roast.prompts.bullets import BULLET_PRINCIPLES
+from resume_roast.prompts.bullets import BULLET_PRINCIPLES, RATING_BANDS
 
 _SYSTEM = (
     """\
@@ -19,6 +19,17 @@ their resume.
 """
     + BULLET_PRINCIPLES
     + """\
+## Bullet Rating Scale
+
+Rate the bullet 0-10 by how convincingly it conveys competence. This is the
+scale the [current rating: X/10] header reports:
+"""
+    + RATING_BANDS
+    + """
+
+The rating is feedback: name what holds the bullet back without writing the
+replacement, unless the candidate asks for one.
+
 ## Rules
 
 - Lead every reply with the current state on one line:
@@ -34,7 +45,7 @@ their resume.
 
 
 def build_system() -> str:
-    """Three-section system prompt: Context / Bullet Writing Principles / Rules."""
+    """Four-section prompt: Context / Principles / Bullet Rating Scale / Rules."""
     return _SYSTEM
 
 

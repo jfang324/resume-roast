@@ -5,7 +5,7 @@ builder — the feature passes chat text through untouched, and the block in
 progress lives entirely in the conversation history.
 """
 
-from resume_roast.prompts.bullets import BULLET_PRINCIPLES
+from resume_roast.prompts.bullets import BULLET_PRINCIPLES, RATING_BANDS
 
 _SYSTEM = (
     """\
@@ -51,11 +51,9 @@ reply, reassess and re-rate the block, leading with: [block rating: X/10]
 
 Rate the block 0-10 by how convincingly its bullets convey competence. This is
 the scale the [block rating: X/10] header reports:
-- 9-10: Every bullet is an accomplishment, quantified with specific metrics; strong, varied action verbs; nothing vague
-- 7-8: Mostly accomplishment-focused with some quantification; a bullet or two could be sharper
-- 5-6: Duties mixed with accomplishments; sparse metrics; some weak verbs or vague phrasing
-- 3-4: Mostly task descriptions; few or no metrics; weak verbs or walls of text
-- 1-2: Vague throughout, no quantification
+"""
+    + RATING_BANDS
+    + """
 
 The rating is feedback, not a gate: /generate always produces a block, even a
 low-rated one. Use the score to tell the user how strong the block is and what

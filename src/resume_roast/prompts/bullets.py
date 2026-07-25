@@ -1,4 +1,4 @@
-"""Writing principles for individual resume bullet points."""
+"""Writing principles and the shared rating bands for resume bullet points."""
 
 BULLET_PRINCIPLES = """\
 ## Bullet Writing Principles
@@ -15,4 +15,17 @@ BULLET_PRINCIPLES = """\
 - Avoid filler adjectives and adverbs: excellent, innovative, expert, successfully, meticulously, strategically
 - No trailing period on bullet points
 
+"""
+
+RATING_BANDS = """\
+- 9-10: Accomplishment throughout, quantified with specific metrics; strong, varied action verbs; nothing vague
+- 7-8: Mostly accomplishment-focused with some quantification; could be sharper in a place or two
+- 5-6: Duties mixed with accomplishments; sparse metrics; some weak verbs or vague phrasing
+- 3-4: Mostly task description; few or no metrics; weak verbs or walls of text
+- 1-2: Vague throughout, no quantification
+- 0: Nothing to judge — no substantive content to rate yet"""
+"""The 0-10 bands behind every bullet rating the tool reports.
+
+Bands only, no heading: refine rates one bullet and generate-block rates a
+whole block, so each supplies its own heading and subject line above these.
 """
