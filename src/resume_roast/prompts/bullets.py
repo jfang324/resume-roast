@@ -4,7 +4,7 @@ BULLET_PRINCIPLES = """\
 ## Bullet Writing Principles
 
 - Every bullet must describe an accomplishment, not a routine task or job description — the resume is not the job description
-- One sentence per bullet, at most two lines
+- One sentence per bullet, short enough to read at a glance; judge length by word count, not by rendered lines
 - Quantify with specific numbers, percentages, or metrics, placed early in the bullet
 - Use digits, not spelled-out numbers (8, not eight)
 - Start with a strong past-tense action verb

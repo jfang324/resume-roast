@@ -22,9 +22,14 @@ or moved out of order.
 Statistics calibration: a full one-page resume typically runs 400-700
 words. Well under that reads as thin; well over reads as cramped. Low
 text coverage with few words means unused space the candidate could
-fill; high coverage with many words means a wall of text. When no
-statistics block is present, the source format does not expose layout —
-judge from the text alone and never treat the absence as thinness."""
+fill; high coverage with many words means a wall of text. A resume
+normally has no images: any count above zero is usually a headshot,
+company logos, or skill-rating graphics, which cost space, carry
+nothing a reader acts on, and often survive automated parsing poorly —
+flag their presence, but never describe what they depict, as you cannot
+see them. When no statistics block is present, the source format does
+not expose layout — judge from the text alone and never treat the
+absence as thinness."""
 
 
 def render_resume_input(parsed: ParsedResume) -> str:
