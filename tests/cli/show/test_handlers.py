@@ -3,7 +3,6 @@
 import dataclasses
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from resume_roast.cli.registry import build_subcommand_registry
@@ -16,14 +15,6 @@ app = build_subcommand_registry()
 runner = CliRunner()
 
 _TEST_KEY = "sk-ant-test-9876"
-
-
-@pytest.fixture(autouse=True)
-def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> Path:
-    monkeypatch.setattr("resume_roast.cli.show.handlers.storage_dir", lambda: tmp_path)
-    return tmp_path
 
 
 def test_show_credentials_reports_not_set_when_nothing_saved() -> None:

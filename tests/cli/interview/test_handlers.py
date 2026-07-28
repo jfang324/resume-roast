@@ -1,28 +1,20 @@
 """Tests for `resume-roast interview`."""
 
-# The fixture drives PyMuPDF's partially annotated document-building API.
-# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownVariableType=false, reportGeneralTypeIssues=false
-
 import json
 from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
-import pymupdf
 import pytest
 from typer.testing import CliRunner
 
 from resume_roast.cli.registry import build_subcommand_registry
 from resume_roast.integrations.errors import AuthenticationError
 from resume_roast.integrations.types import Completion, Message, Usage
-from resume_roast.persistence.credentials.store import CredentialsStore
-from resume_roast.persistence.credentials.types import Credentials
 from resume_roast.prompts.interview.competencies import COMPETENCIES
 
 app = build_subcommand_registry()
 runner = CliRunner()
-
-_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
 
 def _plan_json() -> str:
@@ -115,15 +107,6 @@ class _FakeClient:
 
 
 @pytest.fixture(autouse=True)
-def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> Path:
-    monkeypatch.setattr("resume_roast.cli.utils.storage_dir", lambda: tmp_path)
-    monkeypatch.setattr("resume_roast.cli.interview.handlers.storage_dir", lambda: tmp_path)
-    return tmp_path
-
-
-@pytest.fixture(autouse=True)
 def _fake_client(  # pyright: ignore[reportUnusedFunction]
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -136,23 +119,6 @@ def _fake_client(  # pyright: ignore[reportUnusedFunction]
     )
     monkeypatch.setattr(_FakeClient, "error", None)
     monkeypatch.setattr(_FakeClient, "last", None)
-
-
-@pytest.fixture
-def saved_key(tmp_path: Path) -> None:
-    credentials = Credentials(nvidia_api_key="nv-key")  # pragma: allowlist secret
-    CredentialsStore(tmp_path).save(credentials)
-
-
-@pytest.fixture
-def sample_pdf(tmp_path: Path) -> Path:
-    path = tmp_path / "sample.pdf"
-    with pymupdf.open() as doc:
-        page = doc.new_page()
-        page.insert_text((72, 80), "Jane Doe", fontsize=20)
-        page.insert_text((72, 120), "Engineer at Acme Corp", fontsize=11)
-        doc.save(path)
-    return path
 
 
 @pytest.mark.usefixtures("saved_key")
