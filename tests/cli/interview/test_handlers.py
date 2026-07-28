@@ -38,12 +38,12 @@ def _plan_json() -> str:
     )
 
 
-def _scores_json(critical_failure: bool = False) -> str:
+def _scores_json(critical_failure: bool = False, score: int = 7) -> str:
     return json.dumps(
         {
             "strengths": [],
             "gaps": [],
-            "assessment": {c.id: {"rationale": "solid", "score": 7} for c in COMPETENCIES},
+            "assessment": {c.id: {"rationale": "solid", "score": score} for c in COMPETENCIES},
             "critical_failure": critical_failure,
         }
     )
@@ -601,32 +601,34 @@ def test_empty_answer(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None
 
 
 @pytest.mark.usefixtures("saved_key")
-def test_multiple_questions_score_accumulation(
+def test_scores_average_across_questions_rather_than_taking_the_last(
     sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Scores from multiple questions accumulate."""
+    """Two questions scored 8 and 2 report 5.0 — the mean, not the latest.
+
+    Deliberately asymmetric: with equal scores an implementation that
+    overwrote each question's result with the next would look identical.
+    """
     monkeypatch.setattr(
         _FakeClient,
         "texts",
         [
             _plan_json(),
-            json.dumps({"tool": "verify", "claims": ["c1"]}),
-            _verify_json(),
             json.dumps({"tool": "evaluate"}),
-            _scores_json(),
+            _scores_json(score=8),
             json.dumps({"tool": "evaluate"}),
-            _scores_json(),
+            _scores_json(score=2),
             _verdict_json(),
         ],
     )
-    result = runner.invoke(
-        app,
-        ["interview", str(sample_pdf)],
-        input="\n".join(["a1", "a2"]) + "\n",
-    )
+
+    result = runner.invoke(app, ["interview", str(sample_pdf)], input="a1\na2\n/exit\n")
+
     assert result.exit_code == 0
-    assert "INTERVIEW REPORT" in result.output
-    assert "14" in result.output or "7.0" in result.output
+    # One averaged line per competency; neither question's own score survives.
+    assert result.output.count("5.0 /10") == len(COMPETENCIES)
+    assert "8.0 /10" not in result.output
+    assert "2.0 /10" not in result.output
 
 
 @pytest.mark.usefixtures("saved_key")
