@@ -1,7 +1,6 @@
 """Tests for `resume-roast refine`."""
 
 from collections.abc import Iterator, Sequence
-from pathlib import Path
 from typing import ClassVar
 
 import pytest
@@ -10,8 +9,6 @@ from typer.testing import CliRunner
 from resume_roast.cli.registry import build_subcommand_registry
 from resume_roast.integrations.errors import TransientError
 from resume_roast.integrations.types import Completion, Message, Usage
-from resume_roast.persistence.credentials.store import CredentialsStore
-from resume_roast.persistence.credentials.types import Credentials
 
 app = build_subcommand_registry()
 runner = CliRunner()
@@ -69,14 +66,6 @@ class _FakeClient:
 
 
 @pytest.fixture(autouse=True)
-def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> Path:
-    monkeypatch.setattr("resume_roast.cli.utils.storage_dir", lambda: tmp_path)
-    return tmp_path
-
-
-@pytest.fixture(autouse=True)
 def _fake_client(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]
     monkeypatch.setattr("resume_roast.cli.utils.NvidiaClient", _FakeClient)
     monkeypatch.setattr(_FakeClient, "reply", "Lead with the metric.")
@@ -86,13 +75,7 @@ def _fake_client(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[re
     monkeypatch.setattr(_FakeClient, "_call_count", 0)
 
 
-@pytest.fixture
-def saved_key(tmp_path: Path) -> None:
-    credentials = Credentials(nvidia_api_key="nv-key")  # pragma: allowlist secret
-    CredentialsStore(tmp_path).save(credentials)
-
-
-# -- existing tests (adapted for new architecture) ---------------------------
+# -- conversation wiring -----------------------------------------------------
 
 
 @pytest.mark.usefixtures("saved_key")

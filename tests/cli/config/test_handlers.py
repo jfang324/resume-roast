@@ -21,14 +21,6 @@ _TEST_KEY = "sk-ant-test-9876"
 _TEST_KEY_2 = "sk-ant-test-1234"
 
 
-@pytest.fixture(autouse=True)
-def _isolated_storage_dir(  # pyright: ignore[reportUnusedFunction]
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> Path:
-    monkeypatch.setattr("resume_roast.cli.config.handlers.storage_dir", lambda: tmp_path)
-    return tmp_path
-
-
 def test_credentials_saves_prompted_key(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "credentials"], input=f"{_TEST_KEY}\n")
 
