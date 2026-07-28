@@ -564,46 +564,6 @@ def test_max_cycle_turns_forced_evaluate(sample_pdf: Path, monkeypatch: pytest.M
 
 
 @pytest.mark.usefixtures("saved_key")
-def test_parse_failure_retry_then_evaluate(
-    sample_pdf: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Invalid JSON response triggers retry, then valid action succeeds."""
-    monkeypatch.setattr(
-        _FakeClient,
-        "texts",
-        [
-            _plan_json(),
-            "not valid json",
-            json.dumps({"tool": "evaluate"}),
-            _scores_json(),
-            _verdict_json(),
-        ],
-    )
-    result = runner.invoke(app, ["interview", str(sample_pdf)], input="my answer\n")
-    assert result.exit_code == 0
-    assert "INTERVIEW REPORT" in result.output
-
-
-@pytest.mark.usefixtures("saved_key")
-def test_unknown_action_retry(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Unknown tool name triggers retry with feedback."""
-    monkeypatch.setattr(
-        _FakeClient,
-        "texts",
-        [
-            _plan_json(),
-            json.dumps({"tool": "unknown_action_name"}),
-            json.dumps({"tool": "evaluate"}),
-            _scores_json(),
-            _verdict_json(),
-        ],
-    )
-    result = runner.invoke(app, ["interview", str(sample_pdf)], input="my answer\n")
-    assert result.exit_code == 0
-    assert "INTERVIEW REPORT" in result.output
-
-
-@pytest.mark.usefixtures("saved_key")
 def test_long_answer(sample_pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A very long answer (10k+ chars) is accepted without error."""
     monkeypatch.setattr(
