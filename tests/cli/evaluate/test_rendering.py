@@ -55,29 +55,32 @@ def test_highlighted_lines_keep_bracketed_titles_intact() -> None:
     assert lines[0].startswith("[Content — 5/10]")
 
 
-def _review(name: str, *, with_suggestion: bool) -> CategoryReview:
-    suggestions = (
-        (
-            Suggestion(
-                recommendation="Quantify your impact",
-                examples=(
-                    Example(quote="Used Python", rewrite="Built a Python ETL pipeline"),
-                    Example(quote="Team player", rewrite="Led a team of [X] engineers"),
-                ),
-            ),
-        )
-        if with_suggestion
-        else ()
-    )
-    return CategoryReview(score=5, findings=f"{name} needs work.", suggestions=suggestions)
+_QUANTIFY = Suggestion(
+    recommendation="Quantify your impact",
+    examples=(
+        Example(quote="Used Python", rewrite="Built a Python ETL pipeline"),
+        Example(quote="Team player", rewrite="Led a team of [X] engineers"),
+    ),
+)
 
 
-def _report() -> RoastReport:
+def _report(category: str = "Content", suggestion: Suggestion = _QUANTIFY) -> RoastReport:
+    """Build a report whose only suggestion sits under `category`; the rest are bare.
+
+    Every category is present and scored the same, so a test can assert on one
+    category's rendering while the untouched ones still exercise the
+    no-suggestions path around it.
+    """
     return RoastReport(
         overall="A promising draft undermined by vague bullets.",
         overall_score=6,
         categories={
-            name: _review(name, with_suggestion=name == "Content") for name in CATEGORY_NAMES
+            name: CategoryReview(
+                score=5,
+                findings=f"{name} needs work.",
+                suggestions=(suggestion,) if name == category else (),
+            )
+            for name in CATEGORY_NAMES
         },
         strengths=("Concise single page", "Strong verbs"),
         weaknesses=("No metrics anywhere",),
@@ -112,34 +115,17 @@ def test_renders_suggestions_under_their_category() -> None:
 
 
 def test_prefixes_every_line_of_a_multi_line_quote_and_rewrite() -> None:
-    report = RoastReport(
-        overall="x",
-        overall_score=5,
-        categories={
-            name: CategoryReview(
-                score=5,
-                findings="Fine.",
-                suggestions=(
-                    Suggestion(
-                        recommendation="Consolidate the skills section",
-                        examples=(
-                            Example(
-                                quote="Languages: Python, Go\nTools: Git, Docker",
-                                rewrite="Languages: Python, Go\nTools: Git, Docker, AWS",
-                            ),
-                        ),
-                    ),
-                )
-                if name == "Content"
-                else (),
-            )
-            for name in CATEGORY_NAMES
-        },
-        strengths=("x",),
-        weaknesses=("x",),
+    suggestion = Suggestion(
+        recommendation="Consolidate the skills section",
+        examples=(
+            Example(
+                quote="Languages: Python, Go\nTools: Git, Docker",
+                rewrite="Languages: Python, Go\nTools: Git, Docker, AWS",
+            ),
+        ),
     )
 
-    rendered = _render_report(report)
+    rendered = _render_report(_report("Content", suggestion))
 
     # Both lines of the quote carry the removal prefix, both lines of the
     # rewrite the addition prefix — no line renders bare.
@@ -148,26 +134,9 @@ def test_prefixes_every_line_of_a_multi_line_quote_and_rewrite() -> None:
 
 
 def test_renders_a_bare_recommendation_with_no_examples() -> None:
-    report = RoastReport(
-        overall="x",
-        overall_score=8,
-        categories={
-            name: CategoryReview(
-                score=8,
-                findings="Fine.",
-                suggestions=(
-                    Suggestion(recommendation="Add a LinkedIn URL to the header", examples=()),
-                )
-                if name == "Polish"
-                else (),
-            )
-            for name in CATEGORY_NAMES
-        },
-        strengths=("x",),
-        weaknesses=("x",),
-    )
+    suggestion = Suggestion(recommendation="Add a LinkedIn URL to the header", examples=())
 
-    rendered = _render_report(report)
+    rendered = _render_report(_report("Polish", suggestion))
 
     assert "Suggestions:\n- Add a LinkedIn URL to the header" in rendered
     # No dangling example indentation under a bare recommendation.
@@ -175,29 +144,12 @@ def test_renders_a_bare_recommendation_with_no_examples() -> None:
 
 
 def test_renders_an_additive_example_without_a_quote() -> None:
-    report = RoastReport(
-        overall="x",
-        overall_score=1,
-        categories={
-            name: CategoryReview(
-                score=0,
-                findings="Missing.",
-                suggestions=(
-                    Suggestion(
-                        recommendation="Add an Education section",
-                        examples=(Example(quote="", rewrite="BSc, [University], 2024"),),
-                    ),
-                )
-                if name == "Clarity"
-                else (),
-            )
-            for name in CATEGORY_NAMES
-        },
-        strengths=("x",),
-        weaknesses=("x",),
+    suggestion = Suggestion(
+        recommendation="Add an Education section",
+        examples=(Example(quote="", rewrite="BSc, [University], 2024"),),
     )
 
-    rendered = _render_report(report)
+    rendered = _render_report(_report("Clarity", suggestion))
 
     assert "- Add an Education section\n  + BSc, [University], 2024" in rendered
     assert "  - BSc" not in rendered  # no removal line when there is no quote
