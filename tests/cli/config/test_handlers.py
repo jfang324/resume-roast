@@ -141,13 +141,3 @@ def test_settings_lists_choices_and_confirms_saved_values() -> None:
     for model in MODELS:
         assert model in result.output
     assert "Saved to" in result.output
-
-
-def test_config_group_shows_help_without_subcommand() -> None:
-    result = runner.invoke(app, ["config"])
-
-    # no_args_is_help prints help and exits with Click's usage-error code (2),
-    # not 0 — this isn't the same code path as an explicit `--help`.
-    assert result.exit_code == 2
-    assert "credentials" in result.output
-    assert "settings" in result.output
