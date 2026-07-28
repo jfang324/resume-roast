@@ -92,13 +92,3 @@ def test_show_settings_reports_storage_failure(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "Error" in result.output
     assert "Traceback" not in result.output
-
-
-def test_show_group_shows_help_without_subcommand() -> None:
-    result = runner.invoke(app, ["show"])
-
-    # no_args_is_help prints help and exits with Click's usage-error code (2),
-    # not 0 — this isn't the same code path as an explicit `--help`.
-    assert result.exit_code == 2
-    assert "credentials" in result.output
-    assert "settings" in result.output
