@@ -39,9 +39,10 @@ def parsed(sample_docx: Path) -> ParsedResume:
     return DocxParser().parse(sample_docx)
 
 
-def test_docx_parser_satisfies_document_parser() -> None:
+def test_docx_parser_satisfies_document_parser(sample_docx: Path) -> None:
+    # Static check: pyright verifies the assignment, the call is incidental.
     parser: DocumentParser = DocxParser()
-    assert isinstance(parser, DocxParser)
+    assert "Jane Doe" in parser.parse(sample_docx).markdown
 
 
 def test_markdown_keeps_inserted_text(parsed: ParsedResume) -> None:

@@ -54,9 +54,10 @@ def parsed(sample_pdf: Path) -> ParsedResume:
     return PdfParser().parse(sample_pdf)
 
 
-def test_pdf_parser_satisfies_document_parser() -> None:
+def test_pdf_parser_satisfies_document_parser(sample_pdf: Path) -> None:
+    # Static check: pyright verifies the assignment, the call is incidental.
     parser: DocumentParser = PdfParser()
-    assert isinstance(parser, PdfParser)
+    assert "Jane Doe" in parser.parse(sample_pdf).markdown
 
 
 def test_markdown_keeps_inserted_text(parsed: ParsedResume) -> None:
