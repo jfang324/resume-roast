@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- New `--report` flag on `interview`: saves a Markdown report — verdict, per-question evidence, and fact-checks — under `~/.resume-roast/interview-reports/`
+- Interview scoring is now calibrated to the configured seniority level
+- Interview competency and verdict scores now use the same 0-10 scale as `evaluate`
 - Interview mode no longer makes model calls it discards when a question stalls, reducing wasted tokens
 - New models added to the catalog
 - Interview sessions no longer crash on malformed model responses
