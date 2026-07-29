@@ -2,10 +2,10 @@
 
 ## Setup
 
-Install dependencies including dev dependencies:
+Install dependencies, including the dev group:
 
 ```bash
-poetry install --with dev
+poetry install
 ```
 
 Install both Git hook stages:
@@ -19,17 +19,22 @@ The pre-push hook runs heavier local checks like Pyright and pytest before pushi
 
 ## Running the App
 
-Enter the virtual environment:
+Run the application through Poetry:
 
 ```bash
-poetry shell
+poetry run resume-roast
 ```
 
-Then run the application:
+To call `resume-roast` directly instead, activate the virtual environment first.
+`poetry env activate` prints the activation command for your shell — run what it
+prints:
 
 ```bash
-resume-roast
+poetry env activate
 ```
+
+Poetry 2.x moved `poetry shell` out of core; install `poetry-plugin-shell` if you
+prefer that command.
 
 ## Testing
 
