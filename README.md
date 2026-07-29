@@ -11,11 +11,11 @@ A terminal-based LLM-powered resume coaching tool. Get brutal, structured feedba
 
 ## Features
 
-- **`evaluate`** — Submit a PDF resume and receive a structured roast: per-category scores, highlighted strengths and weaknesses, and concrete rewrite suggestions with before/after examples
+- **`evaluate`** — Submit a PDF or DOCX resume and receive a structured roast: per-category scores, highlighted strengths and weaknesses, and concrete rewrite suggestions with before/after examples
 - **`interview`** — Agentic behavioral interview that asks resume-tailored questions, fact-checks answers against your resume, and scores them across ownership, technical competence, problem-solving, and collaboration
 - **`refine`** — Interactive chat that coaches a single resume bullet, rating it on every turn and suggesting improvements
 - **`generate-block`** — Chat-based interviewer that gathers details about a role or project, then generates a formatted resume block rated against our bullet-writing principles
-- Multiple LLM models to choose from, with per-session token usage and cost reporting
+- Multiple LLM models to choose from, with token usage and cost reporting — per reply in the chat sessions, per run for `evaluate` and `interview`
 - Configurable persona (recruiter, hiring manager, senior engineer) and level (intern through senior) for evaluations
 
 ## Getting Started
@@ -47,7 +47,7 @@ Set your NVIDIA API key:
 resume-roast config credentials
 ```
 
-You can also configure the model, persona, and seniority level:
+You can also configure the model, persona, seniority level, and the remaining settings:
 
 ```sh
 resume-roast config settings
@@ -66,11 +66,11 @@ Configuration is stored in `~/.resume-roast/`.
 | `refine <bullet>`             | `<bullet>` — the bullet text to coach  | Coach a single resume bullet through a back-and-forth chat             |
 | `generate-block`              | *(none)*                               | Interview you about a role or project, then generate a resume block    |
 | `config credentials`          | *(none)*                               | Set the API key for each provider                                     |
-| `config settings`             | *(none)*                               | Choose the model, persona, and seniority level                        |
+| `config settings`             | *(none)*                               | Choose each setting from its allowed values                           |
 | `show credentials`            | *(none)*                               | Print saved API keys, masked                                          |
-| `show settings`               | *(none)*                               | Print the current model, persona, and level                          |
+| `show settings`               | *(none)*                               | Print every setting's current value                                   |
 
-`--debug` is available on every command; it writes full debug logs (including raw prompts and responses containing resume content) to `~/.resume-roast/logs/debug.log`.
+`--debug` is a global option, so it goes before the command — `resume-roast --debug evaluate resume.pdf`. It writes full debug logs (including raw prompts and responses containing resume content) to `~/.resume-roast/logs/debug.log`.
 
 ### Evaluate a Resume
 
@@ -102,7 +102,7 @@ Opens an interactive chat. The LLM coaches you, rating the bullet on every reply
 resume-roast generate-block
 ```
 
-Opens an interactive chat. The LLM interviews you about a role or project, asking questions to gather specifics. Type `/generate` when you're ready to produce a formatted resume block (header + 3-6 bullet points). The model only generates if it can produce an 8-10/10 quality block — otherwise it asks more questions. Available commands:
+Opens an interactive chat. The LLM interviews you about a role or project, asking questions to gather specifics. Type `/generate` when you're ready to produce a formatted resume block (header + 3-6 bullet points). `/generate` always produces a block, rated 0-10 — if the details are thin it still generates, then names what would raise the score. Available commands:
 
 | Command              | Action                                  |
 | -------------------- | --------------------------------------- |
