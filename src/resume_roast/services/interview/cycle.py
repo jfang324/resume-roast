@@ -2,7 +2,7 @@
 
 import logging
 
-from resume_roast.integrations.errors import AuthenticationError, MalformedResponseError
+from resume_roast.integrations.errors import ApiError, AuthenticationError, MalformedResponseError
 from resume_roast.integrations.types import Message
 from resume_roast.prompts.interview.builder import build_progress_message, render_competency_text
 from resume_roast.prompts.interview.tools.evaluate.builder import render_evaluation_results
@@ -90,7 +90,7 @@ def run_question_cycle(
                             # A rejected key fails every later call the same
                             # way; end the session at the error boundary.
                             raise
-                        except Exception:
+                        except ApiError:
                             logger.exception("verify tool failed")
                             output, usage = None, None
 
@@ -192,7 +192,7 @@ def _run_evaluate(
             # A rejected key fails every later call the same way; end the
             # session at the error boundary.
             raise
-        except Exception:
+        except ApiError:
             logger.exception("evaluate tool failed")
 
             return None, ""
