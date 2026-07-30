@@ -303,7 +303,8 @@ def _steering_turn(
     if _budget_spent(qs):
         return EvaluateCall()
 
-    qs.pending.append(session.messages.pop())
+    if session.messages and session.messages[-1].role == "assistant":
+        qs.pending.append(session.messages.pop())
     qs.pending.append(Message(role="user", content=correction))
 
     return _prompt_and_parse(session, qs, progress)
@@ -352,6 +353,7 @@ def _prompt_and_parse(
         call = parse_tool_call(completion.text)
     except MalformedResponseError as exc:
         logger.warning("Failed to parse tool call: %s", exc)
+        qs.pending.append(session.messages.pop())
 
         return ParseFailure(raw_text=completion.text)
 
