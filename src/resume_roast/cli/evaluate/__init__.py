@@ -1,1 +1,1 @@
-"""`evaluate` command: currently a temporary view of PDF extraction output."""
+"""`evaluate` command: roasts a resume and displays structured scoring."""
